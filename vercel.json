@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm run build:vercel",
+  "outputDirectory": "dist/public",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/trpc/(.*)",
+      "dest": "/api/trpc/[...trpc]"
+    },
+    {
+      "src": "/api/oauth/callback(.*)",
+      "dest": "/api/oauth/callback"
+    },
+    {
+      "src": "/manus-storage/(.*)",
+      "dest": "/api/storage/[...path]"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/trpc/[...trpc]"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map|json|webmanifest))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
