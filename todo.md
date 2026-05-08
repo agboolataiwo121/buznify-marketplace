@@ -228,3 +228,14 @@
 - [ ] Dashboard micro-interactions (hover states, count-up animations)
 - [ ] Rate limiting middleware on tRPC procedures
 - [ ] WebSocket-style polling for live order/SMS updates
+
+## Phase 13: Service Catalog Expansion
+- [x] Virtual Numbers page: 1,431 unique services across 13 categories (Social Media, Messaging Apps, AI Platforms, Dating Apps, Gaming, Crypto & Trading, Streaming Services, Shopping & Marketplace, Delivery & Food, Business Tools, Survey & Rewards, Banking & Finance, Travel & Transport)
+- [x] Live search across all 1,431 services
+- [x] Category filter tabs with service counts
+- [x] Country picker with 40+ countries and per-country pricing
+- [x] Sort by: Most Popular, Cheapest, Fastest OTP, Highest Success Rate, A-Z
+- [x] Price filter (max price cap)
+- [x] Speed badges (Instant / Fast / Medium / Slow) per service
+- [x] Success rate and stock availability per service card
+- [x] My Numbers tab with SMS inbox and OTP copy button
