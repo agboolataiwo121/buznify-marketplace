@@ -313,6 +313,12 @@ export const growthOrders = mysqlTable("growth_orders", {
   refillRequested: boolean("refillRequested").default(false).notNull(),
   cancelRequested: boolean("cancelRequested").default(false).notNull(),
   notes: text("notes"),
+  // SMM panel API fields
+  apiOrderId: varchar("apiOrderId", { length: 64 }),
+  panel: mysqlEnum("panel", ["smmkings", "peakerr", "manual"]).default("manual"),
+  apiServiceId: int("apiServiceId"),
+  startCount: int("startCount"),
+  remains: int("remains"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

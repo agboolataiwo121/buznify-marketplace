@@ -260,3 +260,24 @@
 - [x] Add active orders panel showing phone number, expiry countdown, live SMS
 - [x] Handle cancel/ban/finish actions in UI with refund logic
 - [x] Add schema migration: apiOrderId, operator fields on virtual_numbers table
+
+## Phase 15 — Social Growth API Integration (SMMKings + Peakerr)
+
+- [ ] Create server/smm.ts helper (universal SMM API v2 client for SMMKings + Peakerr)
+- [ ] Add growth_orders table to schema (apiOrderId, panel, serviceId, link, quantity, startCount, remains, status)
+- [ ] Push schema migration with pnpm db:push
+- [ ] Procedure: growth.getServices — fetch & cache live services from both panels
+- [ ] Procedure: growth.placeOrder — place real SMM order (deduct wallet, store in DB)
+- [ ] Procedure: growth.getOrderStatus — check live status from panel
+- [ ] Procedure: growth.getMyOrders — list user's growth orders with live status
+- [ ] Procedure: growth.getBalance — admin: check panel account balances
+- [ ] Procedure: growth.refillOrder — request refill for dropped followers
+- [ ] Procedure: growth.cancelOrder — cancel eligible order
+- [ ] Rewrite GrowthServices.tsx with live services from both panels
+- [ ] Add platform filter tabs (Instagram, TikTok, YouTube, Facebook, Twitter/X, Telegram, Spotify, etc.)
+- [ ] Add service type filter (Followers, Likes, Views, Comments, Shares, etc.)
+- [ ] Show real min/max quantity, rate per 1000, refill/cancel badges
+- [ ] Add order placement modal (link input, quantity slider, price preview)
+- [ ] Add My Orders tab with live status polling
+- [ ] Add order progress bar (start count → current → target)
+- [ ] Write vitest tests for SMM procedures

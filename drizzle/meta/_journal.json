@@ -29,6 +29,13 @@
       "when": 1778278976768,
       "tag": "0003_sour_mindworm",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778281065437,
+      "tag": "0004_shocking_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

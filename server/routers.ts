@@ -86,6 +86,18 @@ import {
   cancelOrder as fivesimCancelOrder,
   banOrder as fivesimBanOrder,
 } from "./fivesim";
+import {
+  smmGetAllServices,
+  smmGetServices,
+  smmPlaceOrder,
+  smmGetOrderStatus,
+  smmGetBalance,
+  smmRefillOrder,
+  smmCancelOrder,
+  detectPlatform,
+  normalizeSmmStatus,
+  type SmmPanel,
+} from "./smm";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -398,49 +410,224 @@ export const appRouter = router({
       }),
   }),
 
-  // ── Growth Services ───────────────────────────────────────────────────────
+  // ── Growth Services (SMMKings + Peakerr live API) ────────────────────────
   growth: router({
-    list: publicProcedure
-      .input(z.object({ platform: z.string().optional() }))
-      .query(async ({ input }) => {
-        await seedGrowthServices();
-        return getGrowthServices(input.platform);
-      }),
-
-    purchase: protectedProcedure
+    /**
+     * Fetch live services from SMMKings and Peakerr, merged and enriched.
+     * Optionally filter by platform or serviceType.
+     */
+    listLive: publicProcedure
       .input(
         z.object({
+          platform: z.string().optional(),
+          serviceType: z.string().optional(),
+          panel: z.enum(["smmkings", "peakerr", "all"]).default("all"),
+        })
+      )
+      .query(async ({ input }) => {
+        const services = input.panel === "all"
+          ? await smmGetAllServices()
+          : await smmGetServices(input.panel as SmmPanel);
+
+        return services
+          .map((s) => ({
+            ...s,
+            platform: detectPlatform(s.name, s.category),
+            serviceType: s.type.toLowerCase(),
+            ratePerThousand: parseFloat(s.rate),
+            minQty: parseInt(s.min, 10),
+            maxQty: parseInt(s.max, 10),
+          }))
+          .filter((s) => {
+            if (input.platform && s.platform !== input.platform) return false;
+            if (input.serviceType && !s.serviceType.toLowerCase().includes(input.serviceType.toLowerCase())) return false;
+            return true;
+          });
+      }),
+
+    /** Place a real order on SMMKings or Peakerr, deduct wallet, store in DB */
+    placeOrder: protectedProcedure
+      .input(
+        z.object({
+          panel: z.enum(["smmkings", "peakerr"]),
           serviceId: z.number(),
-          targetUrl: z.string().min(1),
-          quantity: z.number().min(1),
-          price: z.number().min(0.01),
+          serviceName: z.string(),
+          targetUrl: z.string().url("Must be a valid URL"),
+          quantity: z.number().min(10).max(1000000),
+          totalPrice: z.number().min(0.001),
         })
       )
       .mutation(async ({ input, ctx }) => {
         const user = await getUserById(ctx.user.id);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });
         const balance = parseFloat(user.balance ?? "0");
-        if (balance < input.price) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+        if (balance < input.totalPrice) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Insufficient balance. Need $${input.totalPrice.toFixed(4)}, have $${balance.toFixed(2)}`,
+          });
         }
-        const newBalance = (balance - input.price).toFixed(2);
+
+        // Place order on panel
+        let apiOrderId: string | undefined;
+        try {
+          const result = await smmPlaceOrder(
+            input.panel as SmmPanel,
+            input.serviceId,
+            input.targetUrl,
+            input.quantity
+          );
+          apiOrderId = String(result.order);
+        } catch (err) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Panel error: ${(err as Error).message}`,
+          });
+        }
+
+        // Deduct wallet
+        const newBalance = (balance - input.totalPrice).toFixed(6);
         await updateUserBalance(ctx.user.id, newBalance);
         await createWalletTransaction({
           userId: ctx.user.id,
           type: "purchase",
-          amount: input.price.toFixed(2),
+          amount: input.totalPrice.toFixed(6),
           balanceBefore: balance.toFixed(2),
           balanceAfter: newBalance,
-          description: `Growth service: ${input.quantity} units for ${input.targetUrl}`,
+          description: `SMM Order: ${input.serviceName} x${input.quantity} → ${input.targetUrl}`,
+          referenceId: apiOrderId,
           status: "completed",
         });
+
+        // Store in DB
+        const db = await getDb();
+        if (db) {
+          await db.insert(growthOrdersTable).values({
+            userId: ctx.user.id,
+            serviceId: input.serviceId,
+            targetUrl: input.targetUrl,
+            quantity: input.quantity,
+            totalAmount: input.totalPrice.toFixed(6),
+            status: "processing",
+            deliveredCount: 0,
+            apiOrderId,
+            panel: input.panel as "smmkings" | "peakerr",
+            apiServiceId: input.serviceId,
+            notes: input.serviceName,
+          });
+        }
+
         await createNotification({
           userId: ctx.user.id,
           type: "order_completed",
-          title: "Growth Service Order Placed",
-          message: `Your order for ${input.quantity} units has been placed and is being processed.`,
+          title: "Growth Order Placed",
+          message: `Order #${apiOrderId} for ${input.quantity} ${input.serviceName} is now processing.`,
         });
-        return { success: true, newBalance: parseFloat(newBalance) };
+
+        return { success: true, apiOrderId, newBalance: parseFloat(newBalance) };
+      }),
+
+    /** Get live status of a growth order from the panel */
+    getOrderStatus: protectedProcedure
+      .input(z.object({ growthOrderId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const rows = await db
+          .select()
+          .from(growthOrdersTable)
+          .where(eq(growthOrdersTable.id, input.growthOrderId))
+          .limit(1);
+        const order = rows[0];
+        if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+        if (order.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        if (!order.apiOrderId || !order.panel || order.panel === "manual") {
+          return { ...order, liveStatus: null };
+        }
+        try {
+          const live = await smmGetOrderStatus(order.panel as SmmPanel, order.apiOrderId);
+          const newStatus = normalizeSmmStatus(live.status);
+          // Sync to DB
+          await db.update(growthOrdersTable).set({
+            status: newStatus,
+            startCount: live.start_count ? parseInt(live.start_count, 10) : undefined,
+            remains: live.remains ? parseInt(live.remains, 10) : undefined,
+            deliveredCount: live.start_count && live.remains
+              ? Math.max(0, parseInt(live.start_count, 10) + order.quantity - parseInt(live.remains, 10))
+              : order.deliveredCount,
+          }).where(eq(growthOrdersTable.id, order.id));
+          return { ...order, status: newStatus, liveStatus: live };
+        } catch {
+          return { ...order, liveStatus: null };
+        }
+      }),
+
+    /** List all growth orders for the current user */
+    myOrders: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(growthOrdersTable)
+        .where(eq(growthOrdersTable.userId, ctx.user.id))
+        .orderBy(desc(growthOrdersTable.createdAt))
+        .limit(100);
+    }),
+
+    /** Request a refill for a dropped order */
+    refillOrder: protectedProcedure
+      .input(z.object({ growthOrderId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const rows = await db.select().from(growthOrdersTable).where(eq(growthOrdersTable.id, input.growthOrderId)).limit(1);
+        const order = rows[0];
+        if (!order || order.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!order.apiOrderId || !order.panel || order.panel === "manual") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Order not eligible for refill" });
+        }
+        await smmRefillOrder(order.panel as SmmPanel, order.apiOrderId);
+        await db.update(growthOrdersTable).set({ refillRequested: true }).where(eq(growthOrdersTable.id, order.id));
+        return { success: true };
+      }),
+
+    /** Cancel an eligible order */
+    cancelOrder: protectedProcedure
+      .input(z.object({ growthOrderId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const rows = await db.select().from(growthOrdersTable).where(eq(growthOrdersTable.id, input.growthOrderId)).limit(1);
+        const order = rows[0];
+        if (!order || order.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!order.apiOrderId || !order.panel || order.panel === "manual") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Order not eligible for cancellation" });
+        }
+        await smmCancelOrder(order.panel as SmmPanel, order.apiOrderId);
+        await db.update(growthOrdersTable).set({ status: "cancelled", cancelRequested: true }).where(eq(growthOrdersTable.id, order.id));
+        return { success: true };
+      }),
+
+    /** Admin: get panel balances */
+    getPanelBalances: adminProcedure.query(async () => {
+      const [kings, peakerr] = await Promise.allSettled([
+        smmGetBalance("smmkings"),
+        smmGetBalance("peakerr"),
+      ]);
+      return {
+        smmkings: kings.status === "fulfilled" ? kings.value : null,
+        peakerr: peakerr.status === "fulfilled" ? peakerr.value : null,
+      };
+    }),
+
+    /** Legacy: list seeded growth services from DB (kept for backwards compat) */
+    list: publicProcedure
+      .input(z.object({ platform: z.string().optional() }))
+      .query(async ({ input }) => {
+        await seedGrowthServices();
+        return getGrowthServices(input.platform);
       }),
   }),
 

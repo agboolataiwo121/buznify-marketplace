@@ -1,448 +1,565 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  TrendingUp,
-  Star,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
+import {
+  Search,
   Zap,
-  CheckCircle,
-  ChevronRight,
-  Users,
-  Eye,
-  Heart,
-  MessageCircle,
-  ThumbsUp,
-  Calculator,
-  LayoutList,
-  Timer,
-  Plus,
-  Trash2,
+  RefreshCw,
+  XCircle,
+  TrendingUp,
+  ShoppingCart,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Package,
 } from "lucide-react";
+import { getLoginUrl } from "@/const";
 
 const PLATFORMS = [
-  { value: "instagram", label: "Instagram", emoji: "📸", color: "from-pink-500 to-purple-500" },
-  { value: "tiktok", label: "TikTok", emoji: "🎵", color: "from-pink-400 to-rose-500" },
-  { value: "youtube", label: "YouTube", emoji: "▶️", color: "from-red-500 to-red-600" },
-  { value: "telegram", label: "Telegram", emoji: "✈️", color: "from-blue-400 to-cyan-500" },
-  { value: "twitter", label: "Twitter/X", emoji: "𝕏", color: "from-sky-400 to-blue-500" },
-  { value: "facebook", label: "Facebook", emoji: "👤", color: "from-blue-600 to-blue-700" },
+  { key: "all", label: "All Platforms", emoji: "🌐" },
+  { key: "instagram", label: "Instagram", emoji: "📸" },
+  { key: "tiktok", label: "TikTok", emoji: "🎵" },
+  { key: "youtube", label: "YouTube", emoji: "▶️" },
+  { key: "facebook", label: "Facebook", emoji: "👥" },
+  { key: "twitter", label: "Twitter / X", emoji: "🐦" },
+  { key: "telegram", label: "Telegram", emoji: "✈️" },
+  { key: "spotify", label: "Spotify", emoji: "🎧" },
+  { key: "snapchat", label: "Snapchat", emoji: "👻" },
+  { key: "linkedin", label: "LinkedIn", emoji: "💼" },
+  { key: "twitch", label: "Twitch", emoji: "🎮" },
+  { key: "discord", label: "Discord", emoji: "💬" },
+  { key: "threads", label: "Threads", emoji: "🧵" },
+  { key: "reddit", label: "Reddit", emoji: "🤖" },
+  { key: "soundcloud", label: "SoundCloud", emoji: "🎶" },
+  { key: "website", label: "Website Traffic", emoji: "🌍" },
+  { key: "other", label: "Other", emoji: "📦" },
 ];
 
-const SERVICE_ICONS: Record<string, React.ElementType> = {
-  followers: Users,
-  subscribers: Users,
-  views: Eye,
-  likes: Heart,
-  comments: MessageCircle,
-  members: Users,
-  page_likes: ThumbsUp,
+const SERVICE_TYPES = [
+  { key: "all", label: "All Types" },
+  { key: "followers", label: "Followers" },
+  { key: "subscribers", label: "Subscribers" },
+  { key: "likes", label: "Likes" },
+  { key: "views", label: "Views" },
+  { key: "comments", label: "Comments" },
+  { key: "shares", label: "Shares" },
+  { key: "members", label: "Members" },
+  { key: "plays", label: "Plays" },
+  { key: "traffic", label: "Traffic" },
+];
+
+const PANEL_LABELS: Record<string, string> = {
+  smmkings: "SMMKings",
+  peakerr: "Peakerr",
 };
 
-const DEMO_SERVICES = [
-  { id: 1, platform: "instagram", serviceType: "followers", title: "500 Instagram Followers", description: "Real-looking followers, gradual delivery", quantity: 500, price: "2.99", deliveryTime: "24-48 hours", featured: false },
-  { id: 2, platform: "instagram", serviceType: "followers", title: "1000 Instagram Followers", description: "High quality followers, safe delivery", quantity: 1000, price: "4.99", deliveryTime: "24-48 hours", featured: true },
-  { id: 3, platform: "instagram", serviceType: "followers", title: "5000 Instagram Followers", description: "Bulk followers package", quantity: 5000, price: "19.99", deliveryTime: "3-5 days", featured: false },
-  { id: 4, platform: "instagram", serviceType: "likes", title: "500 Instagram Likes", description: "Post likes, instant start", quantity: 500, price: "1.99", deliveryTime: "1-6 hours", featured: false },
-  { id: 5, platform: "instagram", serviceType: "views", title: "10K Instagram Views", description: "Reel/video views", quantity: 10000, price: "3.99", deliveryTime: "1-6 hours", featured: false },
-  { id: 6, platform: "tiktok", serviceType: "followers", title: "1000 TikTok Followers", description: "Real TikTok followers", quantity: 1000, price: "5.99", deliveryTime: "24-48 hours", featured: true },
-  { id: 7, platform: "tiktok", serviceType: "views", title: "50K TikTok Views", description: "Video views, fast delivery", quantity: 50000, price: "4.99", deliveryTime: "1-6 hours", featured: false },
-  { id: 8, platform: "tiktok", serviceType: "likes", title: "1000 TikTok Likes", description: "Post likes", quantity: 1000, price: "2.99", deliveryTime: "1-6 hours", featured: false },
-  { id: 9, platform: "youtube", serviceType: "subscribers", title: "500 YouTube Subscribers", description: "Real subscribers", quantity: 500, price: "9.99", deliveryTime: "3-7 days", featured: false },
-  { id: 10, platform: "youtube", serviceType: "subscribers", title: "1000 YouTube Subscribers", description: "High retention subscribers", quantity: 1000, price: "17.99", deliveryTime: "5-10 days", featured: true },
-  { id: 11, platform: "youtube", serviceType: "views", title: "10K YouTube Views", description: "High retention views", quantity: 10000, price: "7.99", deliveryTime: "3-5 days", featured: false },
-  { id: 12, platform: "telegram", serviceType: "members", title: "500 Telegram Members", description: "Real group/channel members", quantity: 500, price: "3.99", deliveryTime: "24-48 hours", featured: false },
-  { id: 13, platform: "telegram", serviceType: "members", title: "2000 Telegram Members", description: "Bulk members package", quantity: 2000, price: "12.99", deliveryTime: "3-5 days", featured: true },
-  { id: 14, platform: "twitter", serviceType: "followers", title: "500 Twitter Followers", description: "Real Twitter followers", quantity: 500, price: "3.99", deliveryTime: "24-48 hours", featured: false },
-  { id: 15, platform: "twitter", serviceType: "followers", title: "2000 Twitter Followers", description: "High quality followers", quantity: 2000, price: "12.99", deliveryTime: "3-5 days", featured: true },
-  { id: 16, platform: "facebook", serviceType: "page_likes", title: "500 Facebook Page Likes", description: "Real page likes", quantity: 500, price: "4.99", deliveryTime: "24-48 hours", featured: false },
-  { id: 17, platform: "facebook", serviceType: "page_likes", title: "2000 Facebook Page Likes", description: "Bulk page likes", quantity: 2000, price: "14.99", deliveryTime: "3-5 days", featured: true },
-];
+const STATUS_COLORS: Record<string, string> = {
+  pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  processing: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  "in progress": "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  completed: "bg-green-500/20 text-green-400 border-green-500/30",
+  partial: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  cancelled: "bg-red-500/20 text-red-400 border-red-500/30",
+  canceled: "bg-red-500/20 text-red-400 border-red-500/30",
+  refunded: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+};
 
-function PricingCalculator() {
-  const [quantity, setQuantity] = useState(1000);
-  const [selectedService, setSelectedService] = useState(DEMO_SERVICES[1]);
-  const pricePerUnit = parseFloat(selectedService.price) / selectedService.quantity;
-  const totalPrice = (pricePerUnit * quantity).toFixed(2);
+interface LiveService {
+  service: number;
+  name: string;
+  type: string;
+  category: string;
+  rate: string;
+  min: string;
+  max: string;
+  refill: boolean;
+  cancel: boolean;
+  panel: "smmkings" | "peakerr";
+  platform: string;
+  serviceType: string;
+  ratePerThousand: number;
+  minQty: number;
+  maxQty: number;
+}
+
+function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: LiveService) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const platformInfo = PLATFORMS.find((p) => p.key === service.platform);
+  return (
+    <Card className="bg-[#0d1117] border border-white/10 hover:border-violet-500/40 transition-all duration-200">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-base">{platformInfo?.emoji ?? "📦"}</span>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-500/40 text-violet-300 bg-violet-500/10">
+                {PANEL_LABELS[service.panel] ?? service.panel}
+              </Badge>
+              {service.refill && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500/40 text-green-400 bg-green-500/10">
+                  <RefreshCw className="w-2.5 h-2.5 mr-1" />Refill
+                </Badge>
+              )}
+              {service.cancel && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-orange-500/40 text-orange-400 bg-orange-500/10">
+                  Cancel
+                </Badge>
+              )}
+            </div>
+            <p className={`text-sm text-white/90 font-medium leading-snug ${!expanded ? "line-clamp-2" : ""}`}>{service.name}</p>
+            {service.name.length > 80 && (
+              <button onClick={() => setExpanded(!expanded)} className="text-[11px] text-violet-400 hover:text-violet-300 mt-0.5 flex items-center gap-0.5">
+                {expanded ? (<>Less <ChevronUp className="w-3 h-3" /></>) : (<>More <ChevronDown className="w-3 h-3" /></>)}
+              </button>
+            )}
+            <p className="text-[11px] text-white/40 mt-1">{service.category}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-lg font-bold text-violet-400">${service.ratePerThousand.toFixed(3)}</p>
+            <p className="text-[10px] text-white/40">per 1,000</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+          <div className="text-[11px] text-white/40">
+            Min: <span className="text-white/60">{service.minQty.toLocaleString()}</span>
+            {" · "}
+            Max: <span className="text-white/60">{service.maxQty.toLocaleString()}</span>
+          </div>
+          <Button size="sm" onClick={() => onBuy(service)} className="h-7 px-3 text-xs bg-violet-600 hover:bg-violet-500 text-white">
+            <ShoppingCart className="w-3 h-3 mr-1" />Order
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OrderModal({
+  service,
+  onClose,
+  userBalance,
+}: {
+  service: LiveService | null;
+  onClose: () => void;
+  userBalance: number;
+}) {
+  const utils = trpc.useUtils();
+  const [link, setLink] = useState("");
+  const [quantity, setQuantity] = useState<number>(service?.minQty ?? 100);
+
+  const placeOrder = trpc.growth.placeOrder.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Order #${data.apiOrderId} is processing. Balance: $${data.newBalance.toFixed(2)}`);
+      utils.growth.myOrders.invalidate();
+      utils.auth.me.invalidate();
+      onClose();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!service) return null;
+  const qty = Math.min(Math.max(quantity, service.minQty), service.maxQty);
+  const totalPrice = (qty / 1000) * service.ratePerThousand;
+  const canAfford = userBalance >= totalPrice;
 
   return (
-    <div className="glass-card rounded-2xl p-6 mb-10 border border-violet-500/20">
-      <div className="flex items-center gap-2 mb-5">
-        <Calculator className="w-5 h-5 text-violet-400" />
-        <h2 className="text-base font-semibold text-foreground">Instant Pricing Calculator</h2>
-        <span className="text-xs badge-purple px-2 py-0.5 rounded-full">Live</span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-end">
-        <div>
-          <label className="text-xs text-muted-foreground mb-1.5 block">Select Service</label>
-          <select
-            value={selectedService.id}
-            onChange={(e) => {
-              const s = DEMO_SERVICES.find((d) => d.id === parseInt(e.target.value));
-              if (s) setSelectedService(s);
-            }}
-            className="w-full h-10 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground px-3 focus:outline-none focus:border-primary/50"
+    <Dialog open={!!service} onOpenChange={() => onClose()}>
+      <DialogContent className="bg-[#0d1117] border border-white/10 text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-violet-400" />Place Order
+          </DialogTitle>
+          <DialogDescription className="text-white/50 text-sm leading-snug">{service.name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-5 py-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="border-violet-500/40 text-violet-300 bg-violet-500/10">{PANEL_LABELS[service.panel]}</Badge>
+            <Badge variant="outline" className="border-white/20 text-white/50">Service #{service.service}</Badge>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm text-white/70">Target URL / Username</label>
+            <Input
+              placeholder="https://instagram.com/username"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500"
+            />
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-white/70">Quantity</label>
+              <span className="text-sm font-mono text-violet-300">{qty.toLocaleString()}</span>
+            </div>
+            <Slider
+              min={service.minQty}
+              max={Math.min(service.maxQty, 100000)}
+              step={Math.max(1, Math.floor(service.minQty / 10))}
+              value={[qty]}
+              onValueChange={([v]) => setQuantity(v)}
+              className="[&_[role=slider]]:bg-violet-500"
+            />
+            <div className="flex justify-between text-[11px] text-white/30">
+              <span>Min: {service.minQty.toLocaleString()}</span>
+              <span>Max: {service.maxQty.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="bg-white/5 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-white/50">Rate</span>
+              <span className="text-white/80">${service.ratePerThousand.toFixed(4)} / 1,000</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/50">Quantity</span>
+              <span className="text-white/80">{qty.toLocaleString()}</span>
+            </div>
+            <div className="border-t border-white/10 pt-2 flex justify-between font-semibold">
+              <span className="text-white/70">Total</span>
+              <span className={canAfford ? "text-green-400" : "text-red-400"}>${totalPrice.toFixed(4)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-white/40">Your balance</span>
+              <span className={canAfford ? "text-white/60" : "text-red-400"}>${userBalance.toFixed(2)}</span>
+            </div>
+          </div>
+          {!canAfford && (
+            <p className="text-xs text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />Insufficient balance. Please top up your wallet.
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="border-white/10 text-white/70">Cancel</Button>
+          <Button
+            onClick={() => placeOrder.mutate({ panel: service.panel, serviceId: service.service, serviceName: service.name, targetUrl: link, quantity: qty, totalPrice })}
+            disabled={!link || !canAfford || placeOrder.isPending}
+            className="bg-violet-600 hover:bg-violet-500 text-white"
           >
-            {DEMO_SERVICES.filter((s) => s.platform === "instagram").map((s) => (
-              <option key={s.id} value={s.id} className="bg-background">{s.title}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1.5 block">Quantity</label>
-          <Input
-            type="number"
-            min={100}
-            max={100000}
-            step={100}
-            value={quantity}
-            onChange={(e) => setQuantity(parseInt(e.target.value) || 100)}
-            className="bg-white/5 border-white/10 focus:border-primary/50 h-10"
-          />
-        </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <p className="text-xs text-muted-foreground mb-1">Estimated Price</p>
-          <p className="text-3xl font-bold gradient-text">${totalPrice}</p>
-          <p className="text-xs text-muted-foreground mt-1">≈ ${pricePerUnit.toFixed(4)} per unit</p>
-        </div>
+            {placeOrder.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Placing...</>
+            ) : (
+              <><Zap className="w-4 h-4 mr-2" />Place Order — ${totalPrice.toFixed(4)}</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MyOrdersTab() {
+  const { data: orders, isLoading, refetch, isFetching } = trpc.growth.myOrders.useQuery();
+  const utils = trpc.useUtils();
+
+  const refillMutation = trpc.growth.refillOrder.useMutation({
+    onSuccess: () => { toast.success("Refill requested"); utils.growth.myOrders.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const cancelMutation = trpc.growth.cancelOrder.useMutation({
+    onSuccess: () => { toast.success("Order cancelled"); utils.growth.myOrders.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
       </div>
+    );
+  }
+
+  if (!orders?.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Package className="w-12 h-12 text-white/20 mb-3" />
+        <p className="text-white/50 text-sm">No orders yet. Browse services and place your first order!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-white/50">{orders.length} order{orders.length !== 1 ? "s" : ""}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="border-white/10 text-white/60 h-7 text-xs">
+          <RefreshCw className={`w-3 h-3 mr-1 ${isFetching ? "animate-spin" : ""}`} />Refresh
+        </Button>
+      </div>
+      {orders.map((order) => {
+        const statusClass = STATUS_COLORS[order.status.toLowerCase()] ?? "bg-white/10 text-white/60 border-white/20";
+        const progress = order.quantity > 0 ? Math.min(100, Math.round((order.deliveredCount / order.quantity) * 100)) : 0;
+        return (
+          <Card key={order.id} className="bg-[#0d1117] border border-white/10">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-xs font-mono text-white/40">#{order.id}</span>
+                    {order.apiOrderId && (
+                      <span className="text-xs font-mono text-violet-400/70">API#{order.apiOrderId}</span>
+                    )}
+                    {order.panel && order.panel !== "manual" && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-500/30 text-violet-300/70">
+                        {PANEL_LABELS[order.panel] ?? order.panel}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-white/80 line-clamp-1">{order.notes ?? "Growth Order"}</p>
+                  <p className="text-xs text-white/40 mt-0.5 truncate">{order.targetUrl}</p>
+                </div>
+                <Badge variant="outline" className={`text-[10px] px-2 py-0.5 shrink-0 ${statusClass}`}>{order.status}</Badge>
+              </div>
+              <div className="mb-3">
+                <div className="flex justify-between text-[11px] text-white/40 mb-1">
+                  <span>Progress</span>
+                  <span>
+                    {order.deliveredCount.toLocaleString()} / {order.quantity.toLocaleString()}
+                    {order.remains != null && <span className="text-white/30"> · {order.remains.toLocaleString()} remaining</span>}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-violet-600 to-violet-400 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-white/40">
+                  ${parseFloat(order.totalAmount).toFixed(4)} · {new Date(order.createdAt).toLocaleDateString()}
+                </div>
+                <div className="flex gap-2">
+                  {order.refillRequested === false && order.apiOrderId && (
+                    <Button size="sm" variant="outline" onClick={() => refillMutation.mutate({ growthOrderId: order.id })} disabled={refillMutation.isPending} className="h-6 px-2 text-[11px] border-green-500/30 text-green-400 hover:bg-green-500/10">
+                      <RefreshCw className="w-2.5 h-2.5 mr-1" />Refill
+                    </Button>
+                  )}
+                  {order.cancelRequested === false && order.status === "processing" && order.apiOrderId && (
+                    <Button size="sm" variant="outline" onClick={() => cancelMutation.mutate({ growthOrderId: order.id })} disabled={cancelMutation.isPending} className="h-6 px-2 text-[11px] border-red-500/30 text-red-400 hover:bg-red-500/10">
+                      <XCircle className="w-2.5 h-2.5 mr-1" />Cancel
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
 
 export default function GrowthServices() {
-  const [platform, setPlatform] = useState("instagram");
-  const [massMode, setMassMode] = useState(false);
-  const [massOrders, setMassOrders] = useState<Array<{ serviceId: number; link: string; qty: number }>>([]);
-  const [selectedService, setSelectedService] = useState<(typeof DEMO_SERVICES)[0] | null>(null);
-  const [orderLink, setOrderLink] = useState("");
-  const [orderQty, setOrderQty] = useState(1000);
-  const [dripFeed, setDripFeed] = useState(false);
-  const [dripQty, setDripQty] = useState(100);
-  const [dripInterval, setDripInterval] = useState(60);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("browse");
+  const [selectedPlatform, setSelectedPlatform] = useState("all");
+  const [selectedType, setSelectedType] = useState("all");
+  const [selectedPanel, setSelectedPanel] = useState<"all" | "smmkings" | "peakerr">("all");
+  const [search, setSearch] = useState("");
+  const [orderService, setOrderService] = useState<LiveService | null>(null);
+  const [showAllPlatforms, setShowAllPlatforms] = useState(false);
 
-  const purchaseMutation = trpc.growthOrders.create.useMutation({
-    onSuccess: () => {
-      toast.success("Order placed!", { description: "Your growth order is being processed." });
-      setShowOrderModal(false);
-      setSelectedService(null);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const { data: services, isLoading, error, refetch, isFetching } = trpc.growth.listLive.useQuery(
+    { panel: selectedPanel },
+    { staleTime: 5 * 60 * 1000 }
+  );
 
-  const { data: services } = trpc.growth.list.useQuery({ platform });
-  const displayServices = (services && services.length > 0)
-    ? services
-    : DEMO_SERVICES.filter((s) => s.platform === platform);
-  const currentPlatform = PLATFORMS.find((p) => p.value === platform);
+  const userBalance = parseFloat((user as { balance?: string } | null)?.balance ?? "0");
 
-  const handleBuy = (service: (typeof DEMO_SERVICES)[0]) => {
-    if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
-    setSelectedService(service as any);
-    setOrderQty(service.quantity);
-    setOrderLink("");
-    setDripFeed(false);
-    setShowOrderModal(true);
-  };
-
-  const handleConfirmOrder = () => {
-    if (!selectedService) return;
-    if (!orderLink.trim()) { toast.error("Please enter your profile/post link"); return; }
-    purchaseMutation.mutate({
-      serviceId: selectedService.id,
-      targetUrl: orderLink,
-      quantity: orderQty,
-      dripFeed,
-      dripInterval: dripFeed ? dripInterval : undefined,
+  const filtered = useMemo(() => {
+    if (!services) return [];
+    return services.filter((s) => {
+      if (selectedPlatform !== "all" && s.platform !== selectedPlatform) return false;
+      if (selectedType !== "all" && !s.serviceType.toLowerCase().includes(selectedType.toLowerCase())) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!s.name.toLowerCase().includes(q) && !s.category.toLowerCase().includes(q)) return false;
+      }
+      return true;
     });
-  };
+  }, [services, selectedPlatform, selectedType, search]);
 
-  const addMassOrder = () => {
-    if (massOrders.length >= 10) { toast.error("Max 10 orders in mass mode"); return; }
-    setMassOrders(prev => [...prev, { serviceId: displayServices[0]?.id ?? 1, link: "", qty: 1000 }]);
-  };
+  const handleBuy = useCallback(
+    (service: LiveService) => {
+      if (!user) { window.location.href = getLoginUrl("/growth-services"); return; }
+      setOrderService(service);
+    },
+    [user]
+  );
+
+  const visiblePlatforms = showAllPlatforms ? PLATFORMS : PLATFORMS.slice(0, 8);
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <div className="container pt-24 pb-16">
-        {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-            <a href="/" className="hover:text-foreground transition-colors">Home</a>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-foreground">Growth Services</span>
-          </div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-violet-400" />
+    <div className="min-h-screen bg-[#060910] text-white">
+      <div className="border-b border-white/5 bg-gradient-to-r from-violet-950/30 to-[#060910]">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <TrendingUp className="w-6 h-6 text-violet-400" />Social Growth Services
+              </h1>
+              <p className="text-white/50 text-sm mt-1">
+                Real services from SMMKings &amp; Peakerr · Instant delivery · Refill guarantee
+              </p>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
-              Social Media <span className="gradient-text">Growth Services</span>
-            </h1>
-          </div>
-          <p className="text-muted-foreground max-w-2xl">
-            Boost your social media presence with real followers, views, likes, and engagement packages. Fast delivery, guaranteed results.
-          </p>
-        </div>
-
-        {/* Trust badges */}
-        <div className="flex flex-wrap gap-4 mb-8">
-          {[
-            { icon: CheckCircle, text: "Real & High Quality" },
-            { icon: Zap, text: "Fast Delivery" },
-            { icon: Star, text: "Refill Guarantee" },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Icon className="w-4 h-4 text-primary" />
-              {text}
-            </div>
-          ))}
-        </div>
-
-        {/* Platform tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {PLATFORMS.map(({ value, label, emoji }) => (
-            <button
-              key={value}
-              onClick={() => setPlatform(value)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                platform === value
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "glass text-muted-foreground hover:text-foreground hover:border-white/20"
-              }`}
-            >
-              <span>{emoji}</span>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Pricing Calculator */}
-        <PricingCalculator />
-
-        {/* Mass Order Toggle */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground mb-1">
-              {currentPlatform?.label} Packages
-            </h2>
-            <p className="text-sm text-muted-foreground">{displayServices.length} packages available</p>
-          </div>
-          <button
-            onClick={() => setMassMode(!massMode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
-              massMode ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "glass border-white/10 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LayoutList className="w-4 h-4" />
-            {massMode ? "Exit Mass Mode" : "Mass Order"}
-          </button>
-        </div>
-
-        {/* Mass Order Panel */}
-        {massMode && (
-          <div className="glass-card rounded-2xl p-6 mb-8 border border-violet-500/20">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-foreground">Mass Order Tool</h3>
-              <Button size="sm" onClick={addMassOrder} className="h-8 gap-1 bg-violet-600 hover:bg-violet-500 text-white border-0">
-                <Plus className="w-3.5 h-3.5" /> Add Row
+            <div className="flex items-center gap-3">
+              {user && (
+                <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm">
+                  Balance: <span className="text-violet-400 font-semibold">${userBalance.toFixed(2)}</span>
+                </div>
+              )}
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="border-white/10 text-white/60">
+                <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />Refresh
               </Button>
             </div>
-            {massOrders.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">Click "Add Row" to add orders. Max 10 orders per batch.</p>
-            )}
-            <div className="space-y-3">
-              {massOrders.map((row, i) => (
-                <div key={i} className="grid grid-cols-[1fr_1fr_80px_32px] gap-3 items-center">
-                  <select
-                    value={row.serviceId}
-                    onChange={(e) => setMassOrders(prev => prev.map((r, idx) => idx === i ? { ...r, serviceId: parseInt(e.target.value) } : r))}
-                    className="h-9 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground px-2 focus:outline-none"
-                  >
-                    {displayServices.map((s: any) => <option key={s.id} value={s.id} className="bg-background">{s.title}</option>)}
-                  </select>
-                  <Input
-                    placeholder="Profile/post link"
-                    value={row.link}
-                    onChange={(e) => setMassOrders(prev => prev.map((r, idx) => idx === i ? { ...r, link: e.target.value } : r))}
-                    className="h-9 bg-white/5 border-white/10 text-sm"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Qty"
-                    value={row.qty}
-                    onChange={(e) => setMassOrders(prev => prev.map((r, idx) => idx === i ? { ...r, qty: parseInt(e.target.value) || 1000 } : r))}
-                    className="h-9 bg-white/5 border-white/10 text-sm"
-                  />
-                  <button onClick={() => setMassOrders(prev => prev.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-300">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {massOrders.length > 0 && (
-              <Button className="mt-4 w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0" onClick={() => toast.info("Mass order submitted!", { description: `${massOrders.length} orders queued for processing` })}>
-                Submit {massOrders.length} Orders
-              </Button>
-            )}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {displayServices.map((service) => {
-            const Icon = SERVICE_ICONS[service.serviceType] ?? Users;
-            return (
-              <div
-                key={service.id}
-                className={`glass-card-hover rounded-2xl p-5 flex flex-col ${service.featured ? "border-primary/30" : ""}`}
-              >
-                {service.featured && (
-                  <span className="text-xs badge-purple px-2 py-0.5 rounded-full font-medium mb-3 self-start">
-                    Popular
-                  </span>
-                )}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentPlatform?.color} opacity-80 flex items-center justify-center flex-shrink-0`}>
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground capitalize">{service.serviceType}</p>
-                    <p className="text-sm font-semibold text-foreground">{service.quantity.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-medium text-foreground mb-1">{service.title}</h3>
-                <p className="text-xs text-muted-foreground mb-3 flex-1">{service.description}</p>
-
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-xs text-muted-foreground">{service.deliveryTime}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-foreground">${service.price}</span>
-                  <Button
-                    size="sm"
-                    className="h-8 px-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 text-xs"
-                    onClick={() => handleBuy(service as any)}
-                  >
-                    Order Now
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Info section */}
-        <div className="mt-16 glass-card rounded-2xl p-8">
-          <h2 className="text-xl font-bold text-foreground mb-6">Why Choose Our Growth Services?</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: CheckCircle, title: "Real Engagement", desc: "All followers and engagement come from real, active accounts", color: "text-emerald-400" },
-              { icon: Zap, title: "Fast Delivery", desc: "Most orders start within minutes of purchase", color: "text-yellow-400" },
-              { icon: Star, title: "Refill Guarantee", desc: "Free refill if followers drop within 30 days", color: "text-violet-400" },
-              { icon: TrendingUp, title: "Safe & Organic", desc: "Gradual delivery to keep your account safe", color: "text-cyan-400" },
-            ].map(({ icon: Icon, title, desc, color }) => (
-              <div key={title}>
-                <Icon className={`w-6 h-6 ${color} mb-3`} />
-                <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
-                <p className="text-xs text-muted-foreground">{desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
-      {/* Order Modal */}
-      <Dialog open={showOrderModal} onOpenChange={setShowOrderModal}>
-        <DialogContent className="bg-[#0d0d1a] border border-white/10 text-foreground max-w-md">
-          <DialogHeader>
-            <DialogTitle className="gradient-text">Place Order</DialogTitle>
-          </DialogHeader>
-          {selectedService && (
-            <div className="space-y-4">
-              <div className="glass rounded-xl p-4">
-                <p className="text-sm font-semibold text-foreground">{selectedService.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{selectedService.description}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs text-muted-foreground">Price</span>
-                  <span className="text-lg font-bold gradient-text">${selectedService.price}</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Profile / Post URL *</label>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-white/5 border border-white/10 mb-6">
+            <TabsTrigger value="browse" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
+              Browse Services
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
+              My Orders
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="browse" className="space-y-5">
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                 <Input
-                  placeholder="https://instagram.com/yourprofile"
-                  value={orderLink}
-                  onChange={(e) => setOrderLink(e.target.value)}
-                  className="bg-white/5 border-white/10 focus:border-primary/50"
+                  placeholder="Search services..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500"
                 />
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Quantity</label>
-                <Input
-                  type="number"
-                  min={100}
-                  value={orderQty}
-                  onChange={(e) => setOrderQty(parseInt(e.target.value) || 100)}
-                  className="bg-white/5 border-white/10 focus:border-primary/50"
-                />
-              </div>
-              {/* Drip Feed Toggle */}
-              <div className="glass rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Timer className="w-4 h-4 text-violet-400" />
-                    <span className="text-sm font-medium text-foreground">Drip Feed</span>
-                    <span className="text-xs badge-purple px-1.5 py-0.5 rounded-full">Pro</span>
-                  </div>
+              <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+                {(["all", "smmkings", "peakerr"] as const).map((p) => (
                   <button
-                    onClick={() => setDripFeed(!dripFeed)}
-                    className={`w-10 h-5 rounded-full transition-all relative ${
-                      dripFeed ? "bg-violet-600" : "bg-white/10"
-                    }`}
+                    key={p}
+                    onClick={() => setSelectedPanel(p)}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${selectedPanel === p ? "bg-violet-600 text-white" : "text-white/50 hover:text-white/80"}`}
                   >
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
-                      dripFeed ? "left-5" : "left-0.5"
-                    }`} />
+                    {p === "all" ? "All Panels" : PANEL_LABELS[p]}
                   </button>
-                </div>
-                {dripFeed && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Per Interval</label>
-                      <Input type="number" value={dripQty} onChange={(e) => setDripQty(parseInt(e.target.value) || 100)}
-                        className="h-8 bg-white/5 border-white/10 text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Interval (min)</label>
-                      <Input type="number" value={dripInterval} onChange={(e) => setDripInterval(parseInt(e.target.value) || 60)}
-                        className="h-8 bg-white/5 border-white/10 text-sm" />
-                    </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {visiblePlatforms.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setSelectedPlatform(p.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedPlatform === p.key ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30 hover:text-white/80"}`}
+                  >
+                    <span>{p.emoji}</span>{p.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowAllPlatforms(!showAllPlatforms)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-dashed border-white/20 text-white/40 hover:text-white/60"
+                >
+                  {showAllPlatforms ? "Less" : `+${PLATFORMS.length - 8} more`}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SERVICE_TYPES.map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setSelectedType(t.key)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-all ${selectedType === t.key ? "bg-violet-600/30 border-violet-500/50 text-violet-300" : "bg-transparent border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {!isLoading && !error && (
+              <p className="text-xs text-white/40">
+                {filtered.length.toLocaleString()} service{filtered.length !== 1 ? "s" : ""} found
+                {services && ` · ${services.length.toLocaleString()} total from both panels`}
+              </p>
+            )}
+
+            {isLoading && (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+                <p className="text-white/50 text-sm">Loading live services from SMMKings &amp; Peakerr...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <AlertCircle className="w-10 h-10 text-red-400" />
+                <p className="text-white/60 text-sm">Failed to load services: {error.message}</p>
+                <Button variant="outline" size="sm" onClick={() => refetch()} className="border-white/10 text-white/60">Retry</Button>
+              </div>
+            )}
+
+            {!isLoading && !error && (
+              <>
+                {filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <Search className="w-10 h-10 text-white/20 mb-3" />
+                    <p className="text-white/50 text-sm">No services match your filters.</p>
+                    <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSelectedPlatform("all"); setSelectedType("all"); }} className="mt-2 text-violet-400 hover:text-violet-300">
+                      Clear filters
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {filtered.slice(0, 200).map((s) => (
+                      <ServiceCard key={`${s.panel}-${s.service}`} service={s as LiveService} onBuy={handleBuy} />
+                    ))}
                   </div>
                 )}
+                {filtered.length > 200 && (
+                  <p className="text-center text-xs text-white/30 pt-2">
+                    Showing 200 of {filtered.length.toLocaleString()} — use filters to narrow down
+                  </p>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="orders">
+            {!user ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Star className="w-12 h-12 text-white/20" />
+                <p className="text-white/50 text-sm">Sign in to view your orders</p>
+                <Button onClick={() => (window.location.href = getLoginUrl("/growth-services"))} className="bg-violet-600 hover:bg-violet-500 text-white">
+                  Sign In
+                </Button>
               </div>
-              <Button
-                className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0"
-                onClick={handleConfirmOrder}
-                disabled={purchaseMutation.isPending}
-              >
-                {purchaseMutation.isPending ? "Processing..." : `Confirm Order — $${selectedService.price}`}
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      <Footer />
+            ) : (
+              <MyOrdersTab />
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <OrderModal service={orderService} onClose={() => setOrderService(null)} userBalance={userBalance} />
     </div>
   );
 }
