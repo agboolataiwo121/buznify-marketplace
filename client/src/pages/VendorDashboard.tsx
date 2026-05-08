@@ -17,6 +17,7 @@ import {
   DollarSign,
   ShoppingCart,
   Star,
+  Wand2,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -51,6 +52,14 @@ export default function VendorDashboard() {
       setShowForm(false);
       setForm({ category: "social_media_accounts", title: "", description: "", price: "", originalPrice: "", stock: "1", platform: "", deliveryType: "instant", deliveryData: "" });
       utils.products.vendorProducts.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const aiDescMutation = trpc.ai.generateDescription.useMutation({
+    onSuccess: (data) => {
+      setForm((f) => ({ ...f, description: data.description }));
+      toast.success("AI description generated!");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -185,7 +194,21 @@ export default function VendorDashboard() {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-muted-foreground">Description</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!form.title) return toast.error("Enter a product title first");
+                    aiDescMutation.mutate({ title: form.title, category: form.category, platform: form.platform });
+                  }}
+                  disabled={aiDescMutation.isPending}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-400 border border-violet-500/20 transition-colors disabled:opacity-50"
+                >
+                  <Wand2 className={`w-3 h-3 ${aiDescMutation.isPending ? "animate-spin" : ""}`} />
+                  {aiDescMutation.isPending ? "Generating..." : "AI Generate"}
+                </button>
+              </div>
               <textarea
                 placeholder="Product description..."
                 value={form.description}

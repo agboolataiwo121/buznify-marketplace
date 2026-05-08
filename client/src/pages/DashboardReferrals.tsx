@@ -4,11 +4,12 @@ import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Users, Copy, Gift, DollarSign, Link as LinkIcon, CheckCircle } from "lucide-react";
+import { Users, Copy, Gift, DollarSign, Link as LinkIcon, CheckCircle, Trophy, Medal } from "lucide-react";
 
 export default function DashboardReferrals() {
   const [copied, setCopied] = useState(false);
   const { data: referralData } = trpc.referrals.getMyReferrals.useQuery();
+  const { data: leaderboard } = trpc.referrals.leaderboard.useQuery();
 
   const referralLink = referralData?.referralCode
     ? `${window.location.origin}/?ref=${referralData.referralCode}`
@@ -115,6 +116,47 @@ export default function DashboardReferrals() {
                     {ref.status}
                   </span>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Leaderboard */}
+      <div className="glass-card rounded-2xl p-6 mt-6">
+        <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-yellow-400" />
+          Top Referrers Leaderboard
+        </h2>
+        {!leaderboard || leaderboard.length === 0 ? (
+          <div className="text-center py-8">
+            <Trophy className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No leaderboard data yet. Be the first!</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {leaderboard.map((entry) => (
+              <div
+                key={entry.rank}
+                className={`flex items-center gap-4 p-3 rounded-xl border ${
+                  entry.rank === 1 ? "bg-yellow-500/10 border-yellow-500/20" :
+                  entry.rank === 2 ? "bg-slate-400/10 border-slate-400/20" :
+                  entry.rank === 3 ? "bg-orange-500/10 border-orange-500/20" :
+                  "bg-white/5 border-white/5"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  entry.rank === 1 ? "bg-yellow-500/20 text-yellow-400" :
+                  entry.rank === 2 ? "bg-slate-400/20 text-slate-400" :
+                  entry.rank === 3 ? "bg-orange-500/20 text-orange-400" :
+                  "bg-white/10 text-muted-foreground"
+                }`}>
+                  {entry.rank <= 3 ? <Medal className="w-4 h-4" /> : entry.rank}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">{entry.name}</p>
+                  <p className="text-xs text-muted-foreground">{entry.totalReferrals} referrals</p>
+                </div>
+                <p className="text-sm font-bold text-emerald-400">${entry.totalEarned.toFixed(2)}</p>
               </div>
             ))}
           </div>

@@ -49,8 +49,8 @@ import {
   updateUserBalance,
   updateUserRole,
 } from "./db";
-import { products, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { products, users, referrals } from "../drizzle/schema";
+import { eq, sql } from "drizzle-orm";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -500,6 +500,34 @@ export const appRouter = router({
         referrals: await getReferralsByReferrer(ctx.user.id),
       };
     }),
+    leaderboard: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select({
+          referrerId: referrals.referrerId,
+          totalReferrals: sql<number>`COUNT(*)`,
+          totalEarned: sql<string>`SUM(CAST(${referrals.rewardAmount} AS DECIMAL(10,2)))`,
+        })
+        .from(referrals)
+        .where(eq(referrals.status, "credited"))
+        .groupBy(referrals.referrerId)
+        .orderBy(sql`COUNT(*) DESC`)
+        .limit(10);
+      // Attach user names
+      const enriched = await Promise.all(
+        rows.map(async (r) => {
+          const u = await getUserById(r.referrerId);
+          return {
+            rank: 0,
+            name: u?.name ?? "Anonymous",
+            totalReferrals: Number(r.totalReferrals),
+            totalEarned: parseFloat(r.totalEarned ?? "0"),
+          };
+        })
+      );
+      return enriched.map((e, i) => ({ ...e, rank: i + 1 }));
+    }),
   }),
 
   // ── Coupons ───────────────────────────────────────────────────────────────
@@ -741,10 +769,44 @@ export const appRouter = router({
           description: "Admin credit",
           status: "completed",
         });
+         return { success: true };
+      }),
+    approveVendor: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input }) => {
+        await updateUserRole(input.userId, "vendor");
+        await createNotification({
+          userId: input.userId,
+          type: "system",
+          title: "Vendor Application Approved",
+          message: "Congratulations! Your vendor application has been approved. You can now list products on Buznify.",
+        });
         return { success: true };
       }),
+    rejectVendor: adminProcedure
+      .input(z.object({ userId: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        await createNotification({
+          userId: input.userId,
+          type: "system",
+          title: "Vendor Application Update",
+          message: input.reason
+            ? `Your vendor application was not approved: ${input.reason}`
+            : "Your vendor application was not approved at this time. Please contact support for more information.",
+        });
+        return { success: true };
+      }),
+    getPendingVendors: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const pendingUsers = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, "user"))
+        .limit(50);
+      return pendingUsers;
+    }),
   }),
-
   // ── AI Chat ──────────────────────────────────────────────────────────────
   ai: router({
     chat: publicProcedure
@@ -782,6 +844,32 @@ Be concise, friendly, and helpful. If you cannot answer something, direct the us
         const response = await invokeLLM({ messages });
         const reply = (response as { choices: Array<{ message: { content: string } }> }).choices?.[0]?.message?.content ?? "I'm sorry, I couldn't process your request. Please try again or open a support ticket.";
         return { reply };
+      }),
+
+    generateDescription: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().min(1).max(200),
+          category: z.string(),
+          platform: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import("./_core/llm");
+        const prompt = `Write a compelling product description for a digital marketplace listing.
+Product title: "${input.title}"
+Category: ${input.category.replace(/_/g, " ")}
+${input.platform ? `Platform: ${input.platform}` : ""}
+
+Write 2-3 sentences that are persuasive, highlight key benefits, mention instant delivery, and build trust. Keep it under 100 words. Do not use bullet points. Do not include pricing.`;
+        const response = await invokeLLM({
+          messages: [
+            { role: "system" as const, content: "You are a professional copywriter for a digital products marketplace. Write compelling, concise product descriptions." },
+            { role: "user" as const, content: prompt },
+          ],
+        });
+        const description = (response as { choices: Array<{ message: { content: string } }> }).choices?.[0]?.message?.content?.trim() ?? "";
+        return { description };
       }),
   }),
   // ── Scheduled endpoint ────────────────────────────────────────────────────

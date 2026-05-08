@@ -23,7 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "announcements" | "fraud";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -42,6 +42,7 @@ export default function AdminPanel() {
   const { data: allProducts } = trpc.admin.getProducts.useQuery(undefined, { enabled: tab === "products" });
   const { data: allOrders } = trpc.admin.getOrders.useQuery(undefined, { enabled: tab === "orders" });
   const { data: coupons } = trpc.coupons.list.useQuery(undefined, { enabled: tab === "coupons" });
+  const { data: pendingVendors } = trpc.admin.getPendingVendors.useQuery(undefined, { enabled: tab === "vendors" });
 
   const updateRoleMutation = trpc.admin.updateUserRole.useMutation({
     onSuccess: () => { toast.success("Role updated"); utils.admin.getUsers.invalidate(); },
@@ -60,6 +61,15 @@ export default function AdminPanel() {
 
   const seedMutation = trpc.admin.seedDemo.useMutation({
     onSuccess: () => toast.success("Demo data seeded!"),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const approveVendorMutation = trpc.admin.approveVendor.useMutation({
+    onSuccess: () => { toast.success("Vendor approved!"); utils.admin.getPendingVendors.invalidate(); },
+    onError: (err) => toast.error(err.message),
+  });
+  const rejectVendorMutation = trpc.admin.rejectVendor.useMutation({
+    onSuccess: () => { toast.success("Vendor rejected"); utils.admin.getPendingVendors.invalidate(); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -103,6 +113,7 @@ export default function AdminPanel() {
     { value: "products", label: "Products", icon: Package },
     { value: "orders", label: "Orders", icon: ShoppingCart },
     { value: "coupons", label: "Coupons", icon: Tag },
+    { value: "vendors", label: "Vendor Approvals", icon: Shield },
     { value: "announcements", label: "Announcements", icon: Megaphone },
     { value: "fraud", label: "Fraud Detection", icon: AlertTriangle },
   ];
@@ -480,6 +491,54 @@ export default function AdminPanel() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {/* Vendor Approvals */}
+      {tab === "vendors" && (
+        <div className="glass-card rounded-2xl p-6">
+          <h2 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-violet-400" />
+            Vendor Applications
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">Promote users to vendor status so they can list products on the marketplace.</p>
+          {!pendingVendors || pendingVendors.length === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No pending vendor applications.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingVendors.map((u) => (
+                <div key={u.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{u.name ?? "Unknown"}</p>
+                    <p className="text-xs text-muted-foreground">{u.email ?? "No email"} · Joined {new Date(u.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white border-0 text-xs"
+                      onClick={() => approveVendorMutation.mutate({ userId: u.id })}
+                      disabled={approveVendorMutation.isPending}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                      Approve as Vendor
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs"
+                      onClick={() => rejectVendorMutation.mutate({ userId: u.id })}
+                      disabled={rejectVendorMutation.isPending}
+                    >
+                      <XCircle className="w-3.5 h-3.5 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </DashboardShell>
