@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 import {
   TrendingUp,
   Star,
@@ -17,6 +18,7 @@ import {
   Heart,
   MessageCircle,
   ThumbsUp,
+  Calculator,
 } from "lucide-react";
 
 const PLATFORMS = [
@@ -57,6 +59,57 @@ const DEMO_SERVICES = [
   { id: 16, platform: "facebook", serviceType: "page_likes", title: "500 Facebook Page Likes", description: "Real page likes", quantity: 500, price: "4.99", deliveryTime: "24-48 hours", featured: false },
   { id: 17, platform: "facebook", serviceType: "page_likes", title: "2000 Facebook Page Likes", description: "Bulk page likes", quantity: 2000, price: "14.99", deliveryTime: "3-5 days", featured: true },
 ];
+
+function PricingCalculator() {
+  const [quantity, setQuantity] = useState(1000);
+  const [selectedService, setSelectedService] = useState(DEMO_SERVICES[1]);
+  const pricePerUnit = parseFloat(selectedService.price) / selectedService.quantity;
+  const totalPrice = (pricePerUnit * quantity).toFixed(2);
+
+  return (
+    <div className="glass-card rounded-2xl p-6 mb-10 border border-violet-500/20">
+      <div className="flex items-center gap-2 mb-5">
+        <Calculator className="w-5 h-5 text-violet-400" />
+        <h2 className="text-base font-semibold text-foreground">Instant Pricing Calculator</h2>
+        <span className="text-xs badge-purple px-2 py-0.5 rounded-full">Live</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-end">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1.5 block">Select Service</label>
+          <select
+            value={selectedService.id}
+            onChange={(e) => {
+              const s = DEMO_SERVICES.find((d) => d.id === parseInt(e.target.value));
+              if (s) setSelectedService(s);
+            }}
+            className="w-full h-10 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground px-3 focus:outline-none focus:border-primary/50"
+          >
+            {DEMO_SERVICES.filter((s) => s.platform === "instagram").map((s) => (
+              <option key={s.id} value={s.id} className="bg-background">{s.title}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1.5 block">Quantity</label>
+          <Input
+            type="number"
+            min={100}
+            max={100000}
+            step={100}
+            value={quantity}
+            onChange={(e) => setQuantity(parseInt(e.target.value) || 100)}
+            className="bg-white/5 border-white/10 focus:border-primary/50 h-10"
+          />
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Estimated Price</p>
+          <p className="text-3xl font-bold gradient-text">${totalPrice}</p>
+          <p className="text-xs text-muted-foreground mt-1">≈ ${pricePerUnit.toFixed(4)} per unit</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function GrowthServices() {
   const [platform, setPlatform] = useState("instagram");
@@ -133,6 +186,9 @@ export default function GrowthServices() {
             </button>
           ))}
         </div>
+
+        {/* Pricing Calculator */}
+        <PricingCalculator />
 
         {/* Services grid */}
         <div className="mb-6">

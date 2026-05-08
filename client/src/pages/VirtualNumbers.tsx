@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -16,7 +16,67 @@ import {
   Clock,
   ChevronRight,
   CheckCircle,
+  Timer,
 } from "lucide-react";
+
+function useCountdown(expiresAt: Date | null | undefined) {
+  const [timeLeft, setTimeLeft] = useState("");
+  useEffect(() => {
+    if (!expiresAt) return;
+    const update = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setTimeLeft("Expired"); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${h}h ${m}m ${s}s`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+  return timeLeft;
+}
+
+type NumberRow = { id: number; number: string; countryCode: string; countryName: string; service: string | null; expiresAt: Date | null; status: string; };
+
+function NumberCard({ num, selected, onSelect }: { num: NumberRow; selected: boolean; onSelect: () => void }) {
+  const country = COUNTRIES.find((c) => c.code === num.countryCode);
+  const isExpired = num.expiresAt && new Date(num.expiresAt) < new Date();
+  const countdown = useCountdown(num.expiresAt);
+  return (
+    <div
+      className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${
+        selected ? "bg-primary/10 border border-primary/30" : "bg-white/5 hover:bg-white/8 border border-white/5"
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-2xl">{country?.flag ?? "🌍"}</span>
+        <div>
+          <p className="text-sm font-mono font-semibold text-foreground">{num.number}</p>
+          <p className="text-xs text-muted-foreground">
+            {num.countryName} {num.service && `• ${num.service}`}
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        <span className={`text-xs px-2 py-0.5 rounded-full ${isExpired ? "badge-warning" : "badge-success"}`}>
+          {isExpired ? "Expired" : "Active"}
+        </span>
+        {num.expiresAt && !isExpired && (
+          <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1 justify-end">
+            <Timer className="w-3 h-3" />
+            {countdown}
+          </p>
+        )}
+        {isExpired && (
+          <p className="text-xs text-muted-foreground mt-1">Expired</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const COUNTRIES = [
   { code: "1", name: "United States", flag: "🇺🇸" },
@@ -228,41 +288,14 @@ export default function VirtualNumbers() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {myNumbers.map((num) => {
-                    const country = COUNTRIES.find((c) => c.code === num.countryCode);
-                    const isExpired = num.expiresAt && new Date(num.expiresAt) < new Date();
-                    return (
-                      <div
-                        key={num.id}
-                        className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${
-                          selectedNumberId === num.id
-                            ? "bg-primary/10 border border-primary/30"
-                            : "bg-white/5 hover:bg-white/8 border border-white/5"
-                        }`}
-                        onClick={() => setSelectedNumberId(num.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{country?.flag ?? "🌍"}</span>
-                          <div>
-                            <p className="text-sm font-mono font-semibold text-foreground">{num.number}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {num.countryName} {num.service && `• ${num.service}`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${isExpired ? "badge-warning" : "badge-success"}`}>
-                            {isExpired ? "Expired" : "Active"}
-                          </span>
-                          {num.expiresAt && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {isExpired ? "Expired" : "Expires"} {new Date(num.expiresAt).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {myNumbers.map((num) => (
+                    <NumberCard
+                      key={num.id}
+                      num={num}
+                      selected={selectedNumberId === num.id}
+                      onSelect={() => setSelectedNumberId(num.id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>

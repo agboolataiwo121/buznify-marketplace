@@ -16,12 +16,12 @@ const footerLinks = {
     { label: "Referrals", href: "/dashboard/referrals" },
     { label: "Support", href: "/support" },
   ],
-  Company: [
-    { label: "About Us", href: "/about" },
-    { label: "Contact", href: "/contact" },
-    { label: "Privacy Policy", href: "/privacy" },
+  Legal: [
     { label: "Terms of Service", href: "/terms" },
-    { label: "Vendor Program", href: "/vendor" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Refund Policy", href: "/refund" },
+    { label: "Security", href: "/security" },
+    { label: "Support Center", href: "/support" },
   ],
 };
 

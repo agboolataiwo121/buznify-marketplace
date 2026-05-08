@@ -29,17 +29,28 @@ const CATEGORIES = [
   { value: "growth_services", label: "Growth Services", icon: TrendingUp },
 ];
 
+type AccountCondition = "Fresh" | "Aged" | "Verified" | "PVA";
+
+const CONDITION_COLORS: Record<AccountCondition, string> = {
+  Fresh: "badge-info",
+  Aged: "badge-warning",
+  Verified: "badge-success",
+  PVA: "badge-purple",
+};
+
 const DEMO_PRODUCTS = [
-  { id: 1, title: "Instagram Account — 10K Followers", category: "social_media_accounts", price: "49.99", originalPrice: "79.99", platform: "Instagram", totalSold: 234, avgRating: "4.8", reviewCount: 89, featured: true, stock: 5, description: "Aged Instagram account with 10,000 real followers. Niche: Lifestyle. Full access provided." },
-  { id: 2, title: "TikTok Account — 50K Followers", category: "social_media_accounts", price: "129.99", originalPrice: "199.99", platform: "TikTok", totalSold: 156, avgRating: "4.9", reviewCount: 67, featured: true, stock: 3, description: "Verified TikTok account with 50K followers. High engagement rate." },
-  { id: 3, title: "Twitter Account — 5K Followers", category: "social_media_accounts", price: "24.99", platform: "Twitter", totalSold: 312, avgRating: "4.7", reviewCount: 124, featured: false, stock: 8, description: "Aged Twitter/X account with 5,000 followers. Clean history." },
-  { id: 4, title: "Netflix Premium — 1 Month", category: "streaming_accounts", price: "8.99", originalPrice: "15.99", platform: "Netflix", totalSold: 1240, avgRating: "4.9", reviewCount: 456, featured: true, stock: 50, description: "Netflix 4K UHD Premium plan. 4 screens simultaneously. Instant delivery." },
-  { id: 5, title: "Spotify Premium — 3 Months", category: "streaming_accounts", price: "6.99", originalPrice: "12.99", platform: "Spotify", totalSold: 892, avgRating: "4.8", reviewCount: 334, featured: true, stock: 30, description: "Spotify Premium individual plan. No ads, offline listening." },
-  { id: 6, title: "Disney+ — 1 Month", category: "streaming_accounts", price: "5.99", platform: "Disney+", totalSold: 567, avgRating: "4.7", reviewCount: 201, featured: false, stock: 25, description: "Disney+ premium account. Access to all content." },
-  { id: 7, title: "Valorant Account — Diamond Rank", category: "gaming_accounts", price: "89.99", originalPrice: "149.99", platform: "Valorant", totalSold: 78, avgRating: "4.9", reviewCount: 45, featured: true, stock: 4, description: "Valorant Diamond account. 200+ skins. Unranked available." },
-  { id: 8, title: "CSGO Account — Level 10 Faceit", category: "gaming_accounts", price: "59.99", platform: "CSGO", totalSold: 134, avgRating: "4.8", reviewCount: 67, featured: false, stock: 6, description: "CS:GO account with Level 10 Faceit. 2000+ hours." },
-  { id: 9, title: "Fortnite Account — 100+ Skins", category: "gaming_accounts", price: "149.99", originalPrice: "249.99", platform: "Fortnite", totalSold: 45, avgRating: "5.0", reviewCount: 23, featured: true, stock: 2, description: "Fortnite account with 100+ rare skins including OG skins." },
+  { id: 1, title: "Instagram Account — 10K Followers", category: "social_media_accounts", price: "49.99", originalPrice: "79.99", platform: "Instagram", totalSold: 234, avgRating: "4.8", reviewCount: 89, featured: true, stock: 5, condition: "Aged" as AccountCondition, deliveryTime: "< 30 sec", description: "Aged Instagram account with 10,000 real followers. Niche: Lifestyle. Full access provided." },
+  { id: 2, title: "TikTok Account — 50K Followers", category: "social_media_accounts", price: "129.99", originalPrice: "199.99", platform: "TikTok", totalSold: 156, avgRating: "4.9", reviewCount: 67, featured: true, stock: 3, condition: "Verified" as AccountCondition, deliveryTime: "< 30 sec", description: "Verified TikTok account with 50K followers. High engagement rate." },
+  { id: 3, title: "Twitter Account — 5K Followers", category: "social_media_accounts", price: "24.99", platform: "Twitter", totalSold: 312, avgRating: "4.7", reviewCount: 124, featured: false, stock: 8, condition: "PVA" as AccountCondition, deliveryTime: "< 30 sec", description: "Aged Twitter/X account with 5,000 followers. Clean history." },
+  { id: 4, title: "Netflix Premium — 1 Month", category: "streaming_accounts", price: "8.99", originalPrice: "15.99", platform: "Netflix", totalSold: 1240, avgRating: "4.9", reviewCount: 456, featured: true, stock: 50, condition: "Fresh" as AccountCondition, deliveryTime: "Instant", description: "Netflix 4K UHD Premium plan. 4 screens simultaneously. Instant delivery." },
+  { id: 5, title: "Spotify Premium — 3 Months", category: "streaming_accounts", price: "6.99", originalPrice: "12.99", platform: "Spotify", totalSold: 892, avgRating: "4.8", reviewCount: 334, featured: true, stock: 30, condition: "Fresh" as AccountCondition, deliveryTime: "Instant", description: "Spotify Premium individual plan. No ads, offline listening." },
+  { id: 6, title: "Disney+ — 1 Month", category: "streaming_accounts", price: "5.99", platform: "Disney+", totalSold: 567, avgRating: "4.7", reviewCount: 201, featured: false, stock: 25, condition: "Fresh" as AccountCondition, deliveryTime: "Instant", description: "Disney+ premium account. Access to all content." },
+  { id: 7, title: "Valorant Account — Diamond Rank", category: "gaming_accounts", price: "89.99", originalPrice: "149.99", platform: "Valorant", totalSold: 78, avgRating: "4.9", reviewCount: 45, featured: true, stock: 4, condition: "Aged" as AccountCondition, deliveryTime: "< 30 sec", description: "Valorant Diamond account. 200+ skins. Unranked available." },
+  { id: 8, title: "CSGO Account — Level 10 Faceit", category: "gaming_accounts", price: "59.99", platform: "CSGO", totalSold: 134, avgRating: "4.8", reviewCount: 67, featured: false, stock: 6, condition: "Aged" as AccountCondition, deliveryTime: "< 30 sec", description: "CS:GO account with Level 10 Faceit. 2000+ hours." },
+  { id: 9, title: "Fortnite Account — 100+ Skins", category: "gaming_accounts", price: "149.99", originalPrice: "249.99", platform: "Fortnite", totalSold: 45, avgRating: "5.0", reviewCount: 23, featured: true, stock: 2, condition: "Verified" as AccountCondition, deliveryTime: "< 30 sec", description: "Fortnite account with 100+ rare skins including OG skins." },
 ];
+
+const TRENDING_IDS = [4, 1, 7, 2];
 
 function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
   const discount = product.originalPrice
@@ -81,8 +92,13 @@ function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
         </div>
 
         <div className="p-4 flex-1 flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-xs text-muted-foreground">{product.platform}</span>
+            {(product as any).condition && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${CONDITION_COLORS[(product as any).condition as AccountCondition] ?? 'badge-info'}`}>
+                {(product as any).condition}
+              </span>
+            )}
             {product.stock <= 5 && (
               <span className="text-xs badge-warning px-1.5 py-0.5 rounded-full">
                 Only {product.stock} left
@@ -100,6 +116,12 @@ function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
             <span className="text-xs text-muted-foreground">({product.reviewCount})</span>
             <span className="text-xs text-muted-foreground ml-auto">{product.totalSold} sold</span>
           </div>
+          {(product as any).deliveryTime && (
+            <div className="flex items-center gap-1 mb-2">
+              <Zap className="w-3 h-3 text-yellow-400" />
+              <span className="text-xs text-yellow-400 font-medium">Delivery: {(product as any).deliveryTime}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-1.5">
@@ -233,6 +255,27 @@ export default function Marketplace() {
             <span className="text-sm text-muted-foreground">Sort: Best Selling</span>
           </div>
         </div>
+
+        {/* Trending Section */}
+        {!category && !search && (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-violet-400" />
+              <h2 className="text-base font-semibold text-foreground">Trending Right Now</h2>
+              <span className="text-xs badge-purple px-2 py-0.5 rounded-full">Hot</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {DEMO_PRODUCTS.filter((p) => TRENDING_IDS.includes(p.id)).map((product) => (
+                <ProductCard key={product.id} product={product as any} />
+              ))}
+            </div>
+            <div className="border-t border-white/5 mt-10 mb-8" />
+            <div className="flex items-center gap-2 mb-4">
+              <Package className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-base font-semibold text-foreground">All Products</h2>
+            </div>
+          </div>
+        )}
 
         {/* Product Grid */}
         {isLoading ? (

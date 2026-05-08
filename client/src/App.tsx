@@ -19,6 +19,10 @@ import VendorDashboard from "./pages/VendorDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import Support from "./pages/Support";
 import TicketDetail from "./pages/TicketDetail";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RefundPolicy from "./pages/RefundPolicy";
+import Security from "./pages/Security";
 
 function Router() {
   return (
@@ -38,6 +42,10 @@ function Router() {
       <Route path="/admin" component={AdminPanel} />
       <Route path="/support" component={Support} />
       <Route path="/support/:id" component={TicketDetail} />
+      <Route path="/terms" component={TermsOfService} />
+      <Route path="/privacy" component={PrivacyPolicy} />
+      <Route path="/refund" component={RefundPolicy} />
+      <Route path="/security" component={Security} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -47,7 +55,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster richColors position="top-right" />
           <Router />

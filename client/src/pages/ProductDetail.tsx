@@ -18,6 +18,9 @@ import {
   CheckCircle,
   Package,
   Tag,
+  Lock,
+  BadgeCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 const DEMO_PRODUCTS: Record<number, {
@@ -273,6 +276,32 @@ export default function ProductDetail() {
                     {text}
                   </div>
                 ))}
+              </div>
+
+              {/* Escrow / Protection badges */}
+              <div className="mt-5 pt-4 border-t border-white/5">
+                <p className="text-xs text-muted-foreground mb-3 font-medium">Buyer Protection</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { icon: Lock, label: "SSL Secured", color: "text-emerald-400" },
+                    { icon: BadgeCheck, label: "Verified Seller", color: "text-blue-400" },
+                    { icon: Shield, label: "Escrow Protected", color: "text-violet-400" },
+                    { icon: CheckCircle, label: "Refund Eligible", color: "text-yellow-400" },
+                  ].map(({ icon: Icon, label, color }) => (
+                    <div key={label} className="flex items-center gap-1.5 p-2 rounded-lg bg-white/5">
+                      <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} />
+                      <span className="text-xs text-muted-foreground">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Anti-fraud notice */}
+              <div className="mt-4 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  All transactions are monitored for fraud. Never share your account credentials with third parties. Report suspicious activity to support.
+                </p>
               </div>
             </div>
           </div>

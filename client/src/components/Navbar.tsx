@@ -25,7 +25,10 @@ import {
   ChevronDown,
   Shield,
   Users,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const navLinks = [
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
@@ -39,6 +42,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [location] = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -56,9 +60,9 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
-          ? "glass border-b border-white/5 shadow-lg shadow-black/20"
+          ? "glass border-b border-white/8 shadow-xl shadow-black/30 backdrop-blur-2xl"
           : "bg-transparent"
       }`}
     >
@@ -98,6 +102,16 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Theme toggle */}
+            {toggleTheme && (
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            )}
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
