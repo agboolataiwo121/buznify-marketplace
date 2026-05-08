@@ -9,68 +9,20 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Phone, Globe, MessageSquare, RefreshCw, Zap, Shield,
-  CheckCircle, Timer, Search, Star, Filter, X,
-  Copy, ChevronDown, ChevronUp,
+  CheckCircle, Timer, Search, X,
+  Copy, ChevronDown, ChevronUp, Ban,
+  Loader2, DollarSign, CheckSquare, XCircle,
 } from "lucide-react";
-import {
-  ALL_SERVICES, SERVICE_CATEGORIES, CATEGORY_ICONS,
-  type VNService, type ServiceCategory,
-} from "@/data/virtualNumberServices";
 
-const COUNTRIES = [
-  { code: "US", name: "United States", flag: "\u{1F1FA}\u{1F1F8}", price: 0.10 },
-  { code: "UK", name: "United Kingdom", flag: "\u{1F1EC}\u{1F1E7}", price: 0.12 },
-  { code: "RU", name: "Russia", flag: "\u{1F1F7}\u{1F1FA}", price: 0.05 },
-  { code: "IN", name: "India", flag: "\u{1F1EE}\u{1F1F3}", price: 0.04 },
-  { code: "DE", name: "Germany", flag: "\u{1F1E9}\u{1F1EA}", price: 0.14 },
-  { code: "FR", name: "France", flag: "\u{1F1EB}\u{1F1F7}", price: 0.13 },
-  { code: "BR", name: "Brazil", flag: "\u{1F1E7}\u{1F1F7}", price: 0.06 },
-  { code: "NG", name: "Nigeria", flag: "\u{1F1F3}\u{1F1EC}", price: 0.03 },
-  { code: "PH", name: "Philippines", flag: "\u{1F1F5}\u{1F1ED}", price: 0.04 },
-  { code: "ID", name: "Indonesia", flag: "\u{1F1EE}\u{1F1E9}", price: 0.04 },
-  { code: "PK", name: "Pakistan", flag: "\u{1F1F5}\u{1F1F0}", price: 0.03 },
-  { code: "CA", name: "Canada", flag: "\u{1F1E8}\u{1F1E6}", price: 0.11 },
-  { code: "AU", name: "Australia", flag: "\u{1F1E6}\u{1F1FA}", price: 0.13 },
-  { code: "MX", name: "Mexico", flag: "\u{1F1F2}\u{1F1FD}", price: 0.05 },
-  { code: "TR", name: "Turkey", flag: "\u{1F1F9}\u{1F1F7}", price: 0.05 },
-  { code: "UA", name: "Ukraine", flag: "\u{1F1FA}\u{1F1E6}", price: 0.04 },
-  { code: "PL", name: "Poland", flag: "\u{1F1F5}\u{1F1F1}", price: 0.07 },
-  { code: "VN", name: "Vietnam", flag: "\u{1F1FB}\u{1F1F3}", price: 0.04 },
-  { code: "TH", name: "Thailand", flag: "\u{1F1F9}\u{1F1ED}", price: 0.05 },
-  { code: "MY", name: "Malaysia", flag: "\u{1F1F2}\u{1F1FE}", price: 0.05 },
-  { code: "SG", name: "Singapore", flag: "\u{1F1F8}\u{1F1EC}", price: 0.10 },
-  { code: "ZA", name: "South Africa", flag: "\u{1F1FF}\u{1F1E6}", price: 0.06 },
-  { code: "EG", name: "Egypt", flag: "\u{1F1EA}\u{1F1EC}", price: 0.04 },
-  { code: "GH", name: "Ghana", flag: "\u{1F1EC}\u{1F1ED}", price: 0.04 },
-  { code: "KE", name: "Kenya", flag: "\u{1F1F0}\u{1F1EA}", price: 0.04 },
-  { code: "AR", name: "Argentina", flag: "\u{1F1E6}\u{1F1F7}", price: 0.05 },
-  { code: "ES", name: "Spain", flag: "\u{1F1EA}\u{1F1F8}", price: 0.12 },
-  { code: "IT", name: "Italy", flag: "\u{1F1EE}\u{1F1F9}", price: 0.12 },
-  { code: "NL", name: "Netherlands", flag: "\u{1F1F3}\u{1F1F1}", price: 0.13 },
-  { code: "SE", name: "Sweden", flag: "\u{1F1F8}\u{1F1EA}", price: 0.13 },
-  { code: "JP", name: "Japan", flag: "\u{1F1EF}\u{1F1F5}", price: 0.15 },
-  { code: "KR", name: "South Korea", flag: "\u{1F1F0}\u{1F1F7}", price: 0.12 },
-  { code: "CN", name: "China", flag: "\u{1F1E8}\u{1F1F3}", price: 0.06 },
-  { code: "SA", name: "Saudi Arabia", flag: "\u{1F1F8}\u{1F1E6}", price: 0.08 },
-  { code: "AE", name: "UAE", flag: "\u{1F1E6}\u{1F1EA}", price: 0.10 },
-  { code: "IL", name: "Israel", flag: "\u{1F1EE}\u{1F1F1}", price: 0.12 },
-  { code: "MA", name: "Morocco", flag: "\u{1F1F2}\u{1F1E6}", price: 0.05 },
-  { code: "ET", name: "Ethiopia", flag: "\u{1F1EA}\u{1F1F9}", price: 0.03 },
-  { code: "TZ", name: "Tanzania", flag: "\u{1F1F9}\u{1F1FF}", price: 0.04 },
-  { code: "UG", name: "Uganda", flag: "\u{1F1FA}\u{1F1EC}", price: 0.04 },
-];
+function countryFlag(iso: string): string {
+  if (!iso || iso.length < 2) return "\u{1F310}";
+  const code = iso.toUpperCase().slice(0, 2);
+  return code.replace(/./g, (c) =>
+    String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65)
+  );
+}
 
-const SORT_OPTIONS = [
-  { value: "popular", label: "Most Popular" },
-  { value: "cheapest", label: "Cheapest" },
-  { value: "fastest", label: "Fastest OTP" },
-  { value: "success", label: "Highest Success Rate" },
-  { value: "az", label: "A to Z" },
-];
-
-const SPEED_ORDER: Record<string, number> = { Instant: 0, Fast: 1, Medium: 2, Slow: 3 };
-
-function useCountdown(expiresAt: Date | null | undefined) {
+function useCountdown(expiresAt: Date | string | null | undefined) {
   const [timeLeft, setTimeLeft] = useState("");
   useEffect(() => {
     if (!expiresAt) return;
@@ -89,35 +41,270 @@ function useCountdown(expiresAt: Date | null | undefined) {
   return timeLeft;
 }
 
-function speedBg(speed: string) {
-  if (speed === "Instant") return "bg-emerald-400/10 text-emerald-400 border-emerald-400/20";
-  if (speed === "Fast") return "bg-cyan-400/10 text-cyan-400 border-cyan-400/20";
-  if (speed === "Medium") return "bg-yellow-400/10 text-yellow-400 border-yellow-400/20";
-  return "bg-orange-400/10 text-orange-400 border-orange-400/20";
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { cls: string; label: string }> = {
+    active:    { cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20", label: "Active" },
+    finished:  { cls: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20", label: "Finished" },
+    cancelled: { cls: "bg-red-400/10 text-red-400 border-red-400/20", label: "Cancelled" },
+    expired:   { cls: "bg-orange-400/10 text-orange-400 border-orange-400/20", label: "Expired" },
+    banned:    { cls: "bg-red-600/10 text-red-500 border-red-500/20", label: "Banned" },
+  };
+  const { cls, label } = map[status] ?? { cls: "bg-muted text-muted-foreground border-muted", label: status };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>{label}</span>
+  );
+}
+
+type NumberRow = {
+  id: number;
+  number: string;
+  service: string | null;
+  countryCode: string;
+  countryName: string;
+  operator: string | null;
+  apiOrderId: number | null;
+  price: string;
+  status: string;
+  expiresAt: Date | null;
+};
+
+function ActiveNumberCard({ number, onRefreshList }: { number: NumberRow; onRefreshList: () => void }) {
+  const timeLeft = useCountdown(number.expiresAt);
+  const [expanded, setExpanded] = useState(true);
+
+  const { data: sms, refetch: refetchSms } = trpc.virtualNumbers.getSms.useQuery(
+    { numberId: number.id },
+    { refetchInterval: number.status === "active" ? 5000 : false }
+  );
+
+  const checkSmsMutation = trpc.virtualNumbers.checkSms.useMutation({
+    onSuccess: (data) => {
+      if (data.sms && data.sms.length > 0) {
+        toast.success(`${data.sms.length} SMS received!`);
+      } else {
+        toast.info("No SMS yet. Keep waiting...");
+      }
+      refetchSms();
+      onRefreshList();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const finishMutation = trpc.virtualNumbers.finishOrder.useMutation({
+    onSuccess: () => { toast.success("Order finished!"); onRefreshList(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const cancelMutation = trpc.virtualNumbers.cancelOrder.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.refunded ? "Cancelled & refunded!" : "Cancelled.");
+      onRefreshList();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const banMutation = trpc.virtualNumbers.banNumber.useMutation({
+    onSuccess: () => { toast.success("Number reported as banned. Refunded."); onRefreshList(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const copyNumber = () => {
+    navigator.clipboard.writeText(number.number);
+    toast.success("Number copied!");
+  };
+
+  const isActive = number.status === "active";
+  const isBusy = checkSmsMutation.isPending || finishMutation.isPending || cancelMutation.isPending || banMutation.isPending;
+
+  return (
+    <div className="glass rounded-2xl p-5 border border-white/5">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            {isActive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+            <StatusBadge status={number.status} />
+            {number.operator && number.operator !== "any" && (
+              <span className="text-xs text-muted-foreground border border-white/10 px-1.5 py-0.5 rounded">{number.operator}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="text-xl font-bold text-foreground font-mono">{number.number}</p>
+            <button onClick={copyNumber} className="text-muted-foreground hover:text-foreground transition-colors">
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {countryFlag(number.countryCode)} {number.countryName} &middot; {number.service ?? "Any Service"} &middot; ${number.price}
+          </p>
+        </div>
+        <div className="text-right flex flex-col items-end gap-2">
+          {number.expiresAt && isActive && (
+            <div className="flex items-center gap-1 text-sm text-yellow-400">
+              <Timer className="w-3.5 h-3.5" />{timeLeft}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {isActive && (
+              <button
+                onClick={() => checkSmsMutation.mutate({ localId: number.id })}
+                disabled={isBusy}
+                title="Check for new SMS"
+                className="text-muted-foreground hover:text-violet-400 transition-colors disabled:opacity-50"
+              >
+                {checkSmsMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground hover:text-foreground transition-colors">
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-white/10 pt-4 space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-violet-400" />SMS Inbox
+              </p>
+              {isActive && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />Live
+                </span>
+              )}
+            </div>
+            {!sms || sms.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p>{isActive ? "Waiting for SMS..." : "No SMS received."}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(sms as Array<{ id: number; sender: string; message: string; receivedAt: Date }>).map((msg) => {
+                  const otpMatch = msg.message.match(/\b\d{4,8}\b/);
+                  return (
+                    <div key={msg.id} className="bg-white/5 rounded-xl p-3 border border-white/5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-violet-400">{msg.sender}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(msg.receivedAt).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-sm text-foreground">{msg.message}</p>
+                      {otpMatch && (
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(otpMatch[0]); toast.success("OTP copied!"); }}
+                          className="mt-2 flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />Copy OTP: <span className="font-mono font-bold">{otpMatch[0]}</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {isActive && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs gap-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                onClick={() => finishMutation.mutate({ localId: number.id })}
+                disabled={isBusy}
+              >
+                {finishMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckSquare className="w-3 h-3" />}
+                Finish
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs gap-1 border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                onClick={() => cancelMutation.mutate({ localId: number.id })}
+                disabled={isBusy}
+              >
+                {cancelMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                Cancel & Refund
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs gap-1 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                onClick={() => banMutation.mutate({ localId: number.id })}
+                disabled={isBusy}
+              >
+                {banMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Ban className="w-3 h-3" />}
+                Report Banned
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function VirtualNumbers() {
   const { isAuthenticated } = useAuth();
+
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | "All">("All");
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
-  const [sortBy, setSortBy] = useState("popular");
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
-  const [countrySearch, setCountrySearch] = useState("");
   const [activeTab, setActiveTab] = useState<"browse" | "my-numbers">("browse");
+  const [selectedCountry, setSelectedCountry] = useState<{ iso: string; name: string; prefix: string } | null>(null);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+
+  const { data: countriesRaw, isLoading: loadingCountries } = trpc.virtualNumbers.getCountries.useQuery();
+  const { data: productsRaw, isLoading: loadingProducts } = trpc.virtualNumbers.getProducts.useQuery(
+    { country: selectedCountry?.iso ?? "russia", operator: "any" },
+    { enabled: !!selectedCountry }
+  );
 
   const { data: myNumbers, refetch: refetchNumbers } = trpc.virtualNumbers.myNumbers.useQuery(
     undefined,
-    { enabled: isAuthenticated, refetchInterval: 5000 }
+    { enabled: isAuthenticated, refetchInterval: 10000 }
   );
 
+  const countries = useMemo(() => {
+    if (!countriesRaw) return [];
+    return Object.entries(countriesRaw as Record<string, { name?: string; prefix?: string }>)
+      .map(([iso, c]) => ({ iso, name: c.name ?? iso, prefix: c.prefix ?? "" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [countriesRaw]);
+
+  useEffect(() => {
+    if (countries.length > 0 && !selectedCountry) {
+      const russia = countries.find((c) => c.iso === "russia") ?? countries[0];
+      setSelectedCountry(russia);
+    }
+  }, [countries, selectedCountry]);
+
+  const products = useMemo(() => {
+    if (!productsRaw) return [];
+    return Object.entries(productsRaw as Record<string, { Qty: number; Price: number; Category: string }>)
+      .map(([name, info]) => ({ name, qty: info.Qty, price: info.Price, category: info.Category }))
+      .filter((p) => p.qty > 0)
+      .sort((a, b) => a.price - b.price);
+  }, [productsRaw]);
+
+  const filteredCountries = useMemo(() =>
+    countries.filter((c) =>
+      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.iso.toLowerCase().includes(countrySearch.toLowerCase())
+    ), [countries, countrySearch]);
+
+  const filteredProducts = useMemo(() => {
+    if (!search.trim()) return products;
+    const q = search.toLowerCase();
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, search]);
+
   const purchaseMutation = trpc.virtualNumbers.purchase.useMutation({
-    onSuccess: () => {
-      toast.success("Number activated! Check My Numbers tab.");
+    onSuccess: (data) => {
+      toast.success(`Number ${data.number} activated! Check My Numbers tab.`);
       setPurchasing(null);
+      setActiveTab("my-numbers");
       refetchNumbers();
     },
     onError: (err) => {
@@ -126,42 +313,17 @@ export default function VirtualNumbers() {
     },
   });
 
-  const filteredServices = useMemo(() => {
-    let list = [...ALL_SERVICES];
-    if (selectedCategory !== "All") list = list.filter(s => s.category === selectedCategory);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(s => s.name.toLowerCase().includes(q));
-    }
-    if (maxPrice !== null) list = list.filter(s => (s.price + selectedCountry.price) <= maxPrice);
-    switch (sortBy) {
-      case "cheapest": list.sort((a, b) => a.price - b.price); break;
-      case "fastest": list.sort((a, b) => SPEED_ORDER[a.speed] - SPEED_ORDER[b.speed]); break;
-      case "success": list.sort((a, b) => b.successRate - a.successRate); break;
-      case "az": list.sort((a, b) => a.name.localeCompare(b.name)); break;
-      default: list.sort((a, b) => b.stock - a.stock); break;
-    }
-    return list;
-  }, [search, selectedCategory, sortBy, maxPrice, selectedCountry]);
-
-  const filteredCountries = useMemo(() =>
-    COUNTRIES.filter(c =>
-      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-      c.code.toLowerCase().includes(countrySearch.toLowerCase())
-    ), [countrySearch]);
-
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: ALL_SERVICES.length };
-    for (const cat of SERVICE_CATEGORIES) {
-      counts[cat] = ALL_SERVICES.filter(s => s.category === cat).length;
-    }
-    return counts;
-  }, []);
-
-  const handleBuy = (service: VNService) => {
+  const handleBuy = (product: { name: string; price: number }) => {
     if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
-    setPurchasing(service.name);
-    purchaseMutation.mutate({ countryCode: selectedCountry.code, countryName: selectedCountry.name, service: service.name });
+    if (!selectedCountry) { toast.error("Please select a country first."); return; }
+    setPurchasing(product.name);
+    purchaseMutation.mutate({
+      country: selectedCountry.iso,
+      countryCode: selectedCountry.iso.toUpperCase().slice(0, 2),
+      countryName: selectedCountry.name,
+      product: product.name,
+      operator: "any",
+    });
   };
 
   return (
@@ -171,28 +333,34 @@ export default function VirtualNumbers() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium mb-4">
             <Phone className="w-3 h-3" />
-            Virtual Number Marketplace
+            Virtual Number Marketplace &mdash; Powered by 5sim
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
             Get a Virtual Number for{" "}
             <span className="gradient-text">Any Service</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            1,400+ services supported. Instant activation. Real SMS delivery. No personal info required.
+            Real phone numbers from 5sim. Instant activation. Live SMS delivery. No personal info required.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> 1,400+ Services</span>
-            <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5 text-cyan-400" /> 40+ Countries</span>
+            <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5 text-cyan-400" /> {countries.length > 0 ? `${countries.length}+ Countries` : "100+ Countries"}</span>
             <span className="flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-yellow-400" /> Instant Delivery</span>
             <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5 text-violet-400" /> 100% Private</span>
           </div>
         </div>
 
         <div className="flex gap-2 mb-6">
-          <button onClick={() => setActiveTab("browse")} className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === "browse" ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"}`}>
+          <button
+            onClick={() => setActiveTab("browse")}
+            className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === "browse" ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"}`}
+          >
             Browse Services
           </button>
-          <button onClick={() => setActiveTab("my-numbers")} className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === "my-numbers" ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"}`}>
+          <button
+            onClick={() => setActiveTab("my-numbers")}
+            className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === "my-numbers" ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"}`}
+          >
             My Numbers
             {myNumbers && myNumbers.length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 bg-violet-500/30 rounded-full text-xs">{myNumbers.length}</span>
@@ -200,232 +368,162 @@ export default function VirtualNumbers() {
           </button>
         </div>
 
-        {activeTab === "browse" ? (
-          <div className="space-y-6">
-            <div className="glass rounded-2xl p-4">
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="relative">
-                  <button onClick={() => setShowCountryPicker(!showCountryPicker)} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm">
-                    <span className="text-lg">{selectedCountry.flag}</span>
-                    <span className="text-foreground font-medium">{selectedCountry.code}</span>
-                    <span className="text-muted-foreground text-xs">+${selectedCountry.price.toFixed(2)}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                  {showCountryPicker && (
-                    <div className="absolute top-full left-0 mt-2 w-72 glass rounded-xl border border-white/10 shadow-2xl z-50 overflow-hidden">
-                      <div className="p-2 border-b border-white/10">
-                        <Input placeholder="Search country..." value={countrySearch} onChange={e => setCountrySearch(e.target.value)} className="h-8 bg-white/5 border-white/10 text-sm" autoFocus />
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {filteredCountries.map(c => (
-                          <button key={c.code} onClick={() => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(""); }} className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-white/10 transition-colors text-sm ${selectedCountry.code === c.code ? "bg-violet-500/20" : ""}`}>
-                            <span className="text-lg">{c.flag}</span>
-                            <span className="text-foreground flex-1 text-left">{c.name}</span>
-                            <span className="text-muted-foreground text-xs">+${c.price.toFixed(2)}</span>
-                          </button>
-                        ))}
+        {activeTab === "browse" && (
+          <div>
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <div className="relative">
+                <button
+                  onClick={() => setShowCountryPicker(!showCountryPicker)}
+                  className="glass border border-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-medium hover:border-violet-500/40 transition-all min-w-[200px]"
+                >
+                  <span className="text-lg">{selectedCountry ? countryFlag(selectedCountry.iso.toUpperCase().slice(0, 2)) : "\u{1F310}"}</span>
+                  <span className="text-foreground capitalize">{selectedCountry?.name ?? "Select Country"}</span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
+                </button>
+                {showCountryPicker && (
+                  <div className="absolute top-full left-0 mt-2 w-72 glass border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                    <div className="p-3 border-b border-white/10">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          placeholder="Search country..."
+                          className="pl-9 bg-white/5 border-white/10 text-sm"
+                          autoFocus
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-                <div className="relative flex-1 min-w-48">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Search 1,400+ services..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/5 border-white/10" />
-                  {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>}
-                </div>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:border-violet-500">
-                  {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} className="bg-background">{o.label}</option>)}
-                </select>
-                <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-colors ${showFilters ? "bg-violet-500/20 border-violet-500/40 text-violet-400" : "bg-white/5 border-white/10 text-muted-foreground hover:text-foreground"}`}>
-                  <Filter className="w-4 h-4" /> Filters
-                </button>
-              </div>
-              {showFilters && (
-                <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-3 items-center">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Max price:</span>
-                    <select value={maxPrice ?? ""} onChange={e => setMaxPrice(e.target.value ? parseFloat(e.target.value) : null)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none">
-                      <option value="" className="bg-background">Any price</option>
-                      <option value="0.25" className="bg-background">Under $0.25</option>
-                      <option value="0.50" className="bg-background">Under $0.50</option>
-                      <option value="1.00" className="bg-background">Under $1.00</option>
-                      <option value="2.00" className="bg-background">Under $2.00</option>
-                    </select>
+                    <div className="max-h-64 overflow-y-auto">
+                      {loadingCountries ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                        </div>
+                      ) : filteredCountries.map((c) => (
+                        <button
+                          key={c.iso}
+                          onClick={() => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(""); }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/5 transition-colors text-left ${selectedCountry?.iso === c.iso ? "bg-violet-500/10 text-violet-400" : "text-foreground"}`}
+                        >
+                          <span className="text-base">{countryFlag(c.iso.toUpperCase().slice(0, 2))}</span>
+                          <span className="capitalize flex-1">{c.name}</span>
+                          {c.prefix && <span className="text-xs text-muted-foreground">+{c.prefix}</span>}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">Showing <span className="text-foreground font-medium">{filteredServices.length.toLocaleString()}</span> services</div>
-                  {(search || selectedCategory !== "All" || maxPrice !== null) && (
-                    <button onClick={() => { setSearch(""); setSelectedCategory("All"); setMaxPrice(null); }} className="text-xs text-violet-400 hover:underline flex items-center gap-1">
-                      <X className="w-3 h-3" /> Clear all
-                    </button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
+
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search services (whatsapp, telegram, google...)"
+                  className="pl-9 glass border-white/10"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              <button onClick={() => setSelectedCategory("All")} className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedCategory === "All" ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"}`}>
-                All <span className="text-xs opacity-70">({categoryCounts.All.toLocaleString()})</span>
-              </button>
-              {SERVICE_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedCategory === cat ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"}`}>
-                  {CATEGORY_ICONS[cat]} {cat} <span className="text-xs opacity-70">({categoryCounts[cat]})</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="text-sm text-muted-foreground">
-              {filteredServices.length.toLocaleString()} services available
-              {selectedCategory !== "All" && <span> in <span className="text-foreground">{selectedCategory}</span></span>}
-              {search && <span> matching <span className="text-foreground">"{search}"</span></span>}
-            </div>
-
-            {filteredServices.length === 0 ? (
+            {!selectedCountry ? (
               <div className="text-center py-16 text-muted-foreground">
-                <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="text-lg font-medium">No services found</p>
-                <button onClick={() => { setSearch(""); setSelectedCategory("All"); setMaxPrice(null); }} className="mt-3 text-violet-400 hover:underline text-sm">Clear all filters</button>
+                <Globe className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p>Select a country to see available services.</p>
+              </div>
+            ) : loadingProducts ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+                <span className="ml-3 text-muted-foreground">Loading live services from 5sim...</span>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Phone className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p>No services available for this country{search ? " matching your search" : ""}.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredServices.map((service) => {
-                  const totalPrice = (service.price + selectedCountry.price).toFixed(2);
-                  const isBuying = purchasing === service.name;
-                  return (
-                    <div key={service.name} className="glass rounded-xl p-4 hover:border-violet-500/30 border border-white/5 transition-all">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-lg flex-shrink-0">
-                            {CATEGORY_ICONS[service.category]}
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Showing <span className="text-foreground font-medium">{filteredProducts.length.toLocaleString()}</span> services in{" "}
+                  <span className="text-violet-400 capitalize font-medium">{selectedCountry.name}</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredProducts.map((product) => {
+                    const isBuying = purchasing === product.name;
+                    return (
+                      <div key={product.name} className="glass rounded-2xl p-4 border border-white/5 hover:border-violet-500/30 transition-all group">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                            <Phone className="w-5 h-5 text-violet-400" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground leading-tight truncate">{service.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{service.category}</p>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-emerald-400 font-bold text-lg">
+                              <DollarSign className="w-4 h-4" />
+                              {product.price.toFixed(2)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{product.qty.toLocaleString()} available</div>
                           </div>
                         </div>
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${service.stock > 100 ? "bg-emerald-400" : service.stock > 20 ? "bg-yellow-400" : "bg-red-400"} animate-pulse`} />
+                        <h3 className="font-semibold text-foreground capitalize mb-1 truncate">{product.name.replace(/_/g, " ")}</h3>
+                        <p className="text-xs text-muted-foreground mb-3 capitalize">{product.category}</p>
+                        <Button
+                          className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 text-xs font-semibold"
+                          onClick={() => handleBuy(product)}
+                          disabled={!!purchasing || isBuying}
+                        >
+                          {isBuying ? (
+                            <><Loader2 className="w-3 h-3 animate-spin mr-1" />Purchasing...</>
+                          ) : (
+                            <><Zap className="w-3 h-3 mr-1" />Buy Number</>
+                          )}
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${speedBg(service.speed)}`}>{service.speed}</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />{service.successRate}%
-                        </span>
-                        <span className="text-xs text-muted-foreground">{service.stock > 500 ? "500+" : service.stock} left</span>
-                      </div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className="text-base">{selectedCountry.flag}</span>
-                          <span className="truncate max-w-20">{selectedCountry.name}</span>
-                        </div>
-                        <span className="text-lg font-bold text-foreground">${totalPrice}</span>
-                      </div>
-                      <Button className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 text-xs font-semibold" onClick={() => handleBuy(service)} disabled={isBuying}>
-                        {isBuying ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" /> : <Phone className="w-3.5 h-3.5 mr-1" />}
-                        {isBuying ? "Activating..." : "Get Number"}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
-        ) : (
-          <div className="space-y-4">
+        )}
+
+        {activeTab === "my-numbers" && (
+          <div>
             {!isAuthenticated ? (
-              <div className="glass rounded-2xl p-12 text-center">
+              <div className="text-center py-16">
                 <Phone className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">Sign in to view your numbers</h3>
-                <Button onClick={() => window.location.href = getLoginUrl()} className="bg-violet-600 hover:bg-violet-500 text-white border-0">Sign In</Button>
+                <Button onClick={() => window.location.href = getLoginUrl()} className="bg-violet-600 hover:bg-violet-500 text-white border-0">
+                  Sign In
+                </Button>
               </div>
-            ) : !myNumbers || myNumbers.length === 0 ? (
-              <div className="glass rounded-2xl p-12 text-center">
+            ) : !myNumbers ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+              </div>
+            ) : myNumbers.length === 0 ? (
+              <div className="text-center py-16">
                 <Phone className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-40" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">No active numbers</h3>
-                <Button onClick={() => setActiveTab("browse")} className="bg-violet-600 hover:bg-violet-500 text-white border-0">Browse Services</Button>
+                <Button onClick={() => setActiveTab("browse")} className="bg-violet-600 hover:bg-violet-500 text-white border-0">
+                  Browse Services
+                </Button>
               </div>
             ) : (
               <div className="space-y-4">
-                {myNumbers.map((num) => <ActiveNumberCard key={num.id} number={num} />)}
+                {(myNumbers as NumberRow[]).map((num) => (
+                  <ActiveNumberCard key={num.id} number={num} onRefreshList={refetchNumbers} />
+                ))}
               </div>
             )}
           </div>
         )}
       </div>
       <Footer />
-    </div>
-  );
-}
-
-type NumberType = {
-  id: number; number: string; service: string | null; countryCode: string; status: string; expiresAt: Date | null;
-};
-
-function ActiveNumberCard({ number }: { number: NumberType }) {
-  const timeLeft = useCountdown(number.expiresAt);
-  const [expanded, setExpanded] = useState(true);
-  const { data: sms, refetch } = trpc.virtualNumbers.getSms.useQuery(
-    { numberId: number.id },
-    { refetchInterval: 5000 }
-  );
-  const copyNumber = () => { navigator.clipboard.writeText(number.number); toast.success("Number copied!"); };
-
-  return (
-    <div className="glass rounded-2xl p-5 border border-white/5">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`w-2 h-2 rounded-full ${number.status === "active" ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground"}`} />
-            <span className={`text-xs font-medium uppercase ${number.status === "active" ? "text-emerald-400" : "text-muted-foreground"}`}>{number.status}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <p className="text-xl font-bold text-foreground font-mono">{number.number}</p>
-            <button onClick={copyNumber} className="text-muted-foreground hover:text-foreground transition-colors"><Copy className="w-4 h-4" /></button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-0.5">{number.service ?? "Any Service"} - {number.countryCode}</p>
-        </div>
-        <div className="text-right flex flex-col items-end gap-2">
-          {number.expiresAt && <div className="flex items-center gap-1 text-sm text-yellow-400"><Timer className="w-3.5 h-3.5" />{timeLeft}</div>}
-          <div className="flex items-center gap-2">
-            <button onClick={() => refetch()} className="text-muted-foreground hover:text-foreground transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
-            <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground hover:text-foreground transition-colors">
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-      </div>
-      {expanded && (
-        <div className="border-t border-white/10 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-violet-400" />SMS Inbox</p>
-            <span className="text-xs text-muted-foreground flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />Live</span>
-          </div>
-          {!sms || sms.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p>Waiting for SMS...</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {(sms as Array<{ id: number; sender: string; message: string; receivedAt: Date }>).map((msg) => {
-                const otpMatch = msg.message.match(/\b\d{4,8}\b/);
-                return (
-                  <div key={msg.id} className="bg-white/5 rounded-xl p-3 border border-white/5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-violet-400">{msg.sender}</span>
-                      <span className="text-xs text-muted-foreground">{new Date(msg.receivedAt).toLocaleTimeString()}</span>
-                    </div>
-                    <p className="text-sm text-foreground">{msg.message}</p>
-                    {otpMatch && (
-                      <button onClick={() => { navigator.clipboard.writeText(otpMatch[0]); toast.success("OTP copied!"); }} className="mt-2 flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
-                        <Copy className="w-3 h-3" />Copy OTP: <span className="font-mono font-bold">{otpMatch[0]}</span>
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

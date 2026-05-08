@@ -69,9 +69,23 @@ import {
   getVendorApiKeys,
   createVendorApiKey,
   revokeVendorApiKey,
+  updateVirtualNumber,
+  getVirtualNumberById,
+  getVirtualNumberByApiOrderId,
 } from "./db";
 import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable } from "../drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
+import {
+  getProfile as fivesimGetProfile,
+  getProducts as fivesimGetProducts,
+  getCountries as fivesimGetCountries,
+  getPricesByCountryAndProduct as fivesimGetPrices,
+  buyActivationNumber as fivesimBuyNumber,
+  checkOrder as fivesimCheckOrder,
+  finishOrder as fivesimFinishOrder,
+  cancelOrder as fivesimCancelOrder,
+  banOrder as fivesimBanOrder,
+} from "./fivesim";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -430,44 +444,112 @@ export const appRouter = router({
       }),
   }),
 
-  // ── Virtual Numbers ───────────────────────────────────────────────────────
+  // ── Virtual Numbers (5sim API) ───────────────────────────────────────────
   virtualNumbers: router({
+    /** List all active virtual number orders for the current user */
     myNumbers: protectedProcedure.query(async ({ ctx }) => {
       return getVirtualNumbers(ctx.user.id);
     }),
 
+    /** Get live products/prices from 5sim for a given country (public) */
+    getProducts: publicProcedure
+      .input(z.object({ country: z.string().default("russia"), operator: z.string().default("any") }))
+      .query(async ({ input }) => {
+        try {
+          return await fivesimGetProducts(input.country, input.operator);
+        } catch (e) {
+          console.error("[5sim] getProducts error:", e);
+          return {};
+        }
+      }),
+
+    /** Get list of countries from 5sim (public) */
+    getCountries: publicProcedure.query(async () => {
+      try {
+        return await fivesimGetCountries();
+      } catch (e) {
+        console.error("[5sim] getCountries error:", e);
+        return {};
+      }
+    }),
+
+    /** Get prices for a specific country + product (public) */
+    getPrices: publicProcedure
+      .input(z.object({ country: z.string(), product: z.string() }))
+      .query(async ({ input }) => {
+        try {
+          return await fivesimGetPrices(input.country, input.product);
+        } catch (e) {
+          console.error("[5sim] getPrices error:", e);
+          return {};
+        }
+      }),
+
+    /** Get 5sim account balance (admin only) */
+    getApiBalance: adminProcedure.query(async () => {
+      try {
+        const profile = await fivesimGetProfile();
+        return { balance: profile.balance, rating: profile.rating };
+      } catch (e) {
+        console.error("[5sim] getProfile error:", e);
+        return { balance: 0, rating: 0 };
+      }
+    }),
+
+    /** Buy a real virtual number via 5sim */
     purchase: protectedProcedure
       .input(
         z.object({
+          country: z.string(),
           countryCode: z.string(),
           countryName: z.string(),
-          service: z.string().optional(),
+          product: z.string(),
+          operator: z.string().default("any"),
+          maxPrice: z.number().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
-        const price = 1.99;
         const user = await getUserById(ctx.user.id);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });
         const balance = parseFloat(user.balance ?? "0");
+
+        if (balance < 0.1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance. Please top up your wallet." });
+        }
+
+        let order;
+        try {
+          order = await fivesimBuyNumber(input.country, input.operator, input.product, input.maxPrice);
+        } catch (err: any) {
+          const msg = err?.message ?? "Failed to purchase number";
+          if (msg.includes("not enough user balance")) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "5sim account balance is insufficient. Please contact support." });
+          }
+          if (msg.includes("no free phones")) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "No numbers available for this service/country. Try another country." });
+          }
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+        }
+
+        const price = order.price;
+
         if (balance < price) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+          try { await fivesimCancelOrder(order.id); } catch {}
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Insufficient balance. Need $${price.toFixed(2)}.` });
         }
 
         const newBalance = (balance - price).toFixed(2);
         await updateUserBalance(ctx.user.id, newBalance);
 
-        // Generate a fake number for demo
-        const areaCode = Math.floor(200 + Math.random() * 800);
-        const number = `+${input.countryCode}${areaCode}${Math.floor(1000000 + Math.random() * 9000000)}`;
-
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
+        const expiresAt = new Date(order.expires);
         await createVirtualNumber({
           userId: ctx.user.id,
-          number,
+          number: order.phone,
           countryCode: input.countryCode,
           countryName: input.countryName,
-          service: input.service,
+          service: input.product,
+          operator: order.operator,
+          apiOrderId: order.id,
           price: price.toFixed(2),
           status: "active",
           expiresAt,
@@ -479,29 +561,158 @@ export const appRouter = router({
           amount: price.toFixed(2),
           balanceBefore: balance.toFixed(2),
           balanceAfter: newBalance,
-          description: `Virtual number: ${number}`,
+          description: `Virtual number (${input.product}): ${order.phone}`,
+          referenceId: `vn_${order.id}`,
           status: "completed",
         });
 
-        // Simulate an incoming SMS after purchase
-        const db = await getDb();
-        if (db) {
-          const nums = await getVirtualNumbers(ctx.user.id);
-          const latest = nums[0];
-          if (latest) {
-            setTimeout(async () => {
+        await createNotification({
+          userId: ctx.user.id,
+          type: "order_completed",
+          title: "Virtual Number Purchased",
+          message: `Your number ${order.phone} is active. Waiting for SMS from ${input.product}.`,
+        });
+
+        return {
+          success: true,
+          number: order.phone,
+          orderId: order.id,
+          expires: order.expires,
+          price,
+        };
+      }),
+
+    /** Poll 5sim for SMS on an order */
+    checkSms: protectedProcedure
+      .input(z.object({ localId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const vn = await getVirtualNumberById(input.localId);
+        if (!vn || vn.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        if (!vn.apiOrderId) {
+          return { status: "active", sms: await getSmsMessages(vn.id) };
+        }
+
+        const order = await fivesimCheckOrder(vn.apiOrderId);
+
+        if (order.sms && order.sms.length > 0) {
+          const existing = await getSmsMessages(vn.id);
+          const existingKeys = new Set(existing.map((s) => s.sender + s.message));
+          for (const sms of order.sms) {
+            const key = sms.sender + sms.text;
+            if (!existingKeys.has(key)) {
               await addSmsMessage({
-                numberId: latest.id,
-                sender: "System",
-                message: `Your number ${number} is now active and ready to receive SMS.`,
+                numberId: vn.id,
+                sender: sms.sender,
+                message: sms.text,
+                receivedAt: new Date(sms.date),
               });
-            }, 2000);
+            }
           }
         }
 
-        return { success: true, number };
+        const statusMap: Record<string, "active" | "expired" | "cancelled" | "finished" | "banned"> = {
+          PENDING: "active",
+          RECEIVED: "active",
+          CANCELED: "cancelled",
+          TIMEOUT: "expired",
+          FINISHED: "finished",
+          BANNED: "banned",
+        };
+        const newStatus = statusMap[order.status] ?? "active";
+        if (newStatus !== vn.status) {
+          await updateVirtualNumber(vn.id, { status: newStatus });
+        }
+
+        return {
+          status: order.status,
+          sms: await getSmsMessages(vn.id),
+        };
       }),
 
+    /** Finish an order */
+    finishOrder: protectedProcedure
+      .input(z.object({ localId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const vn = await getVirtualNumberById(input.localId);
+        if (!vn || vn.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        if (!vn.apiOrderId) throw new TRPCError({ code: "BAD_REQUEST", message: "No API order" });
+        await fivesimFinishOrder(vn.apiOrderId);
+        await updateVirtualNumber(vn.id, { status: "finished" });
+        return { success: true };
+      }),
+
+    /** Cancel an order (refund if no SMS received) */
+    cancelOrder: protectedProcedure
+      .input(z.object({ localId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const vn = await getVirtualNumberById(input.localId);
+        if (!vn || vn.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        if (!vn.apiOrderId) {
+          await updateVirtualNumber(vn.id, { status: "cancelled" });
+          return { success: true, refunded: false };
+        }
+        try {
+          await fivesimCancelOrder(vn.apiOrderId);
+          await updateVirtualNumber(vn.id, { status: "cancelled" });
+          const user = await getUserById(ctx.user.id);
+          if (user) {
+            const price = parseFloat(vn.price ?? "0");
+            const bal = parseFloat(user.balance ?? "0");
+            const newBal = (bal + price).toFixed(2);
+            await updateUserBalance(ctx.user.id, newBal);
+            await createWalletTransaction({
+              userId: ctx.user.id,
+              type: "refund",
+              amount: price.toFixed(2),
+              balanceBefore: bal.toFixed(2),
+              balanceAfter: newBal,
+              description: `Refund: cancelled virtual number ${vn.number}`,
+              referenceId: `vn_cancel_${vn.apiOrderId}`,
+              status: "completed",
+            });
+          }
+          return { success: true, refunded: true };
+        } catch (err: any) {
+          const msg = err?.message ?? "";
+          if (msg.includes("order has sms")) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot cancel: SMS already received." });
+          }
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+        }
+      }),
+
+    /** Ban a number (report as banned, get refund) */
+    banNumber: protectedProcedure
+      .input(z.object({ localId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const vn = await getVirtualNumberById(input.localId);
+        if (!vn || vn.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        if (!vn.apiOrderId) throw new TRPCError({ code: "BAD_REQUEST", message: "No API order" });
+        await fivesimBanOrder(vn.apiOrderId);
+        await updateVirtualNumber(vn.id, { status: "banned" });
+        const user = await getUserById(ctx.user.id);
+        if (user) {
+          const price = parseFloat(vn.price ?? "0");
+          const bal = parseFloat(user.balance ?? "0");
+          const newBal = (bal + price).toFixed(2);
+          await updateUserBalance(ctx.user.id, newBal);
+          await createWalletTransaction({
+            userId: ctx.user.id,
+            type: "refund",
+            amount: price.toFixed(2),
+            balanceBefore: bal.toFixed(2),
+            balanceAfter: newBal,
+            description: `Refund: banned virtual number ${vn.number}`,
+            referenceId: `vn_ban_${vn.apiOrderId}`,
+            status: "completed",
+          });
+        }
+        return { success: true };
+      }),
+
+    /** Get SMS messages for a local virtual number record */
     getSms: protectedProcedure
       .input(z.object({ numberId: z.number() }))
       .query(async ({ input, ctx }) => {

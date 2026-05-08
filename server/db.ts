@@ -270,6 +270,37 @@ export async function addSmsMessage(data: typeof smsMessages.$inferInsert) {
   await db.insert(smsMessages).values(data);
 }
 
+export async function updateVirtualNumber(
+  id: number,
+  data: Partial<typeof virtualNumbers.$inferInsert>
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(virtualNumbers).set(data).where(eq(virtualNumbers.id, id));
+}
+
+export async function getVirtualNumberByApiOrderId(apiOrderId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(virtualNumbers)
+    .where(eq(virtualNumbers.apiOrderId, apiOrderId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getVirtualNumberById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(virtualNumbers)
+    .where(eq(virtualNumbers.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 // ─── Referrals ────────────────────────────────────────────────────────────────
 export async function getReferralsByReferrer(referrerId: number) {
   const db = await getDb();

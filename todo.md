@@ -239,3 +239,24 @@
 - [x] Speed badges (Instant / Fast / Medium / Slow) per service
 - [x] Success rate and stock availability per service card
 - [x] My Numbers tab with SMS inbox and OTP copy button
+
+## Phase 14 — 5sim API Integration (Virtual Numbers)
+
+- [x] Add FIVESIM_API_KEY secret to environment
+- [x] Create server/fivesim.ts helper with all 5sim API calls
+- [x] Procedure: virtualNumbers.getProducts — fetch live products/prices from 5sim
+- [x] Procedure: virtualNumbers.getCountries — fetch list of countries from 5sim
+- [x] Procedure: virtualNumbers.getPrices — get prices for country + product
+- [x] Procedure: virtualNumbers.purchase — buy real activation number via 5sim (deduct wallet, store order)
+- [x] Procedure: virtualNumbers.checkSms — poll order status and sync SMS to DB
+- [x] Procedure: virtualNumbers.cancelOrder — cancel pending order (refund if no SMS)
+- [x] Procedure: virtualNumbers.finishOrder — mark order as finished
+- [x] Procedure: virtualNumbers.banNumber — report number as banned (get refund)
+- [x] Procedure: virtualNumbers.getApiBalance — admin: check 5sim account balance
+- [x] Update VirtualNumbers.tsx to use live 5sim countries and products
+- [x] Update SMS inbox to poll checkSms every 5s for live OTP delivery
+- [x] Show real-time stock count and price from 5sim API
+- [x] Add purchase flow: select country → search service → buy (wallet deduction)
+- [x] Add active orders panel showing phone number, expiry countdown, live SMS
+- [x] Handle cancel/ban/finish actions in UI with refund logic
+- [x] Add schema migration: apiOrderId, operator fields on virtual_numbers table

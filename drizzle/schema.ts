@@ -132,9 +132,11 @@ export const virtualNumbers = mysqlTable("virtual_numbers", {
   number: varchar("number", { length: 20 }).notNull(),
   countryCode: varchar("countryCode", { length: 4 }).notNull(),
   countryName: varchar("countryName", { length: 64 }).notNull(),
-  service: varchar("service", { length: 64 }), // e.g. "WhatsApp", "Telegram"
+  service: varchar("service", { length: 64 }), // e.g. "whatsapp", "telegram"
+  operator: varchar("operator", { length: 64 }), // e.g. "any", "vodafone"
+  apiOrderId: int("apiOrderId"), // 5sim order ID for polling
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  status: mysqlEnum("status", ["active", "expired", "cancelled"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "expired", "cancelled", "finished", "banned"]).default("active").notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
