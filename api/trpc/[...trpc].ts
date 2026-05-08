@@ -5,23 +5,40 @@ import express from "express";
 import { createContext } from "../../server/_core/context";
 import { appRouter } from "../../server/routers";
 
-// Create a minimal Express app to reuse the tRPC Express middleware
-const app = express();
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Singleton Express app — reused across warm invocations for performance
+let app: express.Express | null = null;
 
-const trpcMiddleware = createExpressMiddleware({
-  router: appRouter,
-  createContext,
-});
+function getApp() {
+  if (app) return app;
 
-app.use("/api/trpc", trpcMiddleware);
+  app = express();
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  const trpcMiddleware = createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  });
+
+  // Mount at /api/trpc so the path matching works correctly
+  app.use("/api/trpc", trpcMiddleware);
+
+  return app;
+}
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // Rewrite the URL so Express sees /api/trpc/...
-  req.url = `/api/trpc${req.url}`;
+  const expressApp = getApp();
+
+  // Vercel passes the path after /api/trpc/[...trpc] as req.url
+  // We need to reconstruct the full /api/trpc/... path for Express
+  const originalUrl = req.url ?? "/";
+  // If the URL already starts with /api/trpc, keep it; otherwise prepend
+  if (!originalUrl.startsWith("/api/trpc")) {
+    req.url = `/api/trpc${originalUrl.startsWith("/") ? originalUrl : `/${originalUrl}`}`;
+  }
+
   return new Promise<void>((resolve, reject) => {
-    app(req as any, res as any, (err: unknown) => {
+    expressApp(req as any, res as any, (err: unknown) => {
       if (err) reject(err);
       else resolve();
     });
