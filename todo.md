@@ -281,3 +281,16 @@
 - [ ] Add My Orders tab with live status polling
 - [ ] Add order progress bar (start count → current → target)
 - [ ] Write vitest tests for SMM procedures
+
+## Phase 16 — Paystack Payment Integration
+- [ ] Create server/paystack.ts helper (initializeTransaction, verifyTransaction, validateWebhookSignature)
+- [ ] Add payments table to drizzle/schema.ts
+- [ ] Push schema migration with pnpm db:push
+- [ ] Add payment tRPC procedures: payment.initiate, payment.verify, payment.history
+- [ ] Add Paystack webhook Express route for charge.success events
+- [ ] Install @paystack/inline-js on client
+- [ ] Build PaystackDepositModal component with preset amounts and custom amount input
+- [ ] Integrate Paystack Popup JS in the deposit modal (resumeTransaction flow)
+- [ ] Wire deposit button in DashboardWallet.tsx to the new modal
+- [ ] Show payment history in wallet page
+- [ ] Write vitest for Paystack secret key validation

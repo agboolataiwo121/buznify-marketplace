@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,14 @@ import {
   Shield,
   Zap,
   RefreshCw,
+  CheckCircle,
+  ExternalLink,
 } from "lucide-react";
+// Paystack Popup JS
+import PaystackPop from "@paystack/inline-js";
 
-const QUICK_AMOUNTS = [5, 10, 25, 50, 100, 200];
+// NGN preset amounts
+const QUICK_AMOUNTS_NGN = [500, 1000, 2000, 5000, 10000, 20000];
 
 const CRYPTO_OPTIONS = [
   { symbol: "BTC", name: "Bitcoin", icon: "₿", color: "text-orange-400", min: "$20" },
@@ -40,17 +45,34 @@ export default function DashboardWallet() {
 
   const { data: balanceData, refetch: refetchBalance } = trpc.wallet.getBalance.useQuery();
   const { data: transactions, refetch: refetchTx } = trpc.wallet.getTransactions.useQuery();
+  const utils = trpc.useUtils();
 
-  const depositMutation = trpc.wallet.deposit.useMutation({
-    onSuccess: () => {
-      toast.success(`$${parseFloat(amount).toFixed(2)} added to your wallet!`);
-      setAmount("");
-      setDepositing(false);
-      refetchBalance();
-      refetchTx();
-    },
+  // Paystack initiate mutation
+  const initiateMutation = trpc.payment.initiate.useMutation({
     onError: (err) => {
       toast.error(err.message);
+      setDepositing(false);
+    },
+  });
+
+  // Paystack verify mutation
+  const verifyMutation = trpc.payment.verify.useMutation({
+    onSuccess: (data) => {
+      if (data.alreadyCredited) {
+        toast.info("Payment already credited to your wallet.");
+      } else {
+        toast.success(
+          `₦${data.amountNaira.toFixed(0)} deposited! ~$${(data.amountUsd ?? 0).toFixed(4)} added to wallet.`
+        );
+      }
+      setAmount("");
+      refetchBalance();
+      refetchTx();
+      utils.payment.history.invalidate();
+      setDepositing(false);
+    },
+    onError: (err) => {
+      toast.error(`Verification failed: ${err.message}`);
       setDepositing(false);
     },
   });
@@ -65,12 +87,32 @@ export default function DashboardWallet() {
     onError: (err) => toast.error(err.message),
   });
 
-  const handleDeposit = () => {
-    const val = parseFloat(amount);
-    if (!val || val < 1) { toast.error("Minimum deposit is $1"); return; }
+  // Launch Paystack Popup
+  const handleDeposit = useCallback(async () => {
+    const naira = parseFloat(amount);
+    if (!naira || naira < 100) {
+      toast.error("Minimum deposit is ₦100");
+      return;
+    }
     setDepositing(true);
-    depositMutation.mutate({ amount: val });
-  };
+    try {
+      const { reference, accessCode } = await initiateMutation.mutateAsync({ amountNaira: naira });
+      const popup = new PaystackPop();
+      popup.resumeTransaction(accessCode, {
+        onSuccess: (_transaction: { reference: string }) => {
+          toast.info("Payment received — verifying...");
+          verifyMutation.mutate({ reference });
+        },
+        onCancel: () => {
+          toast.info("Payment cancelled.");
+          setDepositing(false);
+        },
+      });
+    } catch {
+      // error already handled by initiateMutation.onError
+      setDepositing(false);
+    }
+  }, [amount, initiateMutation, verifyMutation]);
 
   const handleWithdraw = () => {
     const val = parseFloat(withdrawAmount);
@@ -109,6 +151,9 @@ export default function DashboardWallet() {
   const totalDeposited = (transactions ?? []).filter(t => t.type === "deposit").reduce((s, t) => s + parseFloat(t.amount), 0);
   const totalSpent = (transactions ?? []).filter(t => t.type === "purchase").reduce((s, t) => s + parseFloat(t.amount), 0);
   const totalRefunded = (transactions ?? []).filter(t => t.type === "refund").reduce((s, t) => s + parseFloat(t.amount), 0);
+
+  const nairaPreview = parseFloat(amount);
+  const usdPreview = nairaPreview >= 100 ? nairaPreview * 0.00065 : 0;
 
   return (
     <DashboardShell title="Wallet" subtitle="Manage your balance, deposits, withdrawals, and transactions.">
@@ -167,9 +212,12 @@ export default function DashboardWallet() {
 
           {activeTab === "deposit" && (
             <div>
-              <p className="text-sm text-muted-foreground mb-4">Add funds to your wallet instantly</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Deposit via card, bank transfer, or USSD — powered by Paystack
+              </p>
+              {/* Quick NGN amounts */}
               <div className="grid grid-cols-3 gap-2 mb-4">
-                {QUICK_AMOUNTS.map((a) => (
+                {QUICK_AMOUNTS_NGN.map((a) => (
                   <button
                     key={a}
                     onClick={() => setAmount(String(a))}
@@ -179,31 +227,54 @@ export default function DashboardWallet() {
                         : "glass border-white/10 text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    ${a}
+                    ₦{a.toLocaleString()}
                   </button>
                 ))}
               </div>
+              {/* Custom amount */}
               <div className="relative mb-4">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-bold">₦</span>
                 <Input
                   type="number"
-                  placeholder="Custom amount"
+                  placeholder="Custom amount (min ₦100)"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="pl-9 bg-white/5 border-white/10 focus:border-primary/50"
-                  min="1"
-                  max="10000"
+                  className="pl-8 bg-white/5 border-white/10 focus:border-primary/50"
+                  min="100"
+                  max="1000000"
                 />
               </div>
+              {/* USD preview */}
+              {nairaPreview >= 100 && (
+                <div className="glass rounded-xl p-3 mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    ₦{nairaPreview.toLocaleString()} ≈{" "}
+                    <span className="text-foreground font-semibold">${usdPreview.toFixed(4)} USD</span>{" "}
+                    will be added to your wallet
+                  </p>
+                </div>
+              )}
               <Button
                 className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0"
                 onClick={handleDeposit}
-                disabled={depositing || !amount}
+                disabled={depositing || !amount || nairaPreview < 100}
               >
-                {depositing ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                {depositing ? "Processing..." : `Add ${amount ? `$${parseFloat(amount).toFixed(2)}` : "Funds"}`}
+                {depositing ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-2" />
+                )}
+                {depositing
+                  ? "Opening Paystack..."
+                  : `Pay ₦${nairaPreview >= 100 ? nairaPreview.toLocaleString() : ""} via Paystack`}
               </Button>
-              <p className="text-xs text-muted-foreground mt-3 text-center">Demo mode: funds are added instantly for testing</p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Shield className="w-3 h-3 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Secured by Paystack · Card, Bank Transfer, USSD
+                </p>
+              </div>
             </div>
           )}
 
@@ -283,14 +354,35 @@ export default function DashboardWallet() {
             <h2 className="text-base font-semibold text-foreground mb-4">Payment Methods</h2>
             <div className="space-y-3">
               {[
-                { icon: CreditCard, label: "Credit / Debit Card", sub: "Visa, Mastercard, Amex", badge: "Popular" },
-                { icon: Bitcoin, label: "Cryptocurrency", sub: "BTC, ETH, USDT, LTC, BNB, SOL", badge: "Fast" },
-                { icon: DollarSign, label: "PayPal", sub: "Instant transfer", badge: null },
-              ].map(({ icon: Icon, label, sub, badge }) => (
+                {
+                  icon: CreditCard,
+                  label: "Paystack",
+                  sub: "Card, Bank Transfer, USSD",
+                  badge: "Active",
+                  badgeColor: "bg-emerald-500/20 text-emerald-400",
+                  onClick: () => setActiveTab("deposit"),
+                },
+                {
+                  icon: Bitcoin,
+                  label: "Cryptocurrency",
+                  sub: "BTC, ETH, USDT, LTC, BNB, SOL",
+                  badge: "Soon",
+                  badgeColor: "bg-amber-500/20 text-amber-400",
+                  onClick: () => setActiveTab("crypto"),
+                },
+                {
+                  icon: ExternalLink,
+                  label: "PayPal",
+                  sub: "Instant transfer",
+                  badge: "Soon",
+                  badgeColor: "bg-amber-500/20 text-amber-400",
+                  onClick: () => toast.info("PayPal integration coming soon"),
+                },
+              ].map(({ icon: Icon, label, sub, badge, badgeColor, onClick }) => (
                 <div
                   key={label}
                   className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:border-white/10 transition-all"
-                  onClick={() => toast.info("Payment gateway integration coming soon")}
+                  onClick={onClick}
                 >
                   <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
                     <Icon className="w-4 h-4 text-muted-foreground" />
@@ -299,7 +391,11 @@ export default function DashboardWallet() {
                     <p className="text-sm font-medium text-foreground">{label}</p>
                     <p className="text-xs text-muted-foreground">{sub}</p>
                   </div>
-                  {badge && <span className="text-xs badge-purple px-2 py-0.5 rounded-full">{badge}</span>}
+                  {badge && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badgeColor}`}>
+                      {badge}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

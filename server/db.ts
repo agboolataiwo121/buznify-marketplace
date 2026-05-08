@@ -21,6 +21,7 @@ import {
   virtualNumbers,
   walletTransactions,
   wishlists,
+  payments,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -687,4 +688,37 @@ export async function revokeVendorApiKey(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(vendorApiKeys).set({ isActive: false }).where(eq(vendorApiKeys.id, id));
+}
+
+// ─── Payments (Paystack) ───────────────────────────────────────────────────────
+export async function createPayment(data: typeof payments.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(payments).values(data);
+  return result;
+}
+
+export async function getPaymentByReference(reference: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(payments).where(eq(payments.reference, reference)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updatePayment(reference: string, data: Partial<typeof payments.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(payments).set(data).where(eq(payments.reference, reference));
+}
+
+export async function getPaymentsByUser(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(payments).where(eq(payments.userId, userId)).orderBy(desc(payments.createdAt)).limit(limit);
+}
+
+export async function getAllPayments(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(payments).orderBy(desc(payments.createdAt)).limit(limit).offset(offset);
 }

@@ -98,6 +98,19 @@ import {
   normalizeSmmStatus,
   type SmmPanel,
 } from "./smm";
+import {
+  initializeTransaction as paystackInit,
+  verifyTransaction as paystackVerify,
+  generateReference,
+  getPaystackBalance,
+} from "./paystack";
+import {
+  createPayment,
+  getPaymentByReference,
+  updatePayment,
+  getPaymentsByUser,
+  getAllPayments,
+} from "./db";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1554,6 +1567,134 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
         await revokeVendorApiKey(input.id);
         return { success: true };
       }),
+  }),
+
+  // ── Payments (Paystack) ──────────────────────────────────────────────────
+  payment: router({
+    /**
+     * Initialize a Paystack transaction for wallet top-up.
+     * Returns the access_code needed by the Paystack Popup JS.
+     */
+    initiate: protectedProcedure
+      .input(
+        z.object({
+          amountNaira: z.number().min(100, "Minimum deposit is ₦100").max(1_000_000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "Please update your email before making a deposit" });
+
+        const reference = generateReference(ctx.user.id);
+
+        // Persist pending payment record
+        await createPayment({
+          userId: ctx.user.id,
+          reference,
+          amountNaira: input.amountNaira.toFixed(2),
+          currency: "NGN",
+          status: "pending",
+          metadata: JSON.stringify({ userId: ctx.user.id }),
+        });
+
+        const data = await paystackInit({
+          email: user.email,
+          amountNaira: input.amountNaira,
+          reference,
+          metadata: { userId: ctx.user.id, userName: user.name },
+        });
+
+        // Store access_code for popup
+        await updatePayment(reference, { accessCode: data.access_code });
+
+        return {
+          reference,
+          accessCode: data.access_code,
+          authorizationUrl: data.authorization_url,
+        };
+      }),
+
+    /**
+     * Verify a completed Paystack transaction and credit the user's wallet.
+     * Safe to call multiple times — idempotent via reference check.
+     */
+    verify: protectedProcedure
+      .input(z.object({ reference: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const payment = await getPaymentByReference(input.reference);
+        if (!payment) throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+        if (payment.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+        // Already processed — return cached result
+        if (payment.status === "success") {
+          return { success: true, alreadyCredited: true, amountNaira: parseFloat(payment.amountNaira) };
+        }
+
+        const data = await paystackVerify(input.reference);
+
+        if (data.status !== "success") {
+          await updatePayment(input.reference, { status: data.status as any, gatewayResponse: data.gateway_response });
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Payment ${data.status}: ${data.gateway_response}` });
+        }
+
+        // Verify amount matches
+        const paidNaira = data.amount / 100; // Paystack returns kobo
+        const expectedNaira = parseFloat(payment.amountNaira);
+        if (Math.abs(paidNaira - expectedNaira) > 1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Amount mismatch — please contact support" });
+        }
+
+        // Credit wallet (convert NGN to USD at ~1 NGN = 0.00065 USD)
+        const NGN_TO_USD = 0.00065;
+        const amountUsd = paidNaira * NGN_TO_USD;
+
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const balanceBefore = parseFloat(user.balance ?? "0");
+        const balanceAfter = balanceBefore + amountUsd;
+
+        await updateUserBalance(ctx.user.id, balanceAfter.toFixed(6));
+
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "deposit",
+          amount: amountUsd.toFixed(6),
+          balanceBefore: balanceBefore.toFixed(6),
+          balanceAfter: balanceAfter.toFixed(6),
+          description: `Paystack deposit ₦${paidNaira.toFixed(0)} via ${data.channel}`,
+          referenceId: input.reference,
+          status: "completed",
+        });
+
+        await updatePayment(input.reference, {
+          status: "success",
+          amountUsd: amountUsd.toFixed(6),
+          channel: data.channel,
+          paystackId: String(data.id),
+          gatewayResponse: data.gateway_response,
+          paidAt: data.paid_at ? new Date(data.paid_at) : new Date(),
+        });
+
+        return { success: true, alreadyCredited: false, amountNaira: paidNaira, amountUsd };
+      }),
+
+    /** Get the current user's payment history */
+    history: protectedProcedure.query(async ({ ctx }) => {
+      return getPaymentsByUser(ctx.user.id);
+    }),
+
+    /** Admin: get all payments */
+    adminAll: adminProcedure
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .query(async ({ input }) => {
+        return getAllPayments(input.limit, input.offset);
+      }),
+
+    /** Admin: get Paystack account balance */
+    adminBalance: adminProcedure.query(async () => {
+      return getPaystackBalance();
+    }),
   }),
 
   // ── Scheduled endpoint ────────────────────────────────────────────────────

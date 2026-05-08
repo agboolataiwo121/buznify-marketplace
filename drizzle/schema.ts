@@ -350,3 +350,23 @@ export const vendorApiKeys = mysqlTable("vendor_api_keys", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type VendorApiKey = typeof vendorApiKeys.$inferSelect;
+
+// ─── Paystack Payments ────────────────────────────────────────────────────────
+export const payments = mysqlTable("payments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  reference: varchar("reference", { length: 128 }).notNull().unique(),
+  amountNaira: decimal("amountNaira", { precision: 10, scale: 2 }).notNull(),
+  amountUsd: decimal("amountUsd", { precision: 10, scale: 6 }),
+  currency: varchar("currency", { length: 10 }).default("NGN").notNull(),
+  status: mysqlEnum("status", ["pending", "success", "failed", "abandoned"]).default("pending").notNull(),
+  channel: varchar("channel", { length: 64 }),
+  paystackId: varchar("paystackId", { length: 64 }),
+  accessCode: varchar("accessCode", { length: 128 }),
+  gatewayResponse: text("gatewayResponse"),
+  paidAt: timestamp("paidAt"),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Payment = typeof payments.$inferSelect;
