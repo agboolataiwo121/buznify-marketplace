@@ -14,6 +14,8 @@ import {
   MessageSquare,
   Settings,
   ChevronRight,
+  Shield,
+  Star,
 } from "lucide-react";
 
 const userNavItems = [
@@ -23,6 +25,8 @@ const userNavItems = [
   { href: "/dashboard/referrals", label: "Referrals", icon: Users },
   { href: "/dashboard/sms-inbox", label: "SMS Inbox", icon: Phone },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
+  { href: "/dashboard/security", label: "Security", icon: Shield },
+  { href: "/dashboard/loyalty", label: "Loyalty Rewards", icon: Star },
   { href: "/support", label: "Support", icon: MessageSquare },
 ];
 

@@ -1,0 +1,35 @@
+{
+  "name": "Buznify — Digital Marketplace",
+  "short_name": "Buznify",
+  "description": "Premium digital marketplace for social media accounts, growth services, and virtual numbers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050510",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["shopping", "business", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Marketplace",
+      "url": "/marketplace",
+      "description": "Browse digital products"
+    },
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Your account dashboard"
+    },
+    {
+      "name": "Growth Services",
+      "url": "/growth",
+      "description": "Social media growth packages"
+    }
+  ]
+}

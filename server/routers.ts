@@ -745,6 +745,45 @@ export const appRouter = router({
       }),
   }),
 
+  // ── AI Chat ──────────────────────────────────────────────────────────────
+  ai: router({
+    chat: publicProcedure
+      .input(
+        z.object({
+          message: z.string().min(1).max(1000),
+          history: z
+            .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+            .optional()
+            .default([]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import("./_core/llm");
+        const systemPrompt = `You are Buznify AI, a helpful support assistant for Buznify — a premium digital marketplace platform where users can buy social media accounts, streaming accounts, gaming accounts, virtual numbers, and social media growth services.
+
+Key facts about Buznify:
+- Instant automated delivery for all digital products
+- Wallet-based payment system (users deposit funds, then spend)
+- Referral program: earn 5% commission on referrals
+- Loyalty points system: earn points on every purchase
+- Support tickets for complex issues
+- Vendor system: approved vendors can list products
+- Virtual numbers: temporary numbers for SMS verification, auto-refresh
+- Growth services: followers, subscribers, views, likes for major platforms
+
+Be concise, friendly, and helpful. If you cannot answer something, direct the user to open a support ticket at /support. Never make up specific pricing — tell users to check the marketplace.`;
+
+        const messages = [
+          { role: "system" as const, content: systemPrompt },
+          ...input.history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+          { role: "user" as const, content: input.message },
+        ];
+
+        const response = await invokeLLM({ messages });
+        const reply = (response as { choices: Array<{ message: { content: string } }> }).choices?.[0]?.message?.content ?? "I'm sorry, I couldn't process your request. Please try again or open a support ticket.";
+        return { reply };
+      }),
+  }),
   // ── Scheduled endpoint ────────────────────────────────────────────────────
   scheduled: router({
     updateContent: publicProcedure

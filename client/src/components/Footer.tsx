@@ -23,13 +23,22 @@ const footerLinks = {
     { label: "Security", href: "/security" },
     { label: "Support Center", href: "/support" },
   ],
+  Company: [
+    { label: "About Us", href: "/about" },
+    { label: "Contact", href: "/contact" },
+    { label: "Vendor Program", href: "/vendor-program" },
+    { label: "Careers", href: "/careers" },
+    { label: "Changelog", href: "/changelog" },
+    { label: "System Status", href: "/status" },
+    { label: "API Docs", href: "/api-docs" },
+  ],
 };
 
 export default function Footer() {
   return (
     <footer className="border-t border-white/5 mt-24">
       <div className="container py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10">
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">

@@ -20,9 +20,19 @@ import AdminPanel from "./pages/AdminPanel";
 import Support from "./pages/Support";
 import TicketDetail from "./pages/TicketDetail";
 import TermsOfService from "./pages/TermsOfService";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import VendorProgram from "./pages/VendorProgram";
+import ApiDocs from "./pages/ApiDocs";
+import Changelog from "./pages/Changelog";
+import Status from "./pages/Status";
+import Careers from "./pages/Careers";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import Security from "./pages/Security";
+import DashboardSecurity from "./pages/DashboardSecurity";
+import DashboardLoyalty from "./pages/DashboardLoyalty";
+import AISupportChat from "./components/AISupportChat";
 
 function Router() {
   return (
@@ -46,6 +56,15 @@ function Router() {
       <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/refund" component={RefundPolicy} />
       <Route path="/security" component={Security} />
+      <Route path="/about" component={About} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/vendor-program" component={VendorProgram} />
+      <Route path="/api-docs" component={ApiDocs} />
+      <Route path="/changelog" component={Changelog} />
+      <Route path="/status" component={Status} />
+      <Route path="/careers" component={Careers} />
+      <Route path="/dashboard/security" component={DashboardSecurity} />
+      <Route path="/dashboard/loyalty" component={DashboardLoyalty} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -59,6 +78,7 @@ function App() {
         <TooltipProvider>
           <Toaster richColors position="top-right" />
           <Router />
+          <AISupportChat />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
