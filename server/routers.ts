@@ -1,28 +1,759 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import {
+  addSmsMessage,
+  addTicketMessage,
+  createCoupon,
+  createNotification,
+  createOrder,
+  createProduct,
+  createReferral,
+  createReview,
+  createTicket,
+  createVirtualNumber,
+  createWalletTransaction,
+  deleteProduct,
+  getAllCoupons,
+  getAllOrders,
+  getAllTickets,
+  getAllUsers,
+  getCouponByCode,
+  getDb,
+  getGrowthServices,
+  getNotifications,
+  getOrderById,
+  getOrdersByUser,
+  getProductById,
+  getProducts,
+  getReferralsByReferrer,
+  getReviewsByProduct,
+  getSmsMessages,
+  getTicketById,
+  getTicketMessages,
+  getTicketsByUser,
+  getUserById,
+  getVirtualNumbers,
+  getWalletTransactions,
+  incrementCouponUsage,
+  markAllNotificationsRead,
+  markNotificationRead,
+  seedDemoProducts,
+  seedGrowthServices,
+  updateOrderStatus,
+  updateProduct,
+  updateTicketStatus,
+  updateUserBalance,
+  updateUserRole,
+} from "./db";
+import { products, users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
+// ─── Admin guard ──────────────────────────────────────────────────────────────
+const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+  return next({ ctx });
+});
+
+// ─── Vendor guard ─────────────────────────────────────────────────────────────
+const vendorProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "vendor" && ctx.user.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Vendor access required" });
+  }
+  return next({ ctx });
+});
+
+// ─── App Router ───────────────────────────────────────────────────────────────
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // ── Products ──────────────────────────────────────────────────────────────
+  products: router({
+    list: publicProcedure
+      .input(
+        z.object({
+          category: z.string().optional(),
+          search: z.string().optional(),
+          limit: z.number().min(1).max(50).default(20),
+          offset: z.number().min(0).default(0),
+        })
+      )
+      .query(async ({ input }) => {
+        // Seed demo data on first call
+        await seedGrowthServices();
+        return getProducts(input);
+      }),
+
+    getById: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const product = await getProductById(input.id);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+        return product;
+      }),
+
+    create: vendorProcedure
+      .input(
+        z.object({
+          category: z.enum([
+            "social_media_accounts",
+            "streaming_accounts",
+            "gaming_accounts",
+            "virtual_numbers",
+            "growth_services",
+          ]),
+          title: z.string().min(3).max(255),
+          description: z.string().optional(),
+          price: z.string(),
+          originalPrice: z.string().optional(),
+          stock: z.number().min(0),
+          platform: z.string().optional(),
+          deliveryType: z.enum(["instant", "manual"]).default("instant"),
+          deliveryData: z.any().optional(),
+          imageUrl: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        await createProduct({
+          ...input,
+          vendorId: ctx.user.id,
+          status: ctx.user.role === "admin" ? "active" : "pending",
+        });
+        return { success: true };
+      }),
+
+    update: vendorProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          title: z.string().optional(),
+          description: z.string().optional(),
+          price: z.string().optional(),
+          stock: z.number().optional(),
+          status: z.enum(["active", "inactive", "pending", "rejected"]).optional(),
+          deliveryData: z.any().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const product = await getProductById(input.id);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+        if (product.vendorId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const { id, ...data } = input;
+        await updateProduct(id, data);
+        return { success: true };
+      }),
+
+    delete: vendorProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const product = await getProductById(input.id);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+        if (product.vendorId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await deleteProduct(input.id);
+        return { success: true };
+      }),
+
+    vendorProducts: vendorProcedure.query(async ({ ctx }) => {
+      return getProducts({ vendorId: ctx.user.id, status: undefined });
+    }),
+  }),
+
+  // ── Orders ────────────────────────────────────────────────────────────────
+  orders: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          productId: z.number(),
+          quantity: z.number().min(1).default(1),
+          couponCode: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const product = await getProductById(input.productId);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        if (product.status !== "active") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Product is not available" });
+        }
+        if (product.stock < input.quantity) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient stock" });
+        }
+
+        const unitPrice = parseFloat(product.price);
+        let totalAmount = unitPrice * input.quantity;
+        let discountAmount = 0;
+        let couponId: number | undefined;
+
+        // Apply coupon
+        if (input.couponCode) {
+          const coupon = await getCouponByCode(input.couponCode);
+          if (coupon && coupon.isActive && coupon.usedCount < coupon.usageLimit) {
+            if (coupon.discountType === "percentage") {
+              discountAmount = (totalAmount * parseFloat(coupon.discountValue)) / 100;
+            } else {
+              discountAmount = parseFloat(coupon.discountValue);
+            }
+            totalAmount = Math.max(0, totalAmount - discountAmount);
+            couponId = coupon.id;
+          }
+        }
+
+        // Check wallet balance
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const balance = parseFloat(user.balance ?? "0");
+        if (balance < totalAmount) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Insufficient balance. You need $${totalAmount.toFixed(2)} but have $${balance.toFixed(2)}`,
+          });
+        }
+
+        // Deduct balance
+        const newBalance = (balance - totalAmount).toFixed(2);
+        await updateUserBalance(ctx.user.id, newBalance);
+
+        // Create wallet transaction
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "purchase",
+          amount: totalAmount.toFixed(2),
+          balanceBefore: balance.toFixed(2),
+          balanceAfter: newBalance,
+          description: `Purchase: ${product.title}`,
+          referenceId: `prod_${product.id}`,
+          status: "completed",
+        });
+
+        // Increment coupon usage
+        if (couponId) await incrementCouponUsage(couponId);
+
+        // Create order with delivery data (instant delivery)
+        const deliveryData =
+          product.deliveryType === "instant" ? product.deliveryData : null;
+
+        await createOrder({
+          userId: ctx.user.id,
+          productId: product.id,
+          vendorId: product.vendorId,
+          quantity: input.quantity,
+          unitPrice: unitPrice.toFixed(2),
+          totalAmount: totalAmount.toFixed(2),
+          discountAmount: discountAmount.toFixed(2),
+          couponId,
+          status: product.deliveryType === "instant" ? "completed" : "processing",
+          deliveryData,
+          deliveredAt: product.deliveryType === "instant" ? new Date() : undefined,
+        });
+
+        // Update product stock
+        const db = await getDb();
+        if (db) {
+          await db
+            .update(products)
+            .set({
+              stock: product.stock - input.quantity,
+              totalSold: (product.totalSold ?? 0) + input.quantity,
+            })
+            .where(eq(products.id, product.id));
+        }
+
+        // Create notification
+        await createNotification({
+          userId: ctx.user.id,
+          type: "order_completed",
+          title: "Order Completed",
+          message: `Your order for "${product.title}" has been ${product.deliveryType === "instant" ? "delivered" : "placed"}.`,
+          referenceId: `order_${product.id}`,
+        });
+
+        return {
+          success: true,
+          deliveryData: product.deliveryType === "instant" ? deliveryData : null,
+          status: product.deliveryType === "instant" ? "completed" : "processing",
+        };
+      }),
+
+    myOrders: protectedProcedure.query(async ({ ctx }) => {
+      return getOrdersByUser(ctx.user.id);
+    }),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const order = await getOrderById(input.id);
+        if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+        if (order.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        return order;
+      }),
+  }),
+
+  // ── Wallet ────────────────────────────────────────────────────────────────
+  wallet: router({
+    getBalance: protectedProcedure.query(async ({ ctx }) => {
+      const user = await getUserById(ctx.user.id);
+      return { balance: parseFloat(user?.balance ?? "0") };
+    }),
+
+    deposit: protectedProcedure
+      .input(z.object({ amount: z.number().min(1).max(10000) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const currentBalance = parseFloat(user.balance ?? "0");
+        const newBalance = (currentBalance + input.amount).toFixed(2);
+        await updateUserBalance(ctx.user.id, newBalance);
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "deposit",
+          amount: input.amount.toFixed(2),
+          balanceBefore: currentBalance.toFixed(2),
+          balanceAfter: newBalance,
+          description: "Wallet deposit",
+          status: "completed",
+        });
+        return { success: true, newBalance: parseFloat(newBalance) };
+      }),
+
+    getTransactions: protectedProcedure.query(async ({ ctx }) => {
+      return getWalletTransactions(ctx.user.id);
+    }),
+
+    withdraw: protectedProcedure
+      .input(z.object({ amount: z.number().min(1).max(10000) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const currentBalance = parseFloat(user.balance ?? "0");
+        if (currentBalance < input.amount) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+        }
+        const newBalance = (currentBalance - input.amount).toFixed(2);
+        await updateUserBalance(ctx.user.id, newBalance);
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "withdrawal",
+          amount: input.amount.toFixed(2),
+          balanceBefore: currentBalance.toFixed(2),
+          balanceAfter: newBalance,
+          description: "Wallet withdrawal",
+          status: "completed",
+        });
+        return { success: true, newBalance: parseFloat(newBalance) };
+      }),
+  }),
+
+  // ── Growth Services ───────────────────────────────────────────────────────
+  growth: router({
+    list: publicProcedure
+      .input(z.object({ platform: z.string().optional() }))
+      .query(async ({ input }) => {
+        await seedGrowthServices();
+        return getGrowthServices(input.platform);
+      }),
+
+    purchase: protectedProcedure
+      .input(
+        z.object({
+          serviceId: z.number(),
+          targetUrl: z.string().min(1),
+          quantity: z.number().min(1),
+          price: z.number().min(0.01),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const balance = parseFloat(user.balance ?? "0");
+        if (balance < input.price) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+        }
+        const newBalance = (balance - input.price).toFixed(2);
+        await updateUserBalance(ctx.user.id, newBalance);
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "purchase",
+          amount: input.price.toFixed(2),
+          balanceBefore: balance.toFixed(2),
+          balanceAfter: newBalance,
+          description: `Growth service: ${input.quantity} units for ${input.targetUrl}`,
+          status: "completed",
+        });
+        await createNotification({
+          userId: ctx.user.id,
+          type: "order_completed",
+          title: "Growth Service Order Placed",
+          message: `Your order for ${input.quantity} units has been placed and is being processed.`,
+        });
+        return { success: true, newBalance: parseFloat(newBalance) };
+      }),
+  }),
+
+  // ── Virtual Numbers ───────────────────────────────────────────────────────
+  virtualNumbers: router({
+    myNumbers: protectedProcedure.query(async ({ ctx }) => {
+      return getVirtualNumbers(ctx.user.id);
+    }),
+
+    purchase: protectedProcedure
+      .input(
+        z.object({
+          countryCode: z.string(),
+          countryName: z.string(),
+          service: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const price = 1.99;
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const balance = parseFloat(user.balance ?? "0");
+        if (balance < price) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+        }
+
+        const newBalance = (balance - price).toFixed(2);
+        await updateUserBalance(ctx.user.id, newBalance);
+
+        // Generate a fake number for demo
+        const areaCode = Math.floor(200 + Math.random() * 800);
+        const number = `+${input.countryCode}${areaCode}${Math.floor(1000000 + Math.random() * 9000000)}`;
+
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        await createVirtualNumber({
+          userId: ctx.user.id,
+          number,
+          countryCode: input.countryCode,
+          countryName: input.countryName,
+          service: input.service,
+          price: price.toFixed(2),
+          status: "active",
+          expiresAt,
+        });
+
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "purchase",
+          amount: price.toFixed(2),
+          balanceBefore: balance.toFixed(2),
+          balanceAfter: newBalance,
+          description: `Virtual number: ${number}`,
+          status: "completed",
+        });
+
+        // Simulate an incoming SMS after purchase
+        const db = await getDb();
+        if (db) {
+          const nums = await getVirtualNumbers(ctx.user.id);
+          const latest = nums[0];
+          if (latest) {
+            setTimeout(async () => {
+              await addSmsMessage({
+                numberId: latest.id,
+                sender: "System",
+                message: `Your number ${number} is now active and ready to receive SMS.`,
+              });
+            }, 2000);
+          }
+        }
+
+        return { success: true, number };
+      }),
+
+    getSms: protectedProcedure
+      .input(z.object({ numberId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const nums = await getVirtualNumbers(ctx.user.id);
+        const num = nums.find((n) => n.id === input.numberId);
+        if (!num) throw new TRPCError({ code: "FORBIDDEN" });
+        return getSmsMessages(input.numberId);
+      }),
+  }),
+
+  // ── Referrals ─────────────────────────────────────────────────────────────
+  referrals: router({
+    getMyReferrals: protectedProcedure.query(async ({ ctx }) => {
+      const user = await getUserById(ctx.user.id);
+      return {
+        referralCode: user?.referralCode ?? "",
+        referrals: await getReferralsByReferrer(ctx.user.id),
+      };
+    }),
+  }),
+
+  // ── Coupons ───────────────────────────────────────────────────────────────
+  coupons: router({
+    validate: protectedProcedure
+      .input(z.object({ code: z.string(), orderAmount: z.number() }))
+      .query(async ({ input }) => {
+        const coupon = await getCouponByCode(input.code);
+        if (!coupon || !coupon.isActive || coupon.usedCount >= coupon.usageLimit) {
+          return { valid: false, message: "Invalid or expired coupon" };
+        }
+        if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+          return { valid: false, message: "Coupon has expired" };
+        }
+        const minOrder = parseFloat(coupon.minOrderAmount ?? "0");
+        if (input.orderAmount < minOrder) {
+          return { valid: false, message: `Minimum order amount is $${minOrder}` };
+        }
+        let discount = 0;
+        if (coupon.discountType === "percentage") {
+          discount = (input.orderAmount * parseFloat(coupon.discountValue)) / 100;
+        } else {
+          discount = parseFloat(coupon.discountValue);
+        }
+        return {
+          valid: true,
+          discount,
+          discountType: coupon.discountType,
+          discountValue: parseFloat(coupon.discountValue),
+          message: `Coupon applied! You save $${discount.toFixed(2)}`,
+        };
+      }),
+
+    // Admin
+    list: adminProcedure.query(async () => getAllCoupons()),
+    create: adminProcedure
+      .input(
+        z.object({
+          code: z.string().min(3).max(32),
+          discountType: z.enum(["percentage", "fixed"]),
+          discountValue: z.string(),
+          usageLimit: z.number().default(100),
+          minOrderAmount: z.string().optional(),
+          expiresAt: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await createCoupon({
+          ...input,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+  reviews: router({
+    getByProduct: publicProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ input }) => getReviewsByProduct(input.productId)),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          productId: z.number(),
+          orderId: z.number(),
+          rating: z.number().min(1).max(5),
+          comment: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        await createReview({ ...input, userId: ctx.user.id });
+        return { success: true };
+      }),
+  }),
+
+  // ── Support ───────────────────────────────────────────────────────────────
+  support: router({
+    myTickets: protectedProcedure.query(async ({ ctx }) => getTicketsByUser(ctx.user.id)),
+
+    getTicket: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const ticket = await getTicketById(input.id);
+        if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+        if (ticket.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const messages = await getTicketMessages(input.id);
+        return { ticket, messages };
+      }),
+
+    createTicket: protectedProcedure
+      .input(
+        z.object({
+          subject: z.string().min(5).max(255),
+          category: z.enum(["billing", "technical", "account", "order", "other"]),
+          priority: z.enum(["low", "medium", "high", "urgent"]),
+          message: z.string().min(10),
+          orderId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { message, ...ticketData } = input;
+        const result = await createTicket({ ...ticketData, userId: ctx.user.id });
+        const db = await getDb();
+        if (db) {
+          const tickets = await getTicketsByUser(ctx.user.id);
+          const latest = tickets[0];
+          if (latest) {
+            await addTicketMessage({
+              ticketId: latest.id,
+              userId: ctx.user.id,
+              message,
+              isStaff: false,
+            });
+          }
+        }
+        return { success: true };
+      }),
+
+    addMessage: protectedProcedure
+      .input(z.object({ ticketId: z.number(), message: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const ticket = await getTicketById(input.ticketId);
+        if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+        if (ticket.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await addTicketMessage({
+          ticketId: input.ticketId,
+          userId: ctx.user.id,
+          message: input.message,
+          isStaff: ctx.user.role === "admin",
+        });
+        return { success: true };
+      }),
+
+    // Admin
+    allTickets: adminProcedure.query(async () => getAllTickets()),
+    updateStatus: adminProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          status: z.enum(["open", "in_progress", "resolved", "closed"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await updateTicketStatus(input.id, input.status);
+        return { success: true };
+      }),
+  }),
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  notifications: router({
+    getAll: protectedProcedure.query(async ({ ctx }) => getNotifications(ctx.user.id)),
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await markNotificationRead(input.id);
+        return { success: true };
+      }),
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await markAllNotificationsRead(ctx.user.id);
+      return { success: true };
+    }),
+  }),
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  admin: router({
+    getStats: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { users: 0, orders: 0, products: 0, revenue: 0 };
+      const [allUsers, allOrders, allProducts] = await Promise.all([
+        getAllUsers(1000),
+        getAllOrders(1000),
+        getProducts({ limit: 1000, status: "active" }),
+      ]);
+      const revenue = allOrders
+        .filter((o) => o.status === "completed")
+        .reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
+      return {
+        users: allUsers.length,
+        orders: allOrders.length,
+        products: allProducts.length,
+        revenue: revenue.toFixed(2),
+        recentOrders: allOrders.slice(0, 10),
+        recentUsers: allUsers.slice(0, 10),
+      };
+    }),
+
+    getUsers: adminProcedure.query(async () => getAllUsers(100)),
+
+    updateUserRole: adminProcedure
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "vendor"]) }))
+      .mutation(async ({ input }) => {
+        await updateUserRole(input.userId, input.role);
+        return { success: true };
+      }),
+
+    getProducts: adminProcedure.query(async () => getProducts({ limit: 100, status: undefined })),
+
+    approveProduct: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await updateProduct(input.id, { status: "active" });
+        return { success: true };
+      }),
+
+    rejectProduct: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await updateProduct(input.id, { status: "rejected" });
+        return { success: true };
+      }),
+
+    getOrders: adminProcedure.query(async () => getAllOrders(100)),
+
+    seedDemo: adminProcedure.mutation(async ({ ctx }) => {
+      await seedDemoProducts(ctx.user.id);
+      await seedGrowthServices();
+      return { success: true };
+    }),
+
+    creditUser: adminProcedure
+      .input(z.object({ userId: z.number(), amount: z.number().min(0.01) }))
+      .mutation(async ({ input }) => {
+        const user = await getUserById(input.userId);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const currentBalance = parseFloat(user.balance ?? "0");
+        const newBalance = (currentBalance + input.amount).toFixed(2);
+        await updateUserBalance(input.userId, newBalance);
+        await createWalletTransaction({
+          userId: input.userId,
+          type: "admin_credit",
+          amount: input.amount.toFixed(2),
+          balanceBefore: currentBalance.toFixed(2),
+          balanceAfter: newBalance,
+          description: "Admin credit",
+          status: "completed",
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ── Scheduled endpoint ────────────────────────────────────────────────────
+  scheduled: router({
+    updateContent: publicProcedure
+      .input(z.object({ type: z.string(), data: z.any() }))
+      .mutation(async ({ input }) => {
+        // Placeholder for scheduled task integration
+        return { success: true, type: input.type };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

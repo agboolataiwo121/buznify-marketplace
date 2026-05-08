@@ -1,22 +1,28 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  decimal,
+  boolean,
+  json,
+} from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
+// ─── Users ───────────────────────────────────────────────────────────────────
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "vendor"]).default("user").notNull(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  referralCode: varchar("referralCode", { length: 16 }).unique(),
+  referredBy: int("referredBy"),
+  avatarUrl: text("avatarUrl"),
+  isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -25,4 +31,234 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// ─── Products ─────────────────────────────────────────────────────────────────
+export const products = mysqlTable("products", {
+  id: int("id").autoincrement().primaryKey(),
+  vendorId: int("vendorId").notNull(),
+  category: mysqlEnum("category", [
+    "social_media_accounts",
+    "streaming_accounts",
+    "gaming_accounts",
+    "virtual_numbers",
+    "growth_services",
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  originalPrice: decimal("originalPrice", { precision: 10, scale: 2 }),
+  stock: int("stock").default(0).notNull(),
+  platform: varchar("platform", { length: 64 }),
+  deliveryType: mysqlEnum("deliveryType", ["instant", "manual"]).default("instant").notNull(),
+  deliveryData: json("deliveryData"), // stored account credentials / delivery info
+  imageUrl: text("imageUrl"),
+  tags: json("tags"),
+  status: mysqlEnum("status", ["active", "inactive", "pending", "rejected"]).default("pending").notNull(),
+  totalSold: int("totalSold").default(0).notNull(),
+  avgRating: decimal("avgRating", { precision: 3, scale: 2 }).default("0.00"),
+  reviewCount: int("reviewCount").default(0).notNull(),
+  featured: boolean("featured").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = typeof products.$inferInsert;
+
+// ─── Coupons ──────────────────────────────────────────────────────────────────
+export const coupons = mysqlTable("coupons", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  discountType: mysqlEnum("discountType", ["percentage", "fixed"]).notNull(),
+  discountValue: decimal("discountValue", { precision: 10, scale: 2 }).notNull(),
+  minOrderAmount: decimal("minOrderAmount", { precision: 10, scale: 2 }).default("0.00"),
+  usageLimit: int("usageLimit").default(100).notNull(),
+  usedCount: int("usedCount").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Coupon = typeof coupons.$inferSelect;
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+export const orders = mysqlTable("orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productId: int("productId").notNull(),
+  vendorId: int("vendorId").notNull(),
+  quantity: int("quantity").default(1).notNull(),
+  unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
+  discountAmount: decimal("discountAmount", { precision: 10, scale: 2 }).default("0.00"),
+  couponId: int("couponId"),
+  status: mysqlEnum("status", [
+    "pending",
+    "processing",
+    "completed",
+    "failed",
+    "refunded",
+    "cancelled",
+  ]).default("pending").notNull(),
+  deliveryData: json("deliveryData"), // delivered credentials/info
+  deliveredAt: timestamp("deliveredAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;
+
+// ─── Wallet Transactions ──────────────────────────────────────────────────────
+export const walletTransactions = mysqlTable("wallet_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["deposit", "withdrawal", "purchase", "refund", "referral_reward", "admin_credit"]).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  balanceBefore: decimal("balanceBefore", { precision: 10, scale: 2 }).notNull(),
+  balanceAfter: decimal("balanceAfter", { precision: 10, scale: 2 }).notNull(),
+  description: text("description"),
+  referenceId: varchar("referenceId", { length: 64 }),
+  status: mysqlEnum("status", ["pending", "completed", "failed"]).default("completed").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+
+// ─── Virtual Numbers ──────────────────────────────────────────────────────────
+export const virtualNumbers = mysqlTable("virtual_numbers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  number: varchar("number", { length: 20 }).notNull(),
+  countryCode: varchar("countryCode", { length: 4 }).notNull(),
+  countryName: varchar("countryName", { length: 64 }).notNull(),
+  service: varchar("service", { length: 64 }), // e.g. "WhatsApp", "Telegram"
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["active", "expired", "cancelled"]).default("active").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VirtualNumber = typeof virtualNumbers.$inferSelect;
+
+// ─── SMS Messages ─────────────────────────────────────────────────────────────
+export const smsMessages = mysqlTable("sms_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  numberId: int("numberId").notNull(),
+  sender: varchar("sender", { length: 64 }),
+  message: text("message").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  receivedAt: timestamp("receivedAt").defaultNow().notNull(),
+});
+
+export type SmsMessage = typeof smsMessages.$inferSelect;
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(),
+  referredId: int("referredId").notNull(),
+  rewardAmount: decimal("rewardAmount", { precision: 10, scale: 2 }).default("5.00").notNull(),
+  status: mysqlEnum("status", ["pending", "credited", "cancelled"]).default("pending").notNull(),
+  creditedAt: timestamp("creditedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+export const reviews = mysqlTable("reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productId: int("productId").notNull(),
+  orderId: int("orderId").notNull(),
+  rating: int("rating").notNull(), // 1-5
+  comment: text("comment"),
+  isVerified: boolean("isVerified").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Review = typeof reviews.$inferSelect;
+
+// ─── Support Tickets ──────────────────────────────────────────────────────────
+export const supportTickets = mysqlTable("support_tickets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  category: mysqlEnum("category", ["billing", "technical", "account", "order", "other"]).default("other").notNull(),
+  priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
+  status: mysqlEnum("status", ["open", "in_progress", "resolved", "closed"]).default("open").notNull(),
+  orderId: int("orderId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SupportTicket = typeof supportTickets.$inferSelect;
+
+// ─── Ticket Messages ──────────────────────────────────────────────────────────
+export const ticketMessages = mysqlTable("ticket_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  ticketId: int("ticketId").notNull(),
+  userId: int("userId").notNull(),
+  message: text("message").notNull(),
+  isStaff: boolean("isStaff").default(false).notNull(),
+  attachmentUrl: text("attachmentUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TicketMessage = typeof ticketMessages.$inferSelect;
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", [
+    "order_completed",
+    "order_failed",
+    "wallet_credit",
+    "wallet_debit",
+    "referral_reward",
+    "ticket_reply",
+    "system",
+    "promotion",
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  referenceId: varchar("referenceId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+
+// ─── Growth Services ──────────────────────────────────────────────────────────
+export const growthServices = mysqlTable("growth_services", {
+  id: int("id").autoincrement().primaryKey(),
+  platform: mysqlEnum("platform", [
+    "instagram",
+    "tiktok",
+    "youtube",
+    "telegram",
+    "twitter",
+    "facebook",
+  ]).notNull(),
+  serviceType: mysqlEnum("serviceType", [
+    "followers",
+    "subscribers",
+    "views",
+    "likes",
+    "comments",
+    "members",
+    "page_likes",
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  quantity: int("quantity").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  deliveryTime: varchar("deliveryTime", { length: 64 }).default("24-48 hours"),
+  isActive: boolean("isActive").default(true).notNull(),
+  featured: boolean("featured").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type GrowthService = typeof growthServices.$inferSelect;
