@@ -26,6 +26,11 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  // Email/Password auth fields
+  passwordHash: text("passwordHash"),
+  emailVerified: boolean("emailVerified").default(false).notNull(),
+  resetToken: varchar("resetToken", { length: 128 }),
+  resetTokenExpiry: timestamp("resetTokenExpiry"),
 });
 
 export type User = typeof users.$inferSelect;

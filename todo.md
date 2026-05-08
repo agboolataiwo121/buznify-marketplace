@@ -294,3 +294,16 @@
 - [x] Wire deposit button in DashboardWallet.tsx to the new modal
 - [x] Show payment history in wallet page
 - [x] Write vitest for Paystack secret key validation
+
+## Phase 18 — Email/Password Authentication
+- [ ] Add passwordHash, emailVerified, resetToken, resetTokenExpiry fields to users table
+- [ ] Install bcryptjs for password hashing
+- [ ] Add email/password register procedure (hash password, create user, issue JWT session)
+- [ ] Add email/password login procedure (verify password, issue JWT session)
+- [ ] Add forgotPassword procedure (generate reset token, store expiry)
+- [ ] Add resetPassword procedure (verify token, update hash, clear token)
+- [ ] Build Login page with Email/Password tab alongside OAuth button
+- [ ] Build Register page (name, email, password, confirm password)
+- [ ] Build Forgot Password page
+- [ ] Build Reset Password page (token from URL)
+- [ ] Wire auth routes in App.tsx

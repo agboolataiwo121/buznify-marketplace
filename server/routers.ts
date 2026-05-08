@@ -110,7 +110,12 @@ import {
   updatePayment,
   getPaymentsByUser,
   getAllPayments,
+  getUserByEmail,
+  updateUserPasswordHash,
+  updateUserResetToken,
+  getUserByResetToken,
 } from "./db";
+import bcrypt from "bcryptjs";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -140,6 +145,114 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+
+    /** Register with email + password */
+    register: publicProcedure
+      .input(
+        z.object({
+          name: z.string().min(2).max(64),
+          email: z.string().email(),
+          password: z.string().min(8).max(128),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { sdk } = await import("./_core/sdk");
+        const { ONE_YEAR_MS } = await import("@shared/const");
+        // Check if email already taken
+        const existing = await getUserByEmail(input.email);
+        if (existing) {
+          throw new TRPCError({ code: "CONFLICT", message: "Email already registered" });
+        }
+        const passwordHash = await bcrypt.hash(input.password, 12);
+        // Create a unique openId for email-auth users
+        const openId = `email_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Insert user
+        const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        await db.insert(users).values({
+          openId,
+          name: input.name,
+          email: input.email,
+          loginMethod: "email",
+          passwordHash,
+          emailVerified: false,
+          referralCode,
+          lastSignedIn: new Date(),
+        });
+        const user = await getUserByEmail(input.email);
+        if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Issue session cookie
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "" });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true, user: { id: user.id, name: user.name, email: user.email } };
+      }),
+
+    /** Login with email + password */
+    login: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { sdk } = await import("./_core/sdk");
+        const { ONE_YEAR_MS } = await import("@shared/const");
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.passwordHash) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+        }
+        const valid = await bcrypt.compare(input.password, user.passwordHash);
+        if (!valid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+        }
+        if (!user.isActive) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Account is suspended" });
+        }
+        // Issue session cookie
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "" });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true, user: { id: user.id, name: user.name, email: user.email } };
+      }),
+
+    /** Request password reset — returns token (in production, email it) */
+    forgotPassword: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const user = await getUserByEmail(input.email);
+        // Always return success to prevent user enumeration
+        if (!user || !user.passwordHash) return { success: true };
+        const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+        await updateUserResetToken(user.id, token, expiry);
+        // In production, send email. For now, return token in response (dev mode).
+        return { success: true, resetToken: token };
+      }),
+
+    /** Reset password using token */
+    resetPassword: publicProcedure
+      .input(
+        z.object({
+          token: z.string().min(1),
+          newPassword: z.string().min(8).max(128),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const user = await getUserByResetToken(input.token);
+        if (!user) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired reset token" });
+        }
+        if (user.resetTokenExpiry && user.resetTokenExpiry < new Date()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Reset token has expired" });
+        }
+        const passwordHash = await bcrypt.hash(input.newPassword, 12);
+        await updateUserPasswordHash(user.id, passwordHash);
+        await updateUserResetToken(user.id, null, null);
+        return { success: true };
+      }),
   }),
 
   // ── Products ──────────────────────────────────────────────────────────────

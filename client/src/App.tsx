@@ -37,6 +37,10 @@ import DashboardGrowthOrders from "./pages/DashboardGrowthOrders";
 import DashboardRefunds from "./pages/DashboardRefunds";
 import DashboardPayouts from "./pages/DashboardPayouts";
 import DashboardApiKeys from "./pages/DashboardApiKeys";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import AISupportChat from "./components/AISupportChat";
 import { ExitIntentOffer } from "./components/ConversionWidgets";
 
@@ -76,6 +80,10 @@ function Router() {
       <Route path="/dashboard/refunds" component={DashboardRefunds} />
       <Route path="/dashboard/payouts" component={DashboardPayouts} />
       <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
