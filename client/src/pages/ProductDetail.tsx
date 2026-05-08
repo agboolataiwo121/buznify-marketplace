@@ -5,6 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { CountdownTimer, PeopleViewing, StockUrgency } from "@/components/ConversionWidgets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -216,6 +217,12 @@ export default function ProductDetail() {
           {/* Purchase sidebar */}
           <div className="space-y-4">
             <div className="glass-card rounded-2xl p-6 sticky top-24">
+              {/* Conversion widgets */}
+              <div className="space-y-2 mb-4">
+                <PeopleViewing productId={product.id} />
+                <StockUrgency stock={product.stock} />
+                <CountdownTimer label="Price locks in" durationSeconds={600} />
+              </div>
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-3xl font-bold text-foreground">${finalPrice}</span>
                 {product.originalPrice && (

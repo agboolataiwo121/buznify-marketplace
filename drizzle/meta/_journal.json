@@ -15,6 +15,13 @@
       "when": 1778250746580,
       "tag": "0001_freezing_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1778271993496,
+      "tag": "0002_military_red_shift",
+      "breakpoints": true
     }
   ]
 }

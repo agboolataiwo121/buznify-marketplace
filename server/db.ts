@@ -3,18 +3,24 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
   coupons,
+  growthOrders,
   growthServices,
   notifications,
   orders,
   products,
+  recentlyViewed,
+  refundRequests,
   referrals,
   reviews,
   smsMessages,
   supportTickets,
   ticketMessages,
   users,
+  vendorApiKeys,
+  vendorPayouts,
   virtualNumbers,
   walletTransactions,
+  wishlists,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -506,4 +512,148 @@ export async function seedDemoProducts(vendorId: number) {
   for (const product of demoProducts) {
     await db.insert(products).values(product);
   }
+}
+
+// ─── Wishlist Helpers ─────────────────────────────────────────────────────────
+export async function getWishlist(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(wishlists).where(eq(wishlists.userId, userId));
+}
+export async function addToWishlist(userId: number, productId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Check if already in wishlist
+  const existing = await db.select().from(wishlists)
+    .where(eq(wishlists.userId, userId))
+    .limit(50);
+  if (existing.find(w => w.productId === productId)) return;
+  await db.insert(wishlists).values({ userId, productId });
+}
+export async function removeFromWishlist(userId: number, productId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(wishlists)
+    .where(eq(wishlists.userId, userId));
+}
+
+// ─── Recently Viewed Helpers ──────────────────────────────────────────────────
+export async function addRecentlyViewed(userId: number, productId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert: delete old entry and insert fresh
+  await db.delete(recentlyViewed)
+    .where(eq(recentlyViewed.userId, userId));
+  await db.insert(recentlyViewed).values({ userId, productId });
+}
+export async function getRecentlyViewed(userId: number, limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(recentlyViewed)
+    .where(eq(recentlyViewed.userId, userId))
+    .orderBy(desc(recentlyViewed.viewedAt))
+    .limit(limit);
+}
+
+// ─── Growth Orders Helpers ────────────────────────────────────────────────────
+export async function createGrowthOrder(data: typeof growthOrders.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(growthOrders).values(data);
+  return result;
+}
+export async function getGrowthOrdersByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(growthOrders)
+    .where(eq(growthOrders.userId, userId))
+    .orderBy(desc(growthOrders.createdAt));
+}
+export async function updateGrowthOrderStatus(id: number, status: typeof growthOrders.$inferSelect["status"], deliveredCount?: number) {
+  const db = await getDb();
+  if (!db) return;
+  const updateData: Record<string, unknown> = { status };
+  if (deliveredCount !== undefined) updateData.deliveredCount = deliveredCount;
+  await db.update(growthOrders).set(updateData).where(eq(growthOrders.id, id));
+}
+export async function getAllGrowthOrders(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(growthOrders).orderBy(desc(growthOrders.createdAt)).limit(limit);
+}
+
+// ─── Refund Request Helpers ───────────────────────────────────────────────────
+export async function createRefundRequest(data: typeof refundRequests.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(refundRequests).values(data);
+  return result;
+}
+export async function getRefundRequestsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(refundRequests)
+    .where(eq(refundRequests.userId, userId))
+    .orderBy(desc(refundRequests.createdAt));
+}
+export async function getAllRefundRequests(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(refundRequests).orderBy(desc(refundRequests.createdAt)).limit(limit);
+}
+export async function updateRefundStatus(id: number, status: "approved" | "rejected", adminNote?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(refundRequests).set({
+    status,
+    adminNote: adminNote ?? null,
+    processedAt: new Date(),
+  }).where(eq(refundRequests.id, id));
+}
+
+// ─── Vendor Payout Helpers ────────────────────────────────────────────────────
+export async function createVendorPayout(data: typeof vendorPayouts.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(vendorPayouts).values(data);
+  return result;
+}
+export async function getVendorPayouts(vendorId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(vendorPayouts)
+    .where(eq(vendorPayouts.vendorId, vendorId))
+    .orderBy(desc(vendorPayouts.createdAt));
+}
+export async function getAllVendorPayouts(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(vendorPayouts).orderBy(desc(vendorPayouts.createdAt)).limit(limit);
+}
+export async function updatePayoutStatus(id: number, status: "processing" | "paid" | "rejected", notes?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(vendorPayouts).set({
+    status,
+    notes: notes ?? null,
+    processedAt: new Date(),
+  }).where(eq(vendorPayouts.id, id));
+}
+
+// ─── Vendor API Key Helpers ───────────────────────────────────────────────────
+export async function getVendorApiKeys(vendorId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(vendorApiKeys).where(eq(vendorApiKeys.vendorId, vendorId));
+}
+export async function createVendorApiKey(data: typeof vendorApiKeys.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(vendorApiKeys).values(data);
+  return result;
+}
+export async function revokeVendorApiKey(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(vendorApiKeys).set({ isActive: false }).where(eq(vendorApiKeys.id, id));
 }

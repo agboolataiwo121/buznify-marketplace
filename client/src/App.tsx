@@ -32,7 +32,13 @@ import RefundPolicy from "./pages/RefundPolicy";
 import Security from "./pages/Security";
 import DashboardSecurity from "./pages/DashboardSecurity";
 import DashboardLoyalty from "./pages/DashboardLoyalty";
+import DashboardWishlist from "./pages/DashboardWishlist";
+import DashboardGrowthOrders from "./pages/DashboardGrowthOrders";
+import DashboardRefunds from "./pages/DashboardRefunds";
+import DashboardPayouts from "./pages/DashboardPayouts";
+import DashboardApiKeys from "./pages/DashboardApiKeys";
 import AISupportChat from "./components/AISupportChat";
+import { ExitIntentOffer } from "./components/ConversionWidgets";
 
 function Router() {
   return (
@@ -65,6 +71,12 @@ function Router() {
       <Route path="/careers" component={Careers} />
       <Route path="/dashboard/security" component={DashboardSecurity} />
       <Route path="/dashboard/loyalty" component={DashboardLoyalty} />
+      <Route path="/dashboard/wishlist" component={DashboardWishlist} />
+      <Route path="/dashboard/growth-orders" component={DashboardGrowthOrders} />
+      <Route path="/dashboard/refunds" component={DashboardRefunds} />
+      <Route path="/dashboard/payouts" component={DashboardPayouts} />
+      <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
+      <Route path="/product/:id" component={ProductDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -79,6 +91,7 @@ function App() {
           <Toaster richColors position="top-right" />
           <Router />
           <AISupportChat />
+          <ExitIntentOffer couponCode="STAY10" discount="10%" />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

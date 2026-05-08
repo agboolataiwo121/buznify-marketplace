@@ -48,9 +48,30 @@ import {
   updateTicketStatus,
   updateUserBalance,
   updateUserRole,
+  // Phase 12 new helpers
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
+  addRecentlyViewed,
+  getRecentlyViewed,
+  createGrowthOrder,
+  getGrowthOrdersByUser,
+  updateGrowthOrderStatus,
+  getAllGrowthOrders,
+  createRefundRequest,
+  getRefundRequestsByUser,
+  getAllRefundRequests,
+  updateRefundStatus,
+  createVendorPayout,
+  getVendorPayouts,
+  getAllVendorPayouts,
+  updatePayoutStatus,
+  getVendorApiKeys,
+  createVendorApiKey,
+  revokeVendorApiKey,
 } from "./db";
-import { products, users, referrals } from "../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable } from "../drizzle/schema";
+import { eq, sql, desc } from "drizzle-orm";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -872,6 +893,271 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
         return { description };
       }),
   }),
+  // ── Wishlist ──────────────────────────────────────────────────────────────
+  wishlist: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const items = await getWishlist(ctx.user.id);
+      // Enrich with product data
+      const enriched = await Promise.all(items.map(async (item) => {
+        const product = await getProductById(item.productId);
+        return { ...item, product };
+      }));
+      return enriched.filter(i => i.product !== undefined);
+    }),
+    add: protectedProcedure
+      .input(z.object({ productId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await addToWishlist(ctx.user.id, input.productId);
+        return { success: true };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ productId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await removeFromWishlist(ctx.user.id, input.productId);
+        return { success: true };
+      }),
+  }),
+
+  // ── Recently Viewed ───────────────────────────────────────────────────────
+  recentlyViewed: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const items = await getRecentlyViewed(ctx.user.id, 8);
+      const enriched = await Promise.all(items.map(async (item) => {
+        const product = await getProductById(item.productId);
+        return { ...item, product };
+      }));
+      return enriched.filter(i => i.product !== undefined);
+    }),
+    track: protectedProcedure
+      .input(z.object({ productId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await addRecentlyViewed(ctx.user.id, input.productId);
+        return { success: true };
+      }),
+  }),
+
+  // ── Growth Orders ─────────────────────────────────────────────────────────
+  growthOrders: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return getGrowthOrdersByUser(ctx.user.id);
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        serviceId: z.number(),
+        targetUrl: z.string().url(),
+        quantity: z.number().min(1),
+        dripFeed: z.boolean().optional().default(false),
+        dripInterval: z.number().optional(),
+        speedLabel: z.enum(["slow", "medium", "fast", "instant"]).optional().default("medium"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const services = await getGrowthServices();
+        const service = services.find(s => s.id === input.serviceId);
+        if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
+        const pricePerUnit = parseFloat(service.price);
+        const totalAmount = (pricePerUnit * input.quantity / service.quantity).toFixed(2);
+        const userBalance = parseFloat(ctx.user.balance ?? "0");
+        if (userBalance < parseFloat(totalAmount)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient wallet balance" });
+        }
+        // Deduct balance
+        const newBalance = (userBalance - parseFloat(totalAmount)).toFixed(2);
+        await updateUserBalance(ctx.user.id, newBalance);
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "purchase",
+          amount: totalAmount,
+          balanceBefore: ctx.user.balance ?? "0",
+          balanceAfter: newBalance,
+          description: `Growth order: ${service.title} x${input.quantity}`,
+        });
+        const order = await createGrowthOrder({
+          userId: ctx.user.id,
+          serviceId: input.serviceId,
+          targetUrl: input.targetUrl,
+          quantity: input.quantity,
+          totalAmount,
+          status: "processing",
+          deliveredCount: 0,
+          dripFeed: input.dripFeed,
+          dripInterval: input.dripInterval,
+          speedLabel: input.speedLabel,
+        });
+        await createNotification({
+          userId: ctx.user.id,
+          type: "order_completed",
+          title: "Growth Order Placed",
+          message: `Your order for ${input.quantity} ${service.serviceType} on ${service.platform} has been placed and is now processing.`,
+        });
+        return { success: true, order };
+      }),
+    requestRefill: protectedProcedure
+      .input(z.object({ orderId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await updateGrowthOrderStatus(input.orderId, "processing");
+        return { success: true };
+      }),
+    requestCancel: protectedProcedure
+      .input(z.object({ orderId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.update(growthOrdersTable).set({ cancelRequested: true }).where(eq(growthOrdersTable.id, input.orderId));
+        return { success: true };
+      }),
+    adminList: adminProcedure.query(async () => {
+      return getAllGrowthOrders(200);
+    }),
+    adminUpdate: adminProcedure
+      .input(z.object({
+        orderId: z.number(),
+        status: z.enum(["pending", "processing", "completed", "partial", "cancelled", "refunded"]),
+        deliveredCount: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await updateGrowthOrderStatus(input.orderId, input.status, input.deliveredCount);
+        return { success: true };
+      }),
+  }),
+
+  // ── Refund Requests ───────────────────────────────────────────────────────
+  refunds: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return getRefundRequestsByUser(ctx.user.id);
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        orderId: z.number().optional(),
+        growthOrderId: z.number().optional(),
+        reason: z.string().min(10).max(1000),
+        amount: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const req = await createRefundRequest({
+          userId: ctx.user.id,
+          orderId: input.orderId,
+          growthOrderId: input.growthOrderId,
+          reason: input.reason,
+          amount: input.amount,
+          status: "pending",
+        });
+        await createNotification({
+          userId: ctx.user.id,
+          type: "system",
+          title: "Refund Request Submitted",
+          message: "Your refund request has been submitted and is under review. We will respond within 24 hours.",
+        });
+        return { success: true, req };
+      }),
+    adminList: adminProcedure.query(async () => {
+      return getAllRefundRequests(200);
+    }),
+    adminProcess: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["approved", "rejected"]),
+        adminNote: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await updateRefundStatus(input.id, input.status, input.adminNote);
+        if (input.status === "approved") {
+          // Credit user wallet
+          const allRefunds = await getAllRefundRequests(1000);
+          const refund = allRefunds.find(r => r.id === input.id);
+          if (refund) {
+            const user = await getUserById(refund.userId);
+            if (user) {
+              const newBal = (parseFloat(user.balance ?? "0") + parseFloat(refund.amount)).toFixed(2);
+              await updateUserBalance(refund.userId, newBal);
+              await createWalletTransaction({
+                userId: refund.userId,
+                type: "refund",
+                amount: refund.amount,
+                balanceBefore: user.balance ?? "0",
+                balanceAfter: newBal,
+                description: `Refund approved for request #${refund.id}`,
+              });
+              await createNotification({
+                userId: refund.userId,
+                type: "wallet_credit",
+                title: "Refund Approved",
+                message: `Your refund of $${refund.amount} has been approved and credited to your wallet.`,
+              });
+            }
+          }
+        }
+        return { success: true };
+      }),
+  }),
+
+  // ── Vendor Payouts ────────────────────────────────────────────────────────
+  payouts: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return getVendorPayouts(ctx.user.id);
+    }),
+    request: protectedProcedure
+      .input(z.object({
+        amount: z.string(),
+        method: z.enum(["bank", "crypto", "paypal"]),
+        destination: z.string().min(5),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const userBalance = parseFloat(ctx.user.balance ?? "0");
+        if (userBalance < parseFloat(input.amount)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+        }
+        const payout = await createVendorPayout({
+          vendorId: ctx.user.id,
+          amount: input.amount,
+          method: input.method,
+          destination: input.destination,
+          status: "pending",
+        });
+        return { success: true, payout };
+      }),
+    adminList: adminProcedure.query(async () => {
+      return getAllVendorPayouts(200);
+    }),
+    adminProcess: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["processing", "paid", "rejected"]),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await updatePayoutStatus(input.id, input.status, input.notes);
+        return { success: true };
+      }),
+  }),
+
+  // ── Vendor API Keys ───────────────────────────────────────────────────────
+  apiKeys: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return getVendorApiKeys(ctx.user.id);
+    }),
+    create: protectedProcedure
+      .input(z.object({ label: z.string().min(1).max(100) }))
+      .mutation(async ({ ctx, input }) => {
+        const { nanoid } = await import("nanoid");
+        const rawKey = `buz_${nanoid(32)}`;
+        // Store hash of key for security
+        const keyHash = Buffer.from(rawKey).toString("base64");
+        await createVendorApiKey({
+          vendorId: ctx.user.id,
+          keyHash,
+          label: input.label,
+          isActive: true,
+        });
+        return { success: true, key: rawKey }; // Only returned once
+      }),
+    revoke: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await revokeVendorApiKey(input.id);
+        return { success: true };
+      }),
+  }),
+
   // ── Scheduled endpoint ────────────────────────────────────────────────────
   scheduled: router({
     updateContent: publicProcedure

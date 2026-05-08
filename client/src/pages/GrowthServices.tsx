@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   TrendingUp,
   Star,
@@ -19,6 +20,10 @@ import {
   MessageCircle,
   ThumbsUp,
   Calculator,
+  LayoutList,
+  Timer,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 const PLATFORMS = [
@@ -113,22 +118,56 @@ function PricingCalculator() {
 
 export default function GrowthServices() {
   const [platform, setPlatform] = useState("instagram");
+  const [massMode, setMassMode] = useState(false);
+  const [massOrders, setMassOrders] = useState<Array<{ serviceId: number; link: string; qty: number }>>([]);
+  const [selectedService, setSelectedService] = useState<(typeof DEMO_SERVICES)[0] | null>(null);
+  const [orderLink, setOrderLink] = useState("");
+  const [orderQty, setOrderQty] = useState(1000);
+  const [dripFeed, setDripFeed] = useState(false);
+  const [dripQty, setDripQty] = useState(100);
+  const [dripInterval, setDripInterval] = useState(60);
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const { isAuthenticated } = useAuth();
 
-  const { data: services } = trpc.growth.list.useQuery({ platform });
+  const purchaseMutation = trpc.growthOrders.create.useMutation({
+    onSuccess: () => {
+      toast.success("Order placed!", { description: "Your growth order is being processed." });
+      setShowOrderModal(false);
+      setSelectedService(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
+  const { data: services } = trpc.growth.list.useQuery({ platform });
   const displayServices = (services && services.length > 0)
     ? services
     : DEMO_SERVICES.filter((s) => s.platform === platform);
-
   const currentPlatform = PLATFORMS.find((p) => p.value === platform);
 
-  const handleBuy = (service: typeof DEMO_SERVICES[0]) => {
-    if (!isAuthenticated) {
-      window.location.href = getLoginUrl();
-      return;
-    }
-    toast.info("Add to cart — redirecting to checkout", { description: service.title });
+  const handleBuy = (service: (typeof DEMO_SERVICES)[0]) => {
+    if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
+    setSelectedService(service as any);
+    setOrderQty(service.quantity);
+    setOrderLink("");
+    setDripFeed(false);
+    setShowOrderModal(true);
+  };
+
+  const handleConfirmOrder = () => {
+    if (!selectedService) return;
+    if (!orderLink.trim()) { toast.error("Please enter your profile/post link"); return; }
+    purchaseMutation.mutate({
+      serviceId: selectedService.id,
+      targetUrl: orderLink,
+      quantity: orderQty,
+      dripFeed,
+      dripInterval: dripFeed ? dripInterval : undefined,
+    });
+  };
+
+  const addMassOrder = () => {
+    if (massOrders.length >= 10) { toast.error("Max 10 orders in mass mode"); return; }
+    setMassOrders(prev => [...prev, { serviceId: displayServices[0]?.id ?? 1, link: "", qty: 1000 }]);
   };
 
   return (
@@ -190,15 +229,73 @@ export default function GrowthServices() {
         {/* Pricing Calculator */}
         <PricingCalculator />
 
-        {/* Services grid */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-1">
-            {currentPlatform?.label} Packages
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {displayServices.length} packages available
-          </p>
+        {/* Mass Order Toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground mb-1">
+              {currentPlatform?.label} Packages
+            </h2>
+            <p className="text-sm text-muted-foreground">{displayServices.length} packages available</p>
+          </div>
+          <button
+            onClick={() => setMassMode(!massMode)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
+              massMode ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "glass border-white/10 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <LayoutList className="w-4 h-4" />
+            {massMode ? "Exit Mass Mode" : "Mass Order"}
+          </button>
         </div>
+
+        {/* Mass Order Panel */}
+        {massMode && (
+          <div className="glass-card rounded-2xl p-6 mb-8 border border-violet-500/20">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-foreground">Mass Order Tool</h3>
+              <Button size="sm" onClick={addMassOrder} className="h-8 gap-1 bg-violet-600 hover:bg-violet-500 text-white border-0">
+                <Plus className="w-3.5 h-3.5" /> Add Row
+              </Button>
+            </div>
+            {massOrders.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Click "Add Row" to add orders. Max 10 orders per batch.</p>
+            )}
+            <div className="space-y-3">
+              {massOrders.map((row, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_80px_32px] gap-3 items-center">
+                  <select
+                    value={row.serviceId}
+                    onChange={(e) => setMassOrders(prev => prev.map((r, idx) => idx === i ? { ...r, serviceId: parseInt(e.target.value) } : r))}
+                    className="h-9 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground px-2 focus:outline-none"
+                  >
+                    {displayServices.map((s: any) => <option key={s.id} value={s.id} className="bg-background">{s.title}</option>)}
+                  </select>
+                  <Input
+                    placeholder="Profile/post link"
+                    value={row.link}
+                    onChange={(e) => setMassOrders(prev => prev.map((r, idx) => idx === i ? { ...r, link: e.target.value } : r))}
+                    className="h-9 bg-white/5 border-white/10 text-sm"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Qty"
+                    value={row.qty}
+                    onChange={(e) => setMassOrders(prev => prev.map((r, idx) => idx === i ? { ...r, qty: parseInt(e.target.value) || 1000 } : r))}
+                    className="h-9 bg-white/5 border-white/10 text-sm"
+                  />
+                  <button onClick={() => setMassOrders(prev => prev.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-300">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {massOrders.length > 0 && (
+              <Button className="mt-4 w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0" onClick={() => toast.info("Mass order submitted!", { description: `${massOrders.length} orders queued for processing` })}>
+                Submit {massOrders.length} Orders
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {displayServices.map((service) => {
@@ -265,6 +362,86 @@ export default function GrowthServices() {
           </div>
         </div>
       </div>
+      {/* Order Modal */}
+      <Dialog open={showOrderModal} onOpenChange={setShowOrderModal}>
+        <DialogContent className="bg-[#0d0d1a] border border-white/10 text-foreground max-w-md">
+          <DialogHeader>
+            <DialogTitle className="gradient-text">Place Order</DialogTitle>
+          </DialogHeader>
+          {selectedService && (
+            <div className="space-y-4">
+              <div className="glass rounded-xl p-4">
+                <p className="text-sm font-semibold text-foreground">{selectedService.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{selectedService.description}</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-muted-foreground">Price</span>
+                  <span className="text-lg font-bold gradient-text">${selectedService.price}</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Profile / Post URL *</label>
+                <Input
+                  placeholder="https://instagram.com/yourprofile"
+                  value={orderLink}
+                  onChange={(e) => setOrderLink(e.target.value)}
+                  className="bg-white/5 border-white/10 focus:border-primary/50"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Quantity</label>
+                <Input
+                  type="number"
+                  min={100}
+                  value={orderQty}
+                  onChange={(e) => setOrderQty(parseInt(e.target.value) || 100)}
+                  className="bg-white/5 border-white/10 focus:border-primary/50"
+                />
+              </div>
+              {/* Drip Feed Toggle */}
+              <div className="glass rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-violet-400" />
+                    <span className="text-sm font-medium text-foreground">Drip Feed</span>
+                    <span className="text-xs badge-purple px-1.5 py-0.5 rounded-full">Pro</span>
+                  </div>
+                  <button
+                    onClick={() => setDripFeed(!dripFeed)}
+                    className={`w-10 h-5 rounded-full transition-all relative ${
+                      dripFeed ? "bg-violet-600" : "bg-white/10"
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                      dripFeed ? "left-5" : "left-0.5"
+                    }`} />
+                  </button>
+                </div>
+                {dripFeed && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Per Interval</label>
+                      <Input type="number" value={dripQty} onChange={(e) => setDripQty(parseInt(e.target.value) || 100)}
+                        className="h-8 bg-white/5 border-white/10 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Interval (min)</label>
+                      <Input type="number" value={dripInterval} onChange={(e) => setDripInterval(parseInt(e.target.value) || 60)}
+                        className="h-8 bg-white/5 border-white/10 text-sm" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Button
+                className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0"
+                onClick={handleConfirmOrder}
+                disabled={purchaseMutation.isPending}
+              >
+                {purchaseMutation.isPending ? "Processing..." : `Confirm Order — $${selectedService.price}`}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Footer />
     </div>
   );

@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import {
   Package,
   Plus,
-  Edit,
   Trash2,
   CheckCircle,
   Clock,
@@ -18,6 +17,17 @@ import {
   ShoppingCart,
   Star,
   Wand2,
+  TrendingUp,
+  Award,
+  Key,
+  CreditCard,
+  BarChart3,
+  Shield,
+  Zap,
+  RefreshCw,
+  Copy,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -43,8 +53,27 @@ export default function VendorDashboard() {
     deliveryData: "",
   });
 
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "payouts" | "api">("overview");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState("");
+
   const utils = trpc.useUtils();
   const { data: products, isLoading } = trpc.products.vendorProducts.useQuery();
+  const { data: apiKeys, refetch: refetchKeys } = trpc.apiKeys.list.useQuery();
+  const { data: payouts, refetch: refetchPayouts } = trpc.payouts.list.useQuery();
+
+  const createApiKeyMutation = trpc.apiKeys.create.useMutation({
+    onSuccess: () => { toast.success("API key created!"); refetchKeys(); },
+    onError: (err) => toast.error(err.message),
+  });
+  const revokeApiKeyMutation = trpc.apiKeys.revoke.useMutation({
+    onSuccess: () => { toast.success("API key revoked"); refetchKeys(); },
+    onError: (err) => toast.error(err.message),
+  });
+  const requestPayoutMutation = trpc.payouts.request.useMutation({
+    onSuccess: () => { toast.success("Payout request submitted!"); setPayoutAmount(""); refetchPayouts(); },
+    onError: (err) => toast.error(err.message),
+  });
 
   const createMutation = trpc.products.create.useMutation({
     onSuccess: () => {
@@ -121,24 +150,101 @@ export default function VendorDashboard() {
     rejected: { icon: XCircle, color: "text-red-400", label: "Rejected" },
   };
 
+  const totalRevenue = products?.reduce((sum, p) => sum + (p.totalSold ?? 0) * parseFloat(p.price), 0) ?? 0;
+  const totalSold = products?.reduce((sum, p) => sum + (p.totalSold ?? 0), 0) ?? 0;
+  const avgRating = products?.filter(p => p.avgRating).reduce((sum, p, _, arr) => sum + Number(p.avgRating ?? 0) / arr.length, 0) ?? 0;
+
+  const TABS = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "products", label: "Products", icon: Package },
+    { id: "payouts", label: "Payouts", icon: CreditCard },
+    { id: "api", label: "API Keys", icon: Key },
+  ] as const;
+
   return (
-    <DashboardShell title="Vendor Dashboard" subtitle="Manage your products and track sales.">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {[
-          { icon: Package, label: "Total Products", value: products?.length ?? 0, color: "text-violet-400" },
-          { icon: CheckCircle, label: "Active", value: products?.filter((p) => p.status === "active").length ?? 0, color: "text-emerald-400" },
-          { icon: ShoppingCart, label: "Total Sold", value: products?.reduce((sum, p) => sum + (p.totalSold ?? 0), 0) ?? 0, color: "text-cyan-400" },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="glass-card rounded-2xl p-4">
-            <Icon className={`w-5 h-5 ${color} mb-2`} />
-            <p className="text-xl font-bold text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
-          </div>
+    <DashboardShell title="Vendor Dashboard" subtitle="Manage your products, payouts, and API access.">
+      {/* Tab Navigation */}
+      <div className="flex gap-1 p-1 bg-white/5 rounded-xl mb-6">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${
+              activeTab === id
+                ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+            }`}
+          >
+            <Icon className="w-4 h-4" />{label}
+          </button>
         ))}
       </div>
 
-      {/* Add product button */}
+      {/* Overview Tab */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: Package, label: "Total Products", value: products?.length ?? 0, color: "text-violet-400" },
+              { icon: CheckCircle, label: "Active", value: products?.filter((p) => p.status === "active").length ?? 0, color: "text-emerald-400" },
+              { icon: ShoppingCart, label: "Total Sold", value: totalSold, color: "text-cyan-400" },
+              { icon: DollarSign, label: "Est. Revenue", value: `$${totalRevenue.toFixed(2)}`, color: "text-yellow-400" },
+            ].map(({ icon: Icon, label, value, color }) => (
+              <div key={label} className="glass-card rounded-2xl p-4">
+                <Icon className={`w-5 h-5 ${color} mb-2`} />
+                <p className="text-xl font-bold text-foreground">{value}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+          {/* Reputation */}
+          <div className="glass-card rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><Award className="w-4 h-4 text-yellow-400" />Vendor Reputation</h3>
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-yellow-400">{avgRating > 0 ? avgRating.toFixed(1) : "—"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Avg Rating</p>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm text-foreground">Verified Vendor</span>
+                  <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Active</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-cyan-400" />
+                  <span className="text-sm text-foreground">Instant Delivery</span>
+                  <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Enabled</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Recent products summary */}
+          <div className="glass-card rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-violet-400" />Top Performing Products</h3>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <div className="space-y-3">
+                {(products ?? []).sort((a, b) => (b.totalSold ?? 0) - (a.totalSold ?? 0)).slice(0, 5).map(p => (
+                  <div key={p.id} className="flex items-center justify-between">
+                    <span className="text-sm text-foreground truncate max-w-[200px]">{p.title}</span>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="text-emerald-400 font-medium">${parseFloat(p.price).toFixed(2)}</span>
+                      <span>{p.totalSold ?? 0} sold</span>
+                    </div>
+                  </div>
+                ))}
+                {(!products || products.length === 0) && <p className="text-sm text-muted-foreground">No products yet.</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Products Tab */}
+      {activeTab === "products" && (
+      <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-base font-semibold text-foreground">My Products</h2>
         <Button
@@ -348,6 +454,114 @@ export default function VendorDashboard() {
               </div>
             );
           })}
+        </div>
+      )}
+      </div>
+      )}
+
+      {/* Payouts Tab */}
+      {activeTab === "payouts" && (
+        <div className="space-y-6">
+          <div className="glass-card rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><CreditCard className="w-4 h-4 text-violet-400" />Request Payout</h3>
+            <div className="flex gap-3">
+              <Input
+                type="number"
+                placeholder="Amount ($)"
+                value={payoutAmount}
+                onChange={(e) => setPayoutAmount(e.target.value)}
+                className="bg-white/5 border-white/10 max-w-[200px]"
+              />
+              <Button
+                className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0"
+                disabled={requestPayoutMutation.isPending || !payoutAmount}
+                onClick={() => requestPayoutMutation.mutate({ amount: payoutAmount, method: "bank", destination: "bank_account" })}
+              >
+                {requestPayoutMutation.isPending ? "Requesting..." : "Request Payout"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Minimum payout: $10. Processed within 3-5 business days.</p>
+          </div>
+          <div className="glass-card rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Payout History</h3>
+            {!payouts || payouts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No payout requests yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {payouts.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-white/5">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">${p.amount}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      p.status === "paid" ? "bg-emerald-500/20 text-emerald-400" :
+                      p.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-red-500/20 text-red-400"
+                    }`}>{p.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* API Keys Tab */}
+      {activeTab === "api" && (
+        <div className="space-y-6">
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Key className="w-4 h-4 text-violet-400" />API Keys</h3>
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0 h-8"
+                onClick={() => createApiKeyMutation.mutate({ label: `Key ${(apiKeys?.length ?? 0) + 1}` })}
+                disabled={createApiKeyMutation.isPending}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                {createApiKeyMutation.isPending ? "Creating..." : "New Key"}
+              </Button>
+            </div>
+            {!apiKeys || apiKeys.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No API keys yet. Create one to integrate with external systems.</p>
+            ) : (
+              <div className="space-y-3">
+                {apiKeys.map((k: any) => (
+                  <div key={k.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                    <Key className="w-4 h-4 text-violet-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{k.name}</p>
+                      <p className="text-xs font-mono text-muted-foreground truncate">
+                        {showApiKey ? k.key : `${k.key?.substring(0, 8)}${'•'.repeat(24)}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setShowApiKey(!showApiKey)} className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors">
+                        {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button onClick={() => { navigator.clipboard.writeText(k.key); toast.success("Copied!"); }} className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors">
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => revokeApiKeyMutation.mutate({ id: k.id })} className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="glass-card rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-3">API Documentation</h3>
+            <p className="text-sm text-muted-foreground mb-4">Use your API key to integrate Buznify services into your own applications.</p>
+            <div className="bg-black/30 rounded-xl p-4 font-mono text-xs text-emerald-400">
+              <p className="text-muted-foreground mb-1"># Example: Place an order via API</p>
+              <p>POST https://api.buznify.com/v1/orders</p>
+              <p>Authorization: Bearer YOUR_API_KEY</p>
+              <p>{'{"service_id": 1, "quantity": 1000, "link": "..."}'}</p>
+            </div>
+          </div>
         </div>
       )}
     </DashboardShell>

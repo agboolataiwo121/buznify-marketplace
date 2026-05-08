@@ -21,9 +21,13 @@ import {
   Megaphone,
   AlertTriangle,
   Trash2,
+  CreditCard,
+  RotateCcw,
+  Activity,
 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -43,6 +47,17 @@ export default function AdminPanel() {
   const { data: allOrders } = trpc.admin.getOrders.useQuery(undefined, { enabled: tab === "orders" });
   const { data: coupons } = trpc.coupons.list.useQuery(undefined, { enabled: tab === "coupons" });
   const { data: pendingVendors } = trpc.admin.getPendingVendors.useQuery(undefined, { enabled: tab === "vendors" });
+  const { data: allRefunds } = trpc.refunds.adminList.useQuery(undefined, { enabled: tab === "refunds" });
+  const { data: allPayouts } = trpc.payouts.adminList.useQuery(undefined, { enabled: tab === "payouts" });
+
+  const updateRefundMutation = trpc.refunds.adminProcess.useMutation({
+    onSuccess: () => { toast.success("Refund status updated"); utils.refunds.adminList.invalidate(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updatePayoutMutation = trpc.payouts.adminProcess.useMutation({
+    onSuccess: () => { toast.success("Payout status updated"); utils.payouts.adminList.invalidate(); },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const updateRoleMutation = trpc.admin.updateUserRole.useMutation({
     onSuccess: () => { toast.success("Role updated"); utils.admin.getUsers.invalidate(); },
@@ -116,6 +131,8 @@ export default function AdminPanel() {
     { value: "vendors", label: "Vendor Approvals", icon: Shield },
     { value: "announcements", label: "Announcements", icon: Megaphone },
     { value: "fraud", label: "Fraud Detection", icon: AlertTriangle },
+    { value: "refunds", label: "Refunds", icon: RotateCcw },
+    { value: "payouts", label: "Payouts", icon: CreditCard },
   ];
 
   return (
@@ -539,6 +556,123 @@ export default function AdminPanel() {
               ))}
             </div>
           )}
+        </div>
+      )}
+      {/* Refunds */}
+      {tab === "refunds" && (
+        <div className="glass-card rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-orange-400" /> Refund Requests
+          </h2>
+          {!allRefunds || allRefunds.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No refund requests</p>
+          ) : (
+            <div className="space-y-3">
+              {(allRefunds as any[]).map((r: any) => (
+                <div key={r.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Refund #{r.id} — ${r.amount}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{r.reason?.slice(0, 80)}</p>
+                    <p className="text-xs text-muted-foreground">User #{r.userId} · {new Date(r.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      r.status === "approved" ? "badge-success" : r.status === "rejected" ? "badge-danger" : "badge-warning"
+                    }`}>{r.status}</span>
+                    {r.status === "pending" && (
+                      <>
+                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                          onClick={() => updateRefundMutation.mutate({ id: r.id, status: "approved" })}
+                          disabled={updateRefundMutation.isPending}>
+                          <CheckCircle className="w-3 h-3 mr-1" />Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          onClick={() => updateRefundMutation.mutate({ id: r.id, status: "rejected" })}
+                          disabled={updateRefundMutation.isPending}>
+                          <XCircle className="w-3 h-3 mr-1" />Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payouts */}
+      {tab === "payouts" && (
+        <div className="glass-card rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-cyan-400" /> Vendor Payout Requests
+          </h2>
+          {!allPayouts || allPayouts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No payout requests</p>
+          ) : (
+            <div className="space-y-3">
+              {(allPayouts as any[]).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Payout #{p.id} — ${p.amount}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Method: {p.method} · To: {p.destination}</p>
+                    <p className="text-xs text-muted-foreground">Vendor #{p.vendorId} · {new Date(p.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      p.status === "paid" ? "badge-success" : p.status === "rejected" ? "badge-danger" : p.status === "processing" ? "badge-purple" : "badge-warning"
+                    }`}>{p.status}</span>
+                    {p.status === "pending" && (
+                      <>
+                        <Button size="sm" className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white border-0"
+                          onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "processing" })}
+                          disabled={updatePayoutMutation.isPending}>
+                          <Activity className="w-3 h-3 mr-1" />Process
+                        </Button>
+                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                          onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "paid" })}
+                          disabled={updatePayoutMutation.isPending}>
+                          <CheckCircle className="w-3 h-3 mr-1" />Mark Paid
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "rejected" })}
+                          disabled={updatePayoutMutation.isPending}>
+                          <XCircle className="w-3 h-3 mr-1" />Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Revenue Chart in Overview */}
+      {tab === "overview" && (
+        <div className="glass-card rounded-2xl p-5 mt-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-cyan-400" /> Revenue Trend (Last 7 Days)
+          </h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={[
+              { day: "Mon", revenue: 420 }, { day: "Tue", revenue: 680 }, { day: "Wed", revenue: 540 },
+              { day: "Thu", revenue: 890 }, { day: "Fri", revenue: 1200 }, { day: "Sat", revenue: 760 }, { day: "Sun", revenue: 950 },
+            ]}>
+              <defs>
+                <linearGradient id="adminRevGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="day" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+              <Tooltip contentStyle={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: "12px", color: "#e2e8f0" }} formatter={(v: any) => [`$${v}`, "Revenue"]} />
+              <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#adminRevGrad)" />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
     </DashboardShell>

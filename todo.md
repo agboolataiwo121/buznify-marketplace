@@ -162,3 +162,69 @@
 - [x] Promo banner manager
 - [x] Vendor approval workflow (approve/reject/KYC)
 - [x] Fraud detection alerts panel
+
+## Phase 12: Full Ecosystem Upgrade
+
+### Marketplace Engine
+- [ ] Dynamic product inventory with stock count per product
+- [ ] Auto sold-out detection and badge
+- [ ] Wishlist/favorites system (add/remove, persisted per user)
+- [ ] Recently viewed products (localStorage + backend)
+- [ ] Related products section on ProductDetail
+- [ ] Advanced filtering (price range, condition, delivery time, rating)
+- [ ] Product recommendations on homepage and dashboard
+
+### Automation System
+- [ ] Auto wallet deduction on order placement (already partial — make atomic)
+- [ ] Auto order status progression (pending → processing → delivered)
+- [ ] Auto refund workflow (request → admin review → wallet credit)
+- [ ] AI auto-reply suggestions for support tickets
+- [ ] Delivery confirmation system with timestamp
+
+### Advanced Wallet
+- [ ] Full transaction log with type filters (deposit/withdraw/order/refund/bonus)
+- [ ] Escrow balance (held during active order)
+- [ ] Bonus/reward balance (separate from main balance)
+- [ ] Crypto wallet support UI (BTC, ETH, USDT deposit addresses)
+- [ ] Withdraw system with destination address
+
+### SMM Panel Upgrades
+- [ ] Drip-feed orders (spread delivery over time with interval selector)
+- [ ] Refill system (request refill for dropped followers)
+- [ ] Mass order tool (bulk order multiple services at once)
+- [ ] Order speed labels (Slow / Medium / Fast / Instant)
+- [ ] Cancel/refund request flow for growth orders
+- [ ] Real-time order status tracking with animated progress bar
+
+### Vendor Ecosystem
+- [ ] Vendor onboarding form with KYC fields
+- [ ] Commission system (platform % per sale shown in vendor dashboard)
+- [ ] Vendor payout request system
+- [ ] Vendor reputation score (based on ratings + fulfillment rate)
+- [ ] Vendor badges (Verified, Top Seller, New)
+
+### AI Features
+- [ ] AI product recommendations widget (based on category/history)
+- [ ] AI search assistant (natural language → product results)
+- [ ] Smart analytics insights on admin dashboard (AI summary)
+- [ ] AI auto-reply suggestions for support ticket responses
+
+### Conversion Optimization
+- [x] Countdown timers on limited-stock products
+- [x] "X people viewing this" indicator on product pages
+- [ ] Abandoned cart recovery reminder (notification after 30 min)
+- [x] Gamified loyalty points display on dashboard
+
+### Admin Upgrades
+- [ ] Real-time order monitoring with live refresh (polling)
+- [ ] Revenue analytics with interactive Recharts (daily/weekly/monthly)
+- [ ] Push notification sender to all users
+- [ ] Service category enable/disable controls
+- [ ] API key management panel for vendors
+
+### Polish & Performance
+- [ ] Consistent spacing and shadow audit across all pages
+- [ ] Interactive Recharts on all analytics pages (vendor + admin)
+- [ ] Dashboard micro-interactions (hover states, count-up animations)
+- [ ] Rate limiting middleware on tRPC procedures
+- [ ] WebSocket-style polling for live order/SMS updates

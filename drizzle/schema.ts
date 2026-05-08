@@ -262,3 +262,83 @@ export const growthServices = mysqlTable("growth_services", {
 });
 
 export type GrowthService = typeof growthServices.$inferSelect;
+
+// ─── Wishlists ────────────────────────────────────────────────────────────────
+export const wishlists = mysqlTable("wishlists", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productId: int("productId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Wishlist = typeof wishlists.$inferSelect;
+
+// ─── Recently Viewed ──────────────────────────────────────────────────────────
+export const recentlyViewed = mysqlTable("recently_viewed", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productId: int("productId").notNull(),
+  viewedAt: timestamp("viewedAt").defaultNow().notNull(),
+});
+export type RecentlyViewed = typeof recentlyViewed.$inferSelect;
+
+// ─── Vendor Payouts ───────────────────────────────────────────────────────────
+export const vendorPayouts = mysqlTable("vendor_payouts", {
+  id: int("id").autoincrement().primaryKey(),
+  vendorId: int("vendorId").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  method: mysqlEnum("method", ["bank", "crypto", "paypal"]).default("bank").notNull(),
+  destination: text("destination").notNull(), // bank account / crypto address / paypal email
+  status: mysqlEnum("status", ["pending", "processing", "paid", "rejected"]).default("pending").notNull(),
+  notes: text("notes"),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type VendorPayout = typeof vendorPayouts.$inferSelect;
+
+// ─── Growth Orders ────────────────────────────────────────────────────────────
+export const growthOrders = mysqlTable("growth_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  serviceId: int("serviceId").notNull(),
+  targetUrl: varchar("targetUrl", { length: 512 }).notNull(),
+  quantity: int("quantity").notNull(),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "completed", "partial", "cancelled", "refunded"]).default("pending").notNull(),
+  deliveredCount: int("deliveredCount").default(0).notNull(),
+  dripFeed: boolean("dripFeed").default(false).notNull(),
+  dripInterval: int("dripInterval"), // minutes between drip batches
+  speedLabel: mysqlEnum("speedLabel", ["slow", "medium", "fast", "instant"]).default("medium").notNull(),
+  refillRequested: boolean("refillRequested").default(false).notNull(),
+  cancelRequested: boolean("cancelRequested").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GrowthOrder = typeof growthOrders.$inferSelect;
+
+// ─── Refund Requests ──────────────────────────────────────────────────────────
+export const refundRequests = mysqlTable("refund_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  orderId: int("orderId"),
+  growthOrderId: int("growthOrderId"),
+  reason: text("reason").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  adminNote: text("adminNote"),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RefundRequest = typeof refundRequests.$inferSelect;
+
+// ─── Vendor API Keys ──────────────────────────────────────────────────────────
+export const vendorApiKeys = mysqlTable("vendor_api_keys", {
+  id: int("id").autoincrement().primaryKey(),
+  vendorId: int("vendorId").notNull(),
+  keyHash: varchar("keyHash", { length: 128 }).notNull().unique(),
+  label: varchar("label", { length: 128 }).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type VendorApiKey = typeof vendorApiKeys.$inferSelect;
