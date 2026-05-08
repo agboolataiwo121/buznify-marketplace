@@ -25,7 +25,11 @@ import {
   RotateCcw,
   Activity,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, ComposedChart,
+} from "recharts";
 
 type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts";
 
@@ -40,8 +44,16 @@ export default function AdminPanel() {
     expiresAt: "",
   });
 
+  const [chartDays, setChartDays] = useState<7 | 14 | 30>(30);
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", message: "", type: "info" as "info" | "warning" | "success" });
+  const [announcements, setAnnouncements] = useState([
+    { id: 1, title: "Platform Maintenance", message: "Scheduled maintenance on Sunday 2AM UTC. Expect 30 min downtime.", type: "warning", time: "2 hours ago", active: true },
+    { id: 2, title: "New Payment Methods Added", message: "We now accept USDT and BNB for wallet top-ups!", type: "success", time: "1 day ago", active: true },
+  ]);
   const utils = trpc.useUtils();
   const { data: stats } = trpc.admin.getStats.useQuery();
+  const { data: revenueChart } = trpc.admin.getRevenueChart.useQuery({ days: chartDays }, { enabled: tab === "overview" });
+  const { data: userGrowthChart } = trpc.admin.getUserGrowthChart.useQuery({ days: chartDays }, { enabled: tab === "overview" });
   const { data: allUsers } = trpc.admin.getUsers.useQuery(undefined, { enabled: tab === "users" });
   const { data: allProducts } = trpc.admin.getProducts.useQuery(undefined, { enabled: tab === "products" });
   const { data: allOrders } = trpc.admin.getOrders.useQuery(undefined, { enabled: tab === "orders" });
@@ -111,11 +123,6 @@ export default function AdminPanel() {
     );
   }
 
-  const [announcementForm, setAnnouncementForm] = useState({ title: "", message: "", type: "info" as "info" | "warning" | "success" });
-  const [announcements, setAnnouncements] = useState([
-    { id: 1, title: "Platform Maintenance", message: "Scheduled maintenance on Sunday 2AM UTC. Expect 30 min downtime.", type: "warning", time: "2 hours ago", active: true },
-    { id: 2, title: "New Payment Methods Added", message: "We now accept USDT and BNB for wallet top-ups!", type: "success", time: "1 day ago", active: true },
-  ]);
   const FRAUD_FLAGS = [
     { user: "user_4821", email: "test@tempmail.com", reason: "Multiple failed payment attempts", risk: "high", time: "5 min ago" },
     { user: "user_2934", email: "buyer@guerrillamail.com", reason: "Disposable email domain", risk: "medium", time: "1 hour ago" },
@@ -649,30 +656,84 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Revenue Chart in Overview */}
+      {/* Revenue & Analytics Charts in Overview */}
       {tab === "overview" && (
-        <div className="glass-card rounded-2xl p-5 mt-6">
-          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-cyan-400" /> Revenue Trend (Last 7 Days)
-          </h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={[
-              { day: "Mon", revenue: 420 }, { day: "Tue", revenue: 680 }, { day: "Wed", revenue: 540 },
-              { day: "Thu", revenue: 890 }, { day: "Fri", revenue: 1200 }, { day: "Sat", revenue: 760 }, { day: "Sun", revenue: 950 },
-            ]}>
-              <defs>
-                <linearGradient id="adminRevGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="day" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
-              <Tooltip contentStyle={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: "12px", color: "#e2e8f0" }} formatter={(v: any) => [`$${v}`, "Revenue"]} />
-              <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#adminRevGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="space-y-4 mt-6">
+          {/* Period selector */}
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm font-semibold text-foreground">Analytics</span>
+            <div className="ml-auto flex gap-1">
+              {([7, 14, 30] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setChartDays(d)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                    chartDays === d ? "bg-violet-600 text-white" : "glass text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Revenue + Growth Orders combined chart */}
+          <div className="glass-card rounded-2xl p-5">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Revenue (Marketplace + Growth Services)</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={revenueChart ?? []}>
+                <defs>
+                  <linearGradient id="adminRevGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="adminGrowthGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} interval={Math.floor((revenueChart?.length ?? 7) / 7)} />
+                <YAxis tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                <Tooltip
+                  contentStyle={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: "12px", color: "#e2e8f0", fontSize: 12 }}
+                  formatter={(v: any, name: string) => [`$${Number(v).toFixed(2)}`, name === "revenue" ? "Marketplace" : "Growth"]}
+                />
+                <Legend formatter={(v) => v === "revenue" ? "Marketplace" : "Growth Services"} wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
+                <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#adminRevGrad)" />
+                <Area type="monotone" dataKey="growth" stroke="#06b6d4" strokeWidth={2} fill="url(#adminGrowthGrad)" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Orders + User growth side by side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="glass-card rounded-2xl p-5">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Daily Orders</h3>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={revenueChart ?? []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} interval={Math.floor((revenueChart?.length ?? 7) / 7)} />
+                  <YAxis tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: "12px", color: "#e2e8f0", fontSize: 12 }} />
+                  <Bar dataKey="orders" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Orders" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="glass-card rounded-2xl p-5">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">New Users</h3>
+              <ResponsiveContainer width="100%" height={160}>
+                <LineChart data={userGrowthChart ?? []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} interval={Math.floor((userGrowthChart?.length ?? 7) / 7)} />
+                  <YAxis tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: "12px", color: "#e2e8f0", fontSize: 12 }} />
+                  <Line type="monotone" dataKey="users" stroke="#10b981" strokeWidth={2} dot={false} name="New Users" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       )}
     </DashboardShell>

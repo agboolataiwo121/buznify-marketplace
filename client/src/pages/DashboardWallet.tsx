@@ -41,10 +41,11 @@ export default function DashboardWallet() {
   const [amount, setAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [depositing, setDepositing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "crypto">("deposit");
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "crypto" | "payments">("deposit");
 
   const { data: balanceData, refetch: refetchBalance } = trpc.wallet.getBalance.useQuery();
   const { data: transactions, refetch: refetchTx } = trpc.wallet.getTransactions.useQuery();
+  const { data: paymentHistory } = trpc.payment.history.useQuery(undefined, { enabled: activeTab === "payments" });
   const utils = trpc.useUtils();
 
   // Paystack initiate mutation
@@ -195,7 +196,7 @@ export default function DashboardWallet() {
         {/* Deposit / Withdraw / Crypto tabs */}
         <div className="glass-card rounded-2xl p-6">
           <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-5">
-            {(["deposit", "withdraw", "crypto"] as const).map((tab) => (
+            {(["deposit", "withdraw", "crypto", "payments"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -321,6 +322,37 @@ export default function DashboardWallet() {
             </div>
           )}
 
+          {activeTab === "payments" && (
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">Your Paystack deposit history — all card, bank transfer, and USSD payments.</p>
+              {!paymentHistory || paymentHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <CreditCard className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No payments yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {paymentHistory.map((p: any) => (
+                    <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div>
+                        <p className="text-xs font-medium text-foreground">₦{parseFloat(p.amountNaira).toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{p.channel ?? "—"} · {new Date(p.createdAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground font-mono truncate max-w-[140px]">{p.reference}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          p.status === "success" ? "bg-emerald-500/20 text-emerald-400" :
+                          p.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                          "bg-red-500/20 text-red-400"
+                        }`}>{p.status}</span>
+                        {p.amountUsd && <p className="text-xs text-muted-foreground mt-1">${parseFloat(p.amountUsd).toFixed(4)}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {activeTab === "crypto" && (
             <div>
               <p className="text-sm text-muted-foreground mb-4">Deposit using cryptocurrency — instant confirmation</p>

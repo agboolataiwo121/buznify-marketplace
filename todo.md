@@ -263,34 +263,34 @@
 
 ## Phase 15 — Social Growth API Integration (SMMKings + Peakerr)
 
-- [ ] Create server/smm.ts helper (universal SMM API v2 client for SMMKings + Peakerr)
-- [ ] Add growth_orders table to schema (apiOrderId, panel, serviceId, link, quantity, startCount, remains, status)
-- [ ] Push schema migration with pnpm db:push
-- [ ] Procedure: growth.getServices — fetch & cache live services from both panels
-- [ ] Procedure: growth.placeOrder — place real SMM order (deduct wallet, store in DB)
-- [ ] Procedure: growth.getOrderStatus — check live status from panel
-- [ ] Procedure: growth.getMyOrders — list user's growth orders with live status
-- [ ] Procedure: growth.getBalance — admin: check panel account balances
-- [ ] Procedure: growth.refillOrder — request refill for dropped followers
-- [ ] Procedure: growth.cancelOrder — cancel eligible order
-- [ ] Rewrite GrowthServices.tsx with live services from both panels
-- [ ] Add platform filter tabs (Instagram, TikTok, YouTube, Facebook, Twitter/X, Telegram, Spotify, etc.)
-- [ ] Add service type filter (Followers, Likes, Views, Comments, Shares, etc.)
-- [ ] Show real min/max quantity, rate per 1000, refill/cancel badges
-- [ ] Add order placement modal (link input, quantity slider, price preview)
-- [ ] Add My Orders tab with live status polling
-- [ ] Add order progress bar (start count → current → target)
-- [ ] Write vitest tests for SMM procedures
+- [x] Create server/smm.ts helper (universal SMM API v2 client for SMMKings + Peakerr)
+- [x] Add growth_orders table to schema (apiOrderId, panel, serviceId, link, quantity, startCount, remains, status)
+- [x] Push schema migration with pnpm db:push
+- [x] Procedure: growth.getServices — fetch & cache live services from both panels
+- [x] Procedure: growth.placeOrder — place real SMM order (deduct wallet, store in DB)
+- [x] Procedure: growth.getOrderStatus — check live status from panel
+- [x] Procedure: growth.getMyOrders — list user's growth orders with live status
+- [x] Procedure: growth.getBalance — admin: check panel account balances
+- [x] Procedure: growth.refillOrder — request refill for dropped followers
+- [x] Procedure: growth.cancelOrder — cancel eligible order
+- [x] Rewrite GrowthServices.tsx with live services from both panels
+- [x] Add platform filter tabs (Instagram, TikTok, YouTube, Facebook, Twitter/X, Telegram, Spotify, etc.)
+- [x] Add service type filter (Followers, Likes, Views, Comments, Shares, etc.)
+- [x] Show real min/max quantity, rate per 1000, refill/cancel badges
+- [x] Add order placement modal (link input, quantity slider, price preview)
+- [x] Add My Orders tab with live status polling
+- [x] Add order progress bar (start count → current → target)
+- [x] Write vitest tests for SMM procedures
 
 ## Phase 16 — Paystack Payment Integration
-- [ ] Create server/paystack.ts helper (initializeTransaction, verifyTransaction, validateWebhookSignature)
-- [ ] Add payments table to drizzle/schema.ts
+- [x] Create server/paystack.ts helper (initializeTransaction, verifyTransaction, validateWebhookSignature)
+- [x] Add payments table to drizzle/schema.ts
 - [ ] Push schema migration with pnpm db:push
-- [ ] Add payment tRPC procedures: payment.initiate, payment.verify, payment.history
-- [ ] Add Paystack webhook Express route for charge.success events
-- [ ] Install @paystack/inline-js on client
-- [ ] Build PaystackDepositModal component with preset amounts and custom amount input
-- [ ] Integrate Paystack Popup JS in the deposit modal (resumeTransaction flow)
-- [ ] Wire deposit button in DashboardWallet.tsx to the new modal
-- [ ] Show payment history in wallet page
-- [ ] Write vitest for Paystack secret key validation
+- [x] Add payment tRPC procedures: payment.initiate, payment.verify, payment.history
+- [x] Add Paystack webhook Express route for charge.success events
+- [x] Install @paystack/inline-js on client
+- [x] Build PaystackDepositModal component with preset amounts and custom amount input
+- [x] Integrate Paystack Popup JS in the deposit modal (resumeTransaction flow)
+- [x] Wire deposit button in DashboardWallet.tsx to the new modal
+- [x] Show payment history in wallet page
+- [x] Write vitest for Paystack secret key validation

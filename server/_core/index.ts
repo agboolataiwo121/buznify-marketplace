@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { validateWebhookSignature } from "../paystack";
+import rateLimit from "express-rate-limit";
 import {
   getPaymentByReference,
   updatePayment,
@@ -116,6 +117,36 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // ── Rate Limiting ─────────────────────────────────────────────────────────
+  // General API: 200 requests per minute per IP
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please slow down." },
+  });
+  // Auth endpoints: 10 attempts per 15 minutes per IP
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many auth attempts, please try again later." },
+  });
+  // Payment endpoints: 20 per 10 minutes per IP
+  const paymentLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many payment requests, please slow down." },
+  });
+  app.use("/api/trpc", apiLimiter);
+  app.use("/api/oauth", authLimiter);
+  app.use("/api/trpc/payment", paymentLimiter);
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
 

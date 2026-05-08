@@ -1151,6 +1151,63 @@ export const appRouter = router({
       };
     }),
 
+    /** Revenue chart: daily revenue + orders for the last N days */
+    getRevenueChart: adminProcedure
+      .input(z.object({ days: z.number().min(7).max(90).default(30) }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        const allOrders = await getAllOrders(5000);
+        const now = Date.now();
+        const msPerDay = 86_400_000;
+        const buckets: Record<string, { date: string; revenue: number; orders: number; growth: number }> = {};
+        for (let i = input.days - 1; i >= 0; i--) {
+          const d = new Date(now - i * msPerDay);
+          const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          buckets[key] = { date: key, revenue: 0, orders: 0, growth: 0 };
+        }
+        for (const order of allOrders) {
+          const age = now - new Date(order.createdAt).getTime();
+          if (age > input.days * msPerDay) continue;
+          const key = new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          if (buckets[key]) {
+            buckets[key].orders++;
+            if (order.status === "completed") buckets[key].revenue += parseFloat(order.totalAmount);
+          }
+        }
+        // Also include growth orders
+        const growthOrders = await getAllGrowthOrders(5000);
+        for (const go of growthOrders) {
+          const age = now - new Date(go.createdAt).getTime();
+          if (age > input.days * msPerDay) continue;
+          const key = new Date(go.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          if (buckets[key]) buckets[key].growth += parseFloat(go.totalAmount);
+        }
+        return Object.values(buckets).map(b => ({ ...b, revenue: parseFloat(b.revenue.toFixed(2)), growth: parseFloat(b.growth.toFixed(2)) }));
+      }),
+
+    /** User growth chart: new signups per day */
+    getUserGrowthChart: adminProcedure
+      .input(z.object({ days: z.number().min(7).max(90).default(30) }))
+      .query(async ({ input }) => {
+        const allUsers = await getAllUsers(5000);
+        const now = Date.now();
+        const msPerDay = 86_400_000;
+        const buckets: Record<string, { date: string; users: number }> = {};
+        for (let i = input.days - 1; i >= 0; i--) {
+          const d = new Date(now - i * msPerDay);
+          const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          buckets[key] = { date: key, users: 0 };
+        }
+        for (const user of allUsers) {
+          const age = now - new Date(user.createdAt).getTime();
+          if (age > input.days * msPerDay) continue;
+          const key = new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          if (buckets[key]) buckets[key].users++;
+        }
+        return Object.values(buckets);
+      }),
+
     getUsers: adminProcedure.query(async () => getAllUsers(100)),
 
     updateUserRole: adminProcedure

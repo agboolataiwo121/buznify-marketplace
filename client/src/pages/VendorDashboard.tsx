@@ -197,12 +197,17 @@ export default function VendorDashboard() {
               </div>
             ))}
           </div>
-          {/* Reputation */}
+          {/* Reputation + Badges + Commission */}
           <div className="glass-card rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><Award className="w-4 h-4 text-yellow-400" />Vendor Reputation</h3>
-            <div className="flex items-center gap-6">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><Award className="w-4 h-4 text-yellow-400" />Reputation &amp; Badges</h3>
+            <div className="flex items-center gap-6 mb-4">
               <div className="text-center">
                 <p className="text-3xl font-bold text-yellow-400">{avgRating > 0 ? avgRating.toFixed(1) : "—"}</p>
+                <div className="flex justify-center mt-1">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} className={`w-3 h-3 ${i <= Math.round(avgRating) ? "text-yellow-400 fill-yellow-400" : "text-white/20"}`} />
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">Avg Rating</p>
               </div>
               <div className="flex-1">
@@ -216,6 +221,41 @@ export default function VendorDashboard() {
                   <span className="text-sm text-foreground">Instant Delivery</span>
                   <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Enabled</span>
                 </div>
+              </div>
+            </div>
+            {/* Dynamic Badges */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-medium">
+                <Shield className="w-3 h-3" /> Verified
+              </span>
+              {totalSold >= 10 && (
+                <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25 font-medium">
+                  <Award className="w-3 h-3" /> Top Seller
+                </span>
+              )}
+              {(products ?? []).some(p => p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 30 * 86_400_000) && (
+                <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/25 font-medium">
+                  <Zap className="w-3 h-3" /> New
+                </span>
+              )}
+              {avgRating >= 4.5 && totalSold >= 5 && (
+                <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 border border-yellow-500/25 font-medium">
+                  <Star className="w-3 h-3" /> 5-Star Seller
+                </span>
+              )}
+            </div>
+            {/* Commission info */}
+            <div className="glass rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-yellow-400" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">Platform Commission</p>
+                  <p className="text-xs text-muted-foreground">Deducted per completed sale</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-yellow-400">10%</p>
+                <p className="text-xs text-muted-foreground">You keep 90%</p>
               </div>
             </div>
           </div>

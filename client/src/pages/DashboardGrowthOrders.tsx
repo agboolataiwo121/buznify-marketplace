@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,16 @@ const SPEED_ICONS: Record<string, React.ReactNode> = {
 
 export default function DashboardGrowthOrders() {
   const [filter, setFilter] = useState<string>("all");
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const { data: orders = [], isLoading, refetch } = trpc.growthOrders.list.useQuery();
+  // Auto-poll every 15s when there are active orders
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const hasActive = orders.some((o: any) => o.status === "pending" || o.status === "processing");
+    if (!hasActive) return;
+    const interval = setInterval(() => refetch(), 15_000);
+    return () => clearInterval(interval);
+  }, [orders, autoRefresh, refetch]);
   const refill = trpc.growthOrders.requestRefill.useMutation({
     onSuccess: () => { refetch(); toast.success("Refill requested successfully"); },
     onError: (e) => toast.error(e.message),
@@ -48,7 +57,7 @@ export default function DashboardGrowthOrders() {
   };
 
   return (
-    <DashboardShell title="Growth Orders">
+    <DashboardShell title="Growth Orders" subtitle="Track your social media growth orders in real time.">
       <div className="space-y-6">
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -68,8 +77,23 @@ export default function DashboardGrowthOrders() {
           ))}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-2">
+        {/* Filter Tabs + Refresh Controls */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            onClick={() => { refetch(); toast.info("Orders refreshed"); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium glass text-muted-foreground hover:text-foreground transition-all"
+          >
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+          <button
+            onClick={() => setAutoRefresh((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              autoRefresh ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30" : "glass text-muted-foreground"
+            }`}
+          >
+            <Zap className="w-3 h-3" /> {autoRefresh ? "Live" : "Paused"}
+          </button>
+          <div className="w-px h-5 bg-white/10 mx-1" />
           {["all", "pending", "processing", "completed", "partial", "cancelled"].map((f) => (
             <button
               key={f}
