@@ -473,3 +473,33 @@ export const pushSubscriptions = mysqlTable("push_subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+// ─── Bank Accounts (saved payout accounts) ───────────────────────────────────
+export const bankAccounts = mysqlTable("bank_accounts", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId").notNull(),
+  bankCode: varchar("bankCode", { length: 20 }).notNull(),
+  bankName: varchar("bankName", { length: 100 }).notNull(),
+  accountNumber: varchar("accountNumber", { length: 20 }).notNull(),
+  accountName: varchar("accountName", { length: 100 }).notNull(),
+  recipientCode: varchar("recipientCode", { length: 100 }).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type BankAccount = typeof bankAccounts.$inferSelect;
+
+// ─── Withdrawals ─────────────────────────────────────────────────────────────
+export const withdrawals = mysqlTable("withdrawals", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId").notNull(),
+  bankAccountId: int("bankAccountId").notNull(),
+  amountUsd: decimal("amountUsd", { precision: 18, scale: 6 }).notNull(),
+  amountNaira: decimal("amountNaira", { precision: 18, scale: 2 }).notNull(),
+  transferReference: varchar("transferReference", { length: 100 }).notNull().unique(),
+  transferCode: varchar("transferCode", { length: 100 }),
+  status: mysqlEnum("status", ["pending", "processing", "success", "failed", "reversed"]).default("pending").notNull(),
+  failureReason: text("failureReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Withdrawal = typeof withdrawals.$inferSelect;

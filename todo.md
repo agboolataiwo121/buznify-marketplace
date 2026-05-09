@@ -652,6 +652,14 @@
 ## Paystack Integration Audit & Fixes
 - [x] Fix key mismatch: both keys now set to live mode (sk_live + pk_live)
 - [x] Update NGN-to-USD conversion rate: now uses live rate from exchangerate-api.com (1h cache, fallback ₦1360/$1)
-- [ ] Withdrawal flow: currently just deducts balance with no real payout — add admin review step or Paystack Transfer API
+- [x] Withdrawal flow: now uses Paystack Transfer API — real bank transfer with recipient creation, account verification, and transfer dispatch
 - [x] Paystack webhook URL: /api/webhooks/paystack — configure in Paystack Dashboard → Settings → Webhooks
 - [ ] Test deposit flow end-to-end with live card
+
+## Paystack Transfer Payouts
+- [x] Add Paystack Transfer API helpers: list banks, verify account name, create transfer recipient, initiate transfer
+- [x] Add bank_accounts table and withdrawals table to schema
+- [x] Add tRPC procedures: listBanks, verifyBankAccount, saveBankAccount, deleteBankAccount, setDefaultBankAccount, withdraw
+- [x] Update DashboardWallet withdrawal tab: bank account form (bank selector, account number, verify button), saved accounts list, real transfer dispatch
+- [x] Handle Paystack transfer webhook (transfer.success, transfer.failed) to update withdrawal status
+- [ ] Admin withdrawal management: view pending withdrawals, approve/reject

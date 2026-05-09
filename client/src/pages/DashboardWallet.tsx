@@ -51,6 +51,14 @@ export default function DashboardWallet() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [depositing, setDepositing] = useState(false);
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "crypto" | "payments">("deposit");
+  // Bank account state
+  const [showAddBank, setShowAddBank] = useState(false);
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [selectedBankCode, setSelectedBankCode] = useState("");
+  const [selectedBankName, setSelectedBankName] = useState("");
+  const [verifiedAccountName, setVerifiedAccountName] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: balanceData, refetch: refetchBalance } = trpc.wallet.getBalance.useQuery();
@@ -96,10 +104,49 @@ export default function DashboardWallet() {
     },
   });
 
-  const withdrawMutation = trpc.wallet.withdraw.useMutation({
+  // Bank account queries
+  const { data: bankAccounts, refetch: refetchBankAccounts } = trpc.wallet.getBankAccounts.useQuery(
+    undefined, { enabled: activeTab === "withdraw" }
+  );
+  const { data: bankList } = trpc.wallet.listBanks.useQuery(
+    undefined, { enabled: showAddBank }
+  );
+  const verifyBankMutation = trpc.wallet.verifyBankAccount.useMutation({
+    onSuccess: (data) => {
+      setVerifiedAccountName(data.accountName);
+      setIsVerifying(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setIsVerifying(false);
+    },
+  });
+  const saveBankMutation = trpc.wallet.saveBankAccount.useMutation({
     onSuccess: () => {
-      toast.success("Withdrawal request submitted!");
+      toast.success("Bank account saved!");
+      setShowAddBank(false);
+      setBankAccountNumber("");
+      setSelectedBankCode("");
+      setSelectedBankName("");
+      setVerifiedAccountName("");
+      refetchBankAccounts();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteBankMutation = trpc.wallet.deleteBankAccount.useMutation({
+    onSuccess: () => { toast.success("Bank account removed"); refetchBankAccounts(); },
+    onError: (err) => toast.error(err.message),
+  });
+  const setDefaultBankMutation = trpc.wallet.setDefaultBankAccount.useMutation({
+    onSuccess: () => { toast.success("Default bank account updated"); refetchBankAccounts(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const withdrawMutation = trpc.wallet.withdraw.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Withdrawal of $${parseFloat(withdrawAmount).toFixed(2)} initiated! Status: ${data.status}`);
       setWithdrawAmount("");
+      setSelectedBankAccountId(null);
       refetchBalance();
       refetchTx();
     },
@@ -136,7 +183,31 @@ export default function DashboardWallet() {
   const handleWithdraw = () => {
     const val = parseFloat(withdrawAmount);
     if (!val || val < 5) { toast.error("Minimum withdrawal is $5"); return; }
-    withdrawMutation.mutate({ amount: val });
+    if (!selectedBankAccountId) { toast.error("Please select a bank account"); return; }
+    withdrawMutation.mutate({ amount: val, bankAccountId: selectedBankAccountId });
+  };
+
+  const handleVerifyBank = () => {
+    if (bankAccountNumber.length !== 10 || !selectedBankCode) {
+      toast.error("Enter a 10-digit account number and select a bank");
+      return;
+    }
+    setIsVerifying(true);
+    setVerifiedAccountName("");
+    verifyBankMutation.mutate({ accountNumber: bankAccountNumber, bankCode: selectedBankCode });
+  };
+
+  const handleSaveBank = () => {
+    if (!verifiedAccountName || !selectedBankCode || !bankAccountNumber) {
+      toast.error("Please verify your account first");
+      return;
+    }
+    saveBankMutation.mutate({
+      bankCode: selectedBankCode,
+      bankName: selectedBankName,
+      accountNumber: bankAccountNumber,
+      accountName: verifiedAccountName,
+    });
   };
 
   const handleExportCSV = () => {
@@ -312,44 +383,123 @@ export default function DashboardWallet() {
           )}
 
           {activeTab === "withdraw" && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-4">Withdraw funds to your bank or payment method</p>
-              <div className="glass rounded-xl p-3 mb-4 flex items-center gap-3">
+            <div className="space-y-4">
+              <div className="glass rounded-xl p-3 flex items-center gap-3">
                 <TrendingUp className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 <p className="text-xs text-muted-foreground">Available: <span className="text-foreground font-semibold">${balance.toFixed(2)}</span></p>
               </div>
-              <div className="relative mb-4">
+
+              {/* Bank accounts list */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Saved Bank Accounts</p>
+                  <button onClick={() => setShowAddBank(!showAddBank)} className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> Add Account
+                  </button>
+                </div>
+                {!bankAccounts || bankAccounts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">No bank accounts saved yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {bankAccounts.map((acct) => (
+                      <div
+                        key={acct.id}
+                        onClick={() => setSelectedBankAccountId(acct.id)}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          selectedBankAccountId === acct.id
+                            ? "border-violet-500/60 bg-violet-500/10"
+                            : "border-border/50 bg-muted/20 hover:border-border"
+                        }`}
+                      >
+                        <Landmark className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{acct.bankName}</p>
+                          <p className="text-xs text-muted-foreground">{acct.accountNumber} · {acct.accountName}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {acct.isDefault && <span className="text-xs text-emerald-400 font-medium">Default</span>}
+                          {!acct.isDefault && (
+                            <button onClick={(e) => { e.stopPropagation(); setDefaultBankMutation.mutate({ id: acct.id }); }} className="text-xs text-muted-foreground hover:text-foreground px-1">Set default</button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); deleteBankMutation.mutate({ id: acct.id }); }} className="text-xs text-red-400 hover:text-red-300 px-1">Remove</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add bank account form */}
+              {showAddBank && (
+                <div className="glass rounded-xl p-4 space-y-3 border border-violet-500/20">
+                  <p className="text-sm font-medium text-foreground">Add Bank Account</p>
+                  <select
+                    value={selectedBankCode}
+                    onChange={(e) => {
+                      const opt = (bankList ?? []).find((b) => b.code === e.target.value);
+                      setSelectedBankCode(e.target.value);
+                      setSelectedBankName(opt?.name ?? "");
+                      setVerifiedAccountName("");
+                    }}
+                    className="w-full text-sm bg-muted/30 border border-border rounded-lg px-3 py-2 text-foreground"
+                  >
+                    <option value="">Select bank...</option>
+                    {(bankList ?? []).map((b) => (
+                      <option key={b.code} value={b.code}>{b.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="10-digit account number"
+                      value={bankAccountNumber}
+                      onChange={(e) => { setBankAccountNumber(e.target.value); setVerifiedAccountName(""); }}
+                      maxLength={10}
+                      className="flex-1 bg-muted/30 border-border"
+                    />
+                    <Button size="sm" variant="outline" onClick={handleVerifyBank} disabled={isVerifying || bankAccountNumber.length !== 10 || !selectedBankCode}>
+                      {isVerifying ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Verify"}
+                    </Button>
+                  </div>
+                  {verifiedAccountName && (
+                    <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>{verifiedAccountName}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1 bg-violet-600 hover:bg-violet-500 text-white border-0" onClick={handleSaveBank} disabled={!verifiedAccountName || saveBankMutation.isPending}>
+                      {saveBankMutation.isPending ? "Saving..." : "Save Account"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowAddBank(false); setBankAccountNumber(""); setSelectedBankCode(""); setVerifiedAccountName(""); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Withdrawal amount */}
+              <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="number"
                   placeholder="Withdrawal amount (min $5)"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="pl-9 bg-white/5 border-white/10 focus:border-primary/50"
+                  className="pl-9 bg-muted/30 border-border focus:border-primary/50"
                   min="5"
                 />
               </div>
-              <div className="space-y-2 mb-4">
-                {[
-                  { label: "Bank Transfer", sub: "1-3 business days", icon: CreditCard },
-                  { label: "PayPal", sub: "Instant", icon: DollarSign },
-                ].map(({ label, sub, icon: Icon }) => (
-                  <div key={label} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:border-white/10 transition-all">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{label}</p>
-                      <p className="text-xs text-muted-foreground">{sub}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {withdrawAmount && parseFloat(withdrawAmount) >= 5 && (
+                <p className="text-xs text-muted-foreground">≈ ₦{(parseFloat(withdrawAmount) * 1360).toLocaleString()} will be sent to your bank</p>
+              )}
               <Button
                 className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white border-0"
                 onClick={handleWithdraw}
-                disabled={withdrawMutation.isPending || !withdrawAmount}
+                disabled={withdrawMutation.isPending || !withdrawAmount || !selectedBankAccountId}
               >
                 <ArrowUpRight className="w-4 h-4 mr-2" />
-                {withdrawMutation.isPending ? "Processing..." : "Request Withdrawal"}
+                {withdrawMutation.isPending ? "Processing..." : "Withdraw to Bank"}
               </Button>
             </div>
           )}

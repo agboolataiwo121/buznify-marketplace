@@ -127,6 +127,13 @@
       "when": 1778353471449,
       "tag": "0017_mute_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1778364084939,
+      "tag": "0018_odd_tusk",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,9 @@ import {
   payments,
   siteAlerts,
   uptimeStats,
+  pushSubscriptions,
+  bankAccounts,
+  withdrawals,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1130,7 +1133,6 @@ export async function getServiceCurrentStatus(services: string[]) {
 }
 
 // ─── Push Subscriptions ───────────────────────────────────────────────────────
-import { pushSubscriptions } from "../drizzle/schema";
 
 export async function savePushSubscription(
   userId: number,
@@ -1151,4 +1153,101 @@ export async function getPushSubscriptionsForUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+}
+
+// ─── Bank Accounts ────────────────────────────────────────────────────────────
+export async function getBankAccountsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(bankAccounts).where(eq(bankAccounts.userId, userId));
+}
+
+export async function getBankAccountById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(bankAccounts).where(eq(bankAccounts.id, id));
+  return rows[0] ?? null;
+}
+
+export async function createBankAccount(data: {
+  userId: number;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  recipientCode: string;
+  isDefault?: boolean;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // If this is the first account, make it default
+  const existing = await getBankAccountsByUser(data.userId);
+  const isDefault = data.isDefault ?? existing.length === 0;
+  if (isDefault) {
+    // Unset any existing defaults
+    await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.userId, data.userId));
+  }
+  await db.insert(bankAccounts).values({ ...data, isDefault });
+}
+
+export async function deleteBankAccount(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(bankAccounts).where(eq(bankAccounts.id, id));
+}
+
+export async function setDefaultBankAccount(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.userId, userId));
+  await db.update(bankAccounts).set({ isDefault: true }).where(eq(bankAccounts.id, id));
+}
+
+// ─── Withdrawals ──────────────────────────────────────────────────────────────
+export async function createWithdrawal(data: {
+  userId: number;
+  bankAccountId: number;
+  amountUsd: number;
+  amountNaira: number;
+  transferReference: string;
+  transferCode?: string;
+  status?: "pending" | "processing" | "success" | "failed" | "reversed";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.insert(withdrawals).values({
+    ...data,
+    amountUsd: data.amountUsd.toFixed(6),
+    amountNaira: data.amountNaira.toFixed(2),
+    status: data.status ?? "pending",
+  });
+}
+
+export async function getWithdrawalByReference(reference: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(withdrawals).where(eq(withdrawals.transferReference, reference));
+  return rows[0] ?? null;
+}
+
+export async function updateWithdrawalStatus(
+  reference: string,
+  status: "pending" | "processing" | "success" | "failed" | "reversed",
+  extra?: { transferCode?: string; failureReason?: string }
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(withdrawals).set({ status, ...extra }).where(eq(withdrawals.transferReference, reference));
+}
+
+export async function getWithdrawalsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(withdrawals).where(eq(withdrawals.userId, userId)).orderBy(desc(withdrawals.createdAt));
+}
+
+export async function getAllWithdrawals(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(withdrawals).orderBy(desc(withdrawals.createdAt)).limit(limit).offset(offset);
 }

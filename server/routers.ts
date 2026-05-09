@@ -107,6 +107,11 @@ import {
   verifyTransaction as paystackVerify,
   generateReference,
   getPaystackBalance,
+  listBanks,
+  resolveBankAccount,
+  createTransferRecipient,
+  initiateTransfer,
+  generateTransferReference,
 } from "./paystack";
 import { ngnToUsd } from "./currency";
 import {
@@ -155,6 +160,16 @@ import {
   upsertUptimeStat,
   getServiceCurrentStatus,
   savePushSubscription,
+  getBankAccountsByUser,
+  getBankAccountById,
+  createBankAccount,
+  deleteBankAccount,
+  setDefaultBankAccount,
+  createWithdrawal,
+  getWithdrawalByReference,
+  updateWithdrawalStatus,
+  getWithdrawalsByUser,
+  getAllWithdrawals,
 } from "./db";
 import { recordAuthError, recordAvailabilityError, recordSuccess, getErrorState } from "./alertTracker";
 
@@ -987,8 +1002,83 @@ export const appRouter = router({
           pageSize: input.pageSize,
         });
       }),
+    // ── Bank account management ──────────────────────────────────────────────
+    listBanks: protectedProcedure.query(async () => {
+      const banks = await listBanks();
+      return banks.filter((b) => b.active).map((b) => ({ code: b.code, name: b.name }));
+    }),
+
+    verifyBankAccount: protectedProcedure
+      .input(z.object({ accountNumber: z.string().length(10), bankCode: z.string() }))
+      .mutation(async ({ input }) => {
+        const result = await resolveBankAccount({
+          accountNumber: input.accountNumber,
+          bankCode: input.bankCode,
+        });
+        return { accountName: result.account_name, accountNumber: result.account_number };
+      }),
+
+    saveBankAccount: protectedProcedure
+      .input(z.object({
+        bankCode: z.string(),
+        bankName: z.string(),
+        accountNumber: z.string().length(10),
+        accountName: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Check for duplicate
+        const existing = await getBankAccountsByUser(ctx.user.id);
+        const dup = existing.find((a) => a.accountNumber === input.accountNumber && a.bankCode === input.bankCode);
+        if (dup) throw new TRPCError({ code: "CONFLICT", message: "This bank account is already saved." });
+        // Create Paystack transfer recipient
+        const recipient = await createTransferRecipient({
+          name: input.accountName,
+          accountNumber: input.accountNumber,
+          bankCode: input.bankCode,
+        });
+        await createBankAccount({
+          userId: ctx.user.id,
+          bankCode: input.bankCode,
+          bankName: input.bankName,
+          accountNumber: input.accountNumber,
+          accountName: input.accountName,
+          recipientCode: recipient.recipient_code,
+        });
+        return { success: true };
+      }),
+
+    getBankAccounts: protectedProcedure.query(async ({ ctx }) => {
+      return getBankAccountsByUser(ctx.user.id);
+    }),
+
+    deleteBankAccount: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const account = await getBankAccountById(input.id);
+        if (!account || account.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        await deleteBankAccount(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    setDefaultBankAccount: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const account = await getBankAccountById(input.id);
+        if (!account || account.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        await setDefaultBankAccount(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    // ── Withdraw (real Paystack Transfer) ────────────────────────────────────
     withdraw: protectedProcedure
-      .input(z.object({ amount: z.number().min(1).max(10000) }))
+      .input(z.object({
+        amount: z.number().min(1).max(10000),
+        bankAccountId: z.number(),
+      }))
       .mutation(async ({ input, ctx }) => {
         const user = await getUserById(ctx.user.id);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });
@@ -996,6 +1086,15 @@ export const appRouter = router({
         if (currentBalance < input.amount) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
         }
+        const bankAccount = await getBankAccountById(input.bankAccountId);
+        if (!bankAccount || bankAccount.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Bank account not found" });
+        }
+        // Convert USD to NGN for the transfer
+        const { usdToNgn } = await import("./currency");
+        const amountNaira = await usdToNgn(input.amount);
+        const reference = generateTransferReference(ctx.user.id);
+        // Deduct balance first (optimistic)
         const newBalance = (currentBalance - input.amount).toFixed(2);
         await updateUserBalance(ctx.user.id, newBalance);
         await createWalletTransaction({
@@ -1004,11 +1103,43 @@ export const appRouter = router({
           amount: input.amount.toFixed(2),
           balanceBefore: currentBalance.toFixed(2),
           balanceAfter: newBalance,
-          description: "Wallet withdrawal",
-          status: "completed",
+          description: `Withdrawal to ${bankAccount.bankName} ${bankAccount.accountNumber}`,
+          status: "pending",
         });
-        return { success: true, newBalance: parseFloat(newBalance) };
+        // Record withdrawal
+        await createWithdrawal({
+          userId: ctx.user.id,
+          bankAccountId: input.bankAccountId,
+          amountUsd: input.amount,
+          amountNaira,
+          transferReference: reference,
+          status: "processing",
+        });
+        // Initiate Paystack transfer
+        try {
+          const transfer = await initiateTransfer({
+            amountNaira,
+            recipientCode: bankAccount.recipientCode,
+            reference,
+            reason: `Buznify wallet withdrawal — $${input.amount}`,
+          });
+          await updateWithdrawalStatus(reference, transfer.status === "success" ? "success" : "processing", {
+            transferCode: transfer.transfer_code,
+          });
+          return { success: true, newBalance: parseFloat(newBalance), status: transfer.status, reference };
+        } catch (err: unknown) {
+          // Rollback balance on transfer failure
+          await updateUserBalance(ctx.user.id, currentBalance.toFixed(2));
+          await updateWithdrawalStatus(reference, "failed", {
+            failureReason: err instanceof Error ? err.message : "Transfer failed",
+          });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Transfer failed. Please try again." });
+        }
       }),
+
+    getWithdrawals: protectedProcedure.query(async ({ ctx }) => {
+      return getWithdrawalsByUser(ctx.user.id);
+    }),
   }),
 
   // ── Growth Services (SMMKings + Peakerr live API) ────────────────────────

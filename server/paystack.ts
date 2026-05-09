@@ -143,3 +143,102 @@ export function generateReference(userId: number): string {
 export async function getPaystackBalance(): Promise<PaystackBalanceData[]> {
   return paystackRequest<PaystackBalanceData[]>("GET", "/balance");
 }
+
+// ─── Transfer / Payout API ────────────────────────────────────────────────────
+
+export interface PaystackBank {
+  id: number;
+  name: string;
+  code: string;
+  country: string;
+  currency: string;
+  type: string;
+  active: boolean;
+}
+
+export interface PaystackAccountResolution {
+  account_number: string;
+  account_name: string;
+  bank_id: number;
+}
+
+export interface PaystackRecipient {
+  recipient_code: string;
+  id: number;
+  name: string;
+  details: {
+    account_number: string;
+    account_name: string;
+    bank_code: string;
+    bank_name: string;
+  };
+}
+
+export interface PaystackTransfer {
+  reference: string;
+  transfer_code: string;
+  id: number;
+  status: "success" | "failed" | "pending" | "otp" | "reversed";
+  amount: number;
+  currency: string;
+  recipient: string;
+  reason: string;
+  createdAt: string;
+}
+
+/** List all Nigerian banks supported by Paystack. */
+export async function listBanks(): Promise<PaystackBank[]> {
+  return paystackRequest<PaystackBank[]>("GET", "/bank?country=nigeria&perPage=100");
+}
+
+/** Resolve a bank account number to get the account name. */
+export async function resolveBankAccount(params: {
+  accountNumber: string;
+  bankCode: string;
+}): Promise<PaystackAccountResolution> {
+  return paystackRequest<PaystackAccountResolution>(
+    "GET",
+    `/bank/resolve?account_number=${params.accountNumber}&bank_code=${params.bankCode}`
+  );
+}
+
+/** Create a transfer recipient (required before initiating a transfer). */
+export async function createTransferRecipient(params: {
+  name: string;
+  accountNumber: string;
+  bankCode: string;
+}): Promise<PaystackRecipient> {
+  return paystackRequest<PaystackRecipient>("POST", "/transferrecipient", {
+    type: "nuban",
+    name: params.name,
+    account_number: params.accountNumber,
+    bank_code: params.bankCode,
+    currency: "NGN",
+  });
+}
+
+/**
+ * Initiate a transfer to a recipient.
+ * @param amountNaira  Amount in Naira (converted to kobo internally)
+ */
+export async function initiateTransfer(params: {
+  amountNaira: number;
+  recipientCode: string;
+  reference: string;
+  reason?: string;
+}): Promise<PaystackTransfer> {
+  return paystackRequest<PaystackTransfer>("POST", "/transfer", {
+    source: "balance",
+    amount: Math.round(params.amountNaira * 100),
+    recipient: params.recipientCode,
+    reference: params.reference,
+    reason: params.reason ?? "Buznify wallet withdrawal",
+  });
+}
+
+/** Generate a unique transfer reference. */
+export function generateTransferReference(userId: number): string {
+  const ts = Date.now();
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `BUZW-${userId}-${ts}-${rand}`;
+}

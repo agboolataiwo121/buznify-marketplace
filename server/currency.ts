@@ -43,3 +43,13 @@ export async function ngnToUsd(naira: number): Promise<number> {
   const rate = await getNgnToUsdRate();
   return naira * rate;
 }
+
+/**
+ * Convert USD to NGN using the live rate.
+ */
+export async function usdToNgn(amountUsd: number): Promise<number> {
+  // getNgnToUsdRate() returns 1/usdToNgn (i.e. how many USD per 1 NGN)
+  // To get NGN from USD: amountUsd / rate = amountUsd * usdToNgn
+  const rate = await getNgnToUsdRate();
+  return Math.round((amountUsd / rate) * 100) / 100;
+}
