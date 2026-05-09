@@ -690,3 +690,6 @@
 - [x] Apply markup in growth.listLive so ratePerThousand shown to users is cost * (1 + markup/100)
 - [x] Store original API cost (apiCost) and marked-up price (totalAmount) separately in growth_orders
 - [x] Add Markup % control in Admin Panel Settings tab
+
+## Profit Preview Calculator
+- [x] Add live profit preview calculator to the Growth Services Markup card in Admin Panel (shows example API cost → user price → your profit for common price points)

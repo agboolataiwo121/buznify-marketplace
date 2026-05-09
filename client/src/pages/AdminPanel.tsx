@@ -2670,7 +2670,7 @@ export default function AdminPanel() {
                 <p className="text-xs text-muted-foreground">Set a global markup % applied on top of API costs. Users see marked-up prices; your profit = markup amount.</p>
               </div>
             </div>
-            <div className="flex items-end gap-4">
+            <div className="flex items-end gap-4 mb-6">
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground mb-1 block">Markup Percentage (%)</label>
                 <input
@@ -2683,7 +2683,7 @@ export default function AdminPanel() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500"
                   placeholder="30"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Current: <span className="text-violet-400 font-semibold">{currentMarkup ?? 30}%</span> markup on all growth service prices</p>
+                <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-violet-400 font-semibold">{currentMarkup ?? 30}%</span> — preview below updates live as you type</p>
               </div>
               <button
                 onClick={() => setMarkupMutation.mutate({ markup: parseFloat(markupInput) || 30 })}
@@ -2694,6 +2694,45 @@ export default function AdminPanel() {
                 Save Markup
               </button>
             </div>
+
+            {/* Live Profit Preview Calculator */}
+            {(() => {
+              const pct = parseFloat(markupInput) || 0;
+              const mult = 1 + pct / 100;
+              const examples = [0.10, 0.50, 1.00, 2.50, 5.00, 10.00];
+              return (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Live Profit Preview — at {pct}% markup</p>
+                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/5">
+                          <th className="text-left px-4 py-2.5 text-xs text-muted-foreground font-medium">API Cost / 1K</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-muted-foreground font-medium">User Pays / 1K</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-muted-foreground font-medium">Your Profit / 1K</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-muted-foreground font-medium">Margin</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {examples.map((cost, i) => {
+                          const userPrice = cost * mult;
+                          const profit = userPrice - cost;
+                          return (
+                            <tr key={cost} className={`border-b border-white/5 ${i % 2 === 0 ? "" : "bg-white/[0.02]"}`}>
+                              <td className="px-4 py-2.5 text-white/70">${cost.toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-right text-white font-medium">${userPrice.toFixed(4)}</td>
+                              <td className="px-4 py-2.5 text-right text-emerald-400 font-semibold">+${profit.toFixed(4)}</td>
+                              <td className="px-4 py-2.5 text-right text-violet-400">{pct.toFixed(1)}%</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">Example: 1,000 orders of a $1.00/1K service → you collect <span className="text-white font-medium">${(1.00 * mult * 1000 / 1000).toFixed(2)}</span>, pay API <span className="text-white font-medium">$1.00</span>, keep <span className="text-emerald-400 font-semibold">${((1.00 * mult - 1.00) * 1000 / 1000).toFixed(2)} profit</span> per 1K delivered.</p>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="glass-card rounded-2xl p-6">
