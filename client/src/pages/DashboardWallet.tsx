@@ -4,6 +4,8 @@ import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import {
   Wallet,
   ArrowDownLeft,
@@ -50,10 +52,19 @@ export default function DashboardWallet() {
   const [depositing, setDepositing] = useState(false);
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "crypto" | "payments">("deposit");
 
+  const utils = trpc.useUtils();
   const { data: balanceData, refetch: refetchBalance } = trpc.wallet.getBalance.useQuery();
   const { data: transactions, refetch: refetchTx } = trpc.wallet.getTransactions.useQuery();
+
+  const { isRefreshing, pullDistance, containerRef } = usePullToRefresh({
+    onRefresh: async () => {
+      await Promise.all([
+        utils.wallet.getBalance.invalidate(),
+        utils.wallet.getTransactions.invalidate(),
+      ]);
+    },
+  });
   const { data: paymentHistory } = trpc.payment.history.useQuery(undefined, { enabled: activeTab === "payments" });
-  const utils = trpc.useUtils();
 
   // Paystack initiate mutation
   const initiateMutation = trpc.payment.initiate.useMutation({
@@ -177,6 +188,8 @@ export default function DashboardWallet() {
 
   return (
     <DashboardShell title="Wallet" subtitle="Manage your balance, deposits, withdrawals, and transactions.">
+      <div ref={containerRef} className="overflow-y-auto">
+      <PullToRefreshIndicator isRefreshing={isRefreshing} pullDistance={pullDistance} />
       {/* Balance overview row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="glass-card rounded-2xl p-5 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/20">
@@ -708,6 +721,7 @@ export default function DashboardWallet() {
             )}
           </>
         )}
+      </div>
       </div>
     </DashboardShell>
   );

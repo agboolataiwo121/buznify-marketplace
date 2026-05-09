@@ -7,6 +7,7 @@ import ServiceIcon from "@/components/ServiceIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { CountdownTimer, PeopleViewing, StockUrgency, AbandonedCartBanner } from "@/components/ConversionWidgets";
+import PushNotificationPrompt from "@/components/PushNotificationPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -102,6 +103,7 @@ export default function ProductDetail() {
 
   // Abandoned cart: save to localStorage when viewing, trigger reminder after 5 min
   const [showAbandonedCart, setShowAbandonedCart] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
   const abandonedCartRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!product) return;
@@ -130,6 +132,12 @@ export default function ProductDetail() {
         toast.success("Order placed! It will be processed shortly.");
       }
       setOrdering(false);
+      // Show push notification opt-in after first successful order
+      const alreadyAsked = localStorage.getItem("bz_push_asked");
+      if (!alreadyAsked && Notification.permission === "default") {
+        setTimeout(() => setShowPushPrompt(true), 1500);
+        localStorage.setItem("bz_push_asked", "1");
+      }
     },
     onError: (err) => {
       toast.error(err.message);
@@ -407,6 +415,38 @@ export default function ProductDetail() {
           onDismiss={() => { setShowAbandonedCart(false); localStorage.removeItem(`bz_cart_${productId}`); }}
         />
       )}
+
+      {/* Push notification opt-in prompt — shown once after first successful order */}
+      {showPushPrompt && (
+        <PushNotificationPrompt onDismiss={() => setShowPushPrompt(false)} />
+      )}
+
+      {/* Sticky mobile Buy Now bar — only visible on small screens */}
+      <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
+        <div className="glass-card rounded-2xl border border-white/10 shadow-2xl shadow-black/40 p-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">{product.title}</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-foreground">${parseFloat(product.price).toFixed(2)}</span>
+              {product.originalPrice && (
+                <span className="text-xs text-muted-foreground line-through">${parseFloat(product.originalPrice).toFixed(2)}</span>
+              )}
+            </div>
+          </div>
+          <Button
+            className="shrink-0 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 font-semibold px-5 h-10"
+            onClick={handleBuy}
+            disabled={ordering}
+          >
+            {ordering ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <ShoppingCart className="w-4 h-4 mr-1.5" />
+            )}
+            {ordering ? "..." : "Buy Now"}
+          </Button>
+        </div>
+      </div>
 
       <Footer />
     </div>

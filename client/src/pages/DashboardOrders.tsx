@@ -3,6 +3,8 @@ import { trpc } from "@/lib/trpc";
 import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import {
   ShoppingCart,
   CheckCircle,
@@ -94,7 +96,14 @@ function CredentialRow({ label, value, icon, sensitive }: { label: string; value
 
 export default function DashboardOrders() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const utils = trpc.useUtils();
   const { data: orders, isLoading } = trpc.orders.myOrders.useQuery();
+
+  const { isRefreshing, pullDistance, containerRef } = usePullToRefresh({
+    onRefresh: async () => {
+      await utils.orders.myOrders.invalidate();
+    },
+  });
 
   const handleCopyAll = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -103,6 +112,8 @@ export default function DashboardOrders() {
 
   return (
     <DashboardShell title="My Orders" subtitle="Track and manage your purchases.">
+      <div ref={containerRef} className="overflow-y-auto">
+      <PullToRefreshIndicator isRefreshing={isRefreshing} pullDistance={pullDistance} />
       {isLoading ? (
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
@@ -247,6 +258,7 @@ export default function DashboardOrders() {
           })}
         </div>
       )}
+      </div>
     </DashboardShell>
   );
 }

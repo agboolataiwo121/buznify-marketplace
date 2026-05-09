@@ -152,6 +152,7 @@ import {
   getUptimeHistory,
   upsertUptimeStat,
   getServiceCurrentStatus,
+  savePushSubscription,
 } from "./db";
 import { recordAuthError, recordAvailabilityError, recordSuccess, getErrorState } from "./alertTracker";
 
@@ -1799,6 +1800,21 @@ export const appRouter = router({
       await markAllNotificationsRead(ctx.user.id);
       return { success: true };
     }),
+    /** Return the VAPID public key so the frontend can subscribe */
+    getVapidPublicKey: publicProcedure.query(() => {
+      return { key: process.env.VAPID_PUBLIC_KEY ?? "" };
+    }),
+    /** Save a push subscription for the current user */
+    subscribePush: protectedProcedure
+      .input(z.object({
+        endpoint: z.string().url(),
+        p256dh: z.string(),
+        auth: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await savePushSubscription(ctx.user.id, input.endpoint, input.p256dh, input.auth);
+        return { success: true };
+      }),
   }),  // ── Site Alerts ─────────────────────────────────────────────────────────────────────
   alerts: router({
     /** Public: get all currently active site alerts */

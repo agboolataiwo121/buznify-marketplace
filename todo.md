@@ -609,3 +609,10 @@
 - [x] Marketplace product grid: already grid-cols-1 on xs, grid-cols-2 on sm+ — confirmed correct
 - [x] Wallet deposit modal: improved tab bar (scrollable, min-width, whitespace-nowrap), larger tap targets on quick-amount buttons (py-3 + touch-target)
 - [x] Fixed bottom navigation bar on mobile: upgraded MobileBottomNav — shows Orders + Wallet + Account for logged-in users, hides on auth/admin pages, proper safe-area-inset padding
+
+## Mobile UX — Round 2
+- [x] Pull-to-refresh hook (usePullToRefresh) — touch gesture, spinner indicator, calls refetch callback
+- [x] Apply pull-to-refresh to DashboardOrders page
+- [x] Apply pull-to-refresh to DashboardWallet page
+- [x] Product Detail sticky Buy Now bottom bar on mobile — always-visible CTA with price, quantity, and Buy Now button fixed at bottom on small screens
+- [x] Browser push notification opt-in — prompt after first successful order, store subscription in DB, send notification when order status changes to delivered

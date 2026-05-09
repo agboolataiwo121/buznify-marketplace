@@ -1128,3 +1128,27 @@ export async function getServiceCurrentStatus(services: string[]) {
     .where(and(sql`${uptimeStats.service} IN (${sql.join(services.map((s: string) => sql`${s}`), sql`, `)})`, eq(uptimeStats.date, today)));
   return rows;
 }
+
+// ─── Push Subscriptions ───────────────────────────────────────────────────────
+import { pushSubscriptions } from "../drizzle/schema";
+
+export async function savePushSubscription(
+  userId: number,
+  endpoint: string,
+  p256dh: string,
+  auth: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert: insert or update on duplicate endpoint
+  await db
+    .insert(pushSubscriptions)
+    .values({ userId, endpoint, p256dh, auth })
+    .onDuplicateKeyUpdate({ set: { p256dh, auth, userId } });
+}
+
+export async function getPushSubscriptionsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+}
