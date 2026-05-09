@@ -2692,14 +2692,25 @@ export default function AdminPanel() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-violet-400 font-semibold">{(typeof currentMarkup === 'object' ? currentMarkup?.value : currentMarkup) ?? 30}%</span>{typeof currentMarkup === 'object' && currentMarkup?.updatedAt ? <span className="ml-2 text-white/40">· Last updated: {new Date(currentMarkup.updatedAt).toLocaleString()}</span> : null} — preview below updates live as you type</p>
               </div>
-              <button
-                onClick={() => setMarkupMutation.mutate({ markup: parseFloat(markupInput) || 30 })}
-                disabled={setMarkupMutation.isPending}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium bg-violet-500 text-white hover:bg-violet-600 transition-all disabled:opacity-50"
-              >
-                {setMarkupMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                Save Markup
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setMarkupMutation.mutate({ markup: parseFloat(markupInput) || 30 })}
+                  disabled={setMarkupMutation.isPending}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium bg-violet-500 text-white hover:bg-violet-600 transition-all disabled:opacity-50"
+                >
+                  {setMarkupMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  Save Markup
+                </button>
+                <button
+                  onClick={() => { setMarkupInput("30"); setMarkupMutation.mutate({ markup: 30 }); }}
+                  disabled={setMarkupMutation.isPending || markupInput === "30"}
+                  title="Reset to global default (30%)"
+                  className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10 transition-all disabled:opacity-40"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset to 30%
+                </button>
+              </div>
             </div>
 
             {/* Live Profit Preview Calculator */}
@@ -2768,14 +2779,25 @@ export default function AdminPanel() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-cyan-400 font-semibold">{(typeof currentVnMarkup === 'object' ? currentVnMarkup?.value : currentVnMarkup) ?? 30}%</span>{typeof currentVnMarkup === 'object' && currentVnMarkup?.updatedAt ? <span className="ml-2 text-white/40">· Last updated: {new Date(currentVnMarkup.updatedAt).toLocaleString()}</span> : null} — preview below updates live as you type</p>
               </div>
-              <button
-                onClick={() => setVnMarkupMutation.mutate({ markup: parseFloat(vnMarkupInput) || 30 })}
-                disabled={setVnMarkupMutation.isPending}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium bg-cyan-500 text-white hover:bg-cyan-600 transition-all disabled:opacity-50"
-              >
-                {setVnMarkupMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                Save Markup
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setVnMarkupMutation.mutate({ markup: parseFloat(vnMarkupInput) || 30 })}
+                  disabled={setVnMarkupMutation.isPending}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium bg-cyan-500 text-white hover:bg-cyan-600 transition-all disabled:opacity-50"
+                >
+                  {setVnMarkupMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  Save Markup
+                </button>
+                <button
+                  onClick={() => { setVnMarkupInput("30"); setVnMarkupMutation.mutate({ markup: 30 }); }}
+                  disabled={setVnMarkupMutation.isPending || vnMarkupInput === "30"}
+                  title="Reset to global default (30%)"
+                  className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10 transition-all disabled:opacity-40"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset to 30%
+                </button>
+              </div>
             </div>
             {/* Live Profit Preview */}
             {(() => {

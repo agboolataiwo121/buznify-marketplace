@@ -704,3 +704,6 @@
 - [x] Add updatedAt column to site_settings table in schema.ts (already existed)
 - [x] Update getGrowthMarkup and getVirtualNumberMarkup procedures to return { value, updatedAt }
 - [x] Display last updated timestamp on both markup cards in AdminPanel.tsx
+
+## Markup Reset Button
+- [x] Add "Reset to Default (30%)" button next to both markup inputs in Admin Panel Service Controls tab
