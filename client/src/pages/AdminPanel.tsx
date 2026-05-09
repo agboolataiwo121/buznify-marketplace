@@ -558,9 +558,9 @@ export default function AdminPanel() {
           Seed Demo Data
         </Button>
       </div>
-      {/* Desktop: sticky vertical sidebar */}
-      <div className="hidden lg:block">
-        <aside className="fixed top-24 w-[200px] xl:w-[220px]">
+      {/* Desktop: sticky sidebar only */}
+      <div className="hidden lg:flex gap-6 items-start">
+        <aside className="sticky top-6 self-start w-[200px] xl:w-[220px] shrink-0">
           <div className="glass-card rounded-2xl p-2 space-y-0.5 max-h-[calc(100vh-7rem)] overflow-y-auto">
             {TABS.map(({ value, label, icon: Icon }) => (
               <button
@@ -582,8 +582,8 @@ export default function AdminPanel() {
           </div>
         </aside>
       </div>
-      {/* Content offset for desktop sidebar */}
-      <div className="lg:pl-[216px] xl:pl-[236px]">
+      {/* Tab content — shared mobile + desktop, offset on desktop */}
+      <div className="lg:pl-[216px] xl:pl-[236px] -mt-0">
 
       {/* Overview */}
       {tab === "overview" && (
