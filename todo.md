@@ -677,3 +677,6 @@
 
 ## Platform Tabs Redesign
 - [x] Replace scrollable platform filter with dedicated tabs: Instagram, TikTok, YouTube, Telegram, Discord, Twitter/X, Spotify, Twitch
+
+## Goviraa-Style Growth Page Redesign
+- [x] Rewrite GrowthServices browse tab: platform grid (icon cards), category dropdown, service dropdown, link+qty form, price display, order button

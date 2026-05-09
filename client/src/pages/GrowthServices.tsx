@@ -1,18 +1,10 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -25,68 +17,29 @@ import {
   ShoppingCart,
   AlertCircle,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   Star,
   Package,
   Plus,
-  Clock,
   CheckCircle2,
-  Info,
-  BarChart2,
-  Hash,
-  Layers,
+  ChevronDown,
 } from "lucide-react";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { getLoginUrl } from "@/const";
 import ServiceIcon from "@/components/ServiceIcon";
 
-const PLATFORM_TABS = [
+// ─── Platform grid ─────────────────────────────────────────────────────────────
+const PLATFORM_GRID = [
   { key: "instagram", label: "Instagram" },
-  { key: "tiktok", label: "TikTok" },
+  { key: "facebook", label: "Facebook" },
   { key: "youtube", label: "YouTube" },
-  { key: "telegram", label: "Telegram" },
-  { key: "discord", label: "Discord" },
   { key: "twitter", label: "Twitter/X" },
   { key: "spotify", label: "Spotify" },
-  { key: "twitch", label: "Twitch" },
-];
-
-const PLATFORMS = [
-  { key: "all", label: "All Platforms", emoji: "🌐" },
-  { key: "instagram", label: "Instagram", emoji: "📸" },
-  { key: "tiktok", label: "TikTok", emoji: "🎵" },
-  { key: "youtube", label: "YouTube", emoji: "▶️" },
-  { key: "facebook", label: "Facebook", emoji: "👥" },
-  { key: "twitter", label: "Twitter / X", emoji: "🐦" },
-  { key: "telegram", label: "Telegram", emoji: "✈️" },
-  { key: "spotify", label: "Spotify", emoji: "🎧" },
-  { key: "snapchat", label: "Snapchat", emoji: "👻" },
-  { key: "linkedin", label: "LinkedIn", emoji: "💼" },
-  { key: "twitch", label: "Twitch", emoji: "🎮" },
-  { key: "discord", label: "Discord", emoji: "💬" },
-  { key: "threads", label: "Threads", emoji: "🧵" },
-  { key: "reddit", label: "Reddit", emoji: "🤖" },
-  { key: "soundcloud", label: "SoundCloud", emoji: "🎶" },
-  { key: "website", label: "Website Traffic", emoji: "🌍" },
-  { key: "other", label: "Other", emoji: "📦" },
-];
-
-const SERVICE_TYPES = [
-  { key: "all", label: "All Types" },
-  { key: "followers", label: "Followers" },
-  { key: "subscribers", label: "Subscribers" },
-  { key: "likes", label: "Likes" },
-  { key: "views", label: "Views" },
-  { key: "comments", label: "Comments" },
-  { key: "shares", label: "Shares" },
-  { key: "members", label: "Members" },
-  { key: "plays", label: "Plays" },
-  { key: "traffic", label: "Traffic" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "linkedin", label: "LinkedIn" },
+  { key: "soundcloud", label: "SoundCloud" },
+  { key: "telegram", label: "Telegram" },
+  { key: "website", label: "Website Traffic" },
+  { key: "other", label: "Other" },
+  { key: "all", label: "Everything" },
 ];
 
 const PANEL_LABELS: Record<string, string> = {
@@ -124,334 +77,7 @@ interface LiveService {
   maxQty: number;
 }
 
-// ─── Derive estimated delivery speed from service name ────────────────────────
-function getDeliverySpeed(name: string): { label: string; color: string; icon: string } {
-  const n = name.toLowerCase();
-  if (n.includes("instant") || n.includes("fast") || n.includes("speed")) {
-    return { label: "Instant (0–1 hr)", color: "text-emerald-400", icon: "⚡" };
-  }
-  if (n.includes("slow") || n.includes("gradual") || n.includes("drip")) {
-    return { label: "Gradual (1–7 days)", color: "text-orange-400", icon: "🐢" };
-  }
-  if (n.includes("real") || n.includes("organic") || n.includes("natural")) {
-    return { label: "Natural (1–3 days)", color: "text-cyan-400", icon: "🌿" };
-  }
-  return { label: "Standard (1–24 hr)", color: "text-yellow-400", icon: "🕐" };
-}
-
-// ─── Derive estimated success rate from service name ──────────────────────────
-function getSuccessRate(name: string, refill: boolean): { pct: number; color: string } {
-  const n = name.toLowerCase();
-  if (refill && (n.includes("real") || n.includes("hq") || n.includes("high quality"))) {
-    return { pct: 98, color: "text-emerald-400" };
-  }
-  if (refill) return { pct: 95, color: "text-emerald-400" };
-  if (n.includes("real") || n.includes("hq") || n.includes("high quality") || n.includes("premium")) {
-    return { pct: 92, color: "text-cyan-400" };
-  }
-  if (n.includes("bot") || n.includes("cheap") || n.includes("low")) {
-    return { pct: 78, color: "text-orange-400" };
-  }
-  return { pct: 88, color: "text-yellow-400" };
-}
-
-function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: LiveService) => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const platformInfo = PLATFORMS.find((p) => p.key === service.platform);
-  const delivery = getDeliverySpeed(service.name);
-  const successRate = getSuccessRate(service.name, service.refill);
-  return (
-    <HoverCard openDelay={300} closeDelay={100}>
-      <HoverCardTrigger asChild>
-    <Card className="bg-[#0d1117] border border-white/10 hover:border-violet-500/40 transition-all duration-200 cursor-pointer">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <ServiceIcon name={service.platform} size={16} className="shrink-0" />
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-500/40 text-violet-300 bg-violet-500/10">
-                {PANEL_LABELS[service.panel] ?? service.panel}
-              </Badge>
-              {service.refill && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500/40 text-green-400 bg-green-500/10">
-                  <RefreshCw className="w-2.5 h-2.5 mr-1" />Refill
-                </Badge>
-              )}
-              {service.cancel && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-orange-500/40 text-orange-400 bg-orange-500/10">
-                  Cancel
-                </Badge>
-              )}
-            </div>
-            <p className={`text-sm text-white/90 font-medium leading-snug ${!expanded ? "line-clamp-2" : ""}`}>{service.name}</p>
-            {service.name.length > 80 && (
-              <button onClick={() => setExpanded(!expanded)} className="text-[11px] text-violet-400 hover:text-violet-300 mt-0.5 flex items-center gap-0.5">
-                {expanded ? (<>Less <ChevronUp className="w-3 h-3" /></>) : (<>More <ChevronDown className="w-3 h-3" /></>)}
-              </button>
-            )}
-            <p className="text-[11px] text-white/40 mt-1">{service.category}</p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-lg font-bold text-violet-400">${service.ratePerThousand.toFixed(3)}</p>
-            <p className="text-[10px] text-white/40">per 1,000</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-          <div className="text-[11px] text-white/40">
-            Min: <span className="text-white/60">{service.minQty.toLocaleString()}</span>
-            {" \u00b7 "}
-            Max: <span className="text-white/60">{service.maxQty.toLocaleString()}</span>
-          </div>
-          <Button size="sm" onClick={() => onBuy(service)} className="h-7 px-3 text-xs bg-violet-600 hover:bg-violet-500 text-white">
-            <ShoppingCart className="w-3 h-3 mr-1" />Order
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-      </HoverCardTrigger>
-      <HoverCardContent
-        side="right"
-        align="start"
-        sideOffset={8}
-        className="w-72 bg-[#0d1117] border border-white/10 shadow-2xl p-0 rounded-2xl overflow-hidden"
-      >
-        <div className="px-4 pt-4 pb-3 border-b border-white/5">
-          <div className="flex items-center gap-2 mb-1">
-            <ServiceIcon name={service.platform} size={14} />
-            <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{service.platform} \u00b7 {service.serviceType}</span>
-          </div>
-          <p className="text-sm text-white/90 font-medium leading-snug line-clamp-3">{service.name}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-px bg-white/5 border-b border-white/5">
-          <div className="bg-[#0d1117] px-4 py-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Clock className="w-3 h-3 text-white/30" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Delivery</span>
-            </div>
-            <span className={`text-xs font-semibold ${delivery.color}`}>{delivery.icon} {delivery.label}</span>
-          </div>
-          <div className="bg-[#0d1117] px-4 py-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <BarChart2 className="w-3 h-3 text-white/30" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Success Rate</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${successRate.pct >= 95 ? "bg-emerald-400" : successRate.pct >= 88 ? "bg-yellow-400" : "bg-orange-400"}`}
-                  style={{ width: `${successRate.pct}%` }}
-                />
-              </div>
-              <span className={`text-xs font-bold ${successRate.color}`}>{successRate.pct}%</span>
-            </div>
-          </div>
-          <div className="bg-[#0d1117] px-4 py-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <RefreshCw className="w-3 h-3 text-white/30" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Refill</span>
-            </div>
-            {service.refill ? (
-              <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
-                <CheckCircle2 className="w-3 h-3" />Guaranteed
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs font-semibold text-white/30">
-                <XCircle className="w-3 h-3" />Not available
-              </span>
-            )}
-          </div>
-          <div className="bg-[#0d1117] px-4 py-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <XCircle className="w-3 h-3 text-white/30" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Cancel</span>
-            </div>
-            {service.cancel ? (
-              <span className="flex items-center gap-1 text-xs font-semibold text-cyan-400">
-                <CheckCircle2 className="w-3 h-3" />Allowed
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs font-semibold text-white/30">
-                <XCircle className="w-3 h-3" />Not allowed
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="flex items-center gap-1.5 text-white/40"><Layers className="w-3 h-3" />Quantity range</span>
-            <span className="text-white/70 font-medium">{service.minQty.toLocaleString()} – {service.maxQty.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="flex items-center gap-1.5 text-white/40"><Hash className="w-3 h-3" />Service ID</span>
-            <span className="text-white/50 font-mono">#{service.service}</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="flex items-center gap-1.5 text-white/40"><Info className="w-3 h-3" />Panel</span>
-            <span className="text-violet-400 font-medium">{PANEL_LABELS[service.panel] ?? service.panel}</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="flex items-center gap-1.5 text-white/40"><Star className="w-3 h-3" />Rate</span>
-            <span className="text-violet-400 font-bold">${service.ratePerThousand.toFixed(3)} / 1K</span>
-          </div>
-        </div>
-        <div className="px-4 pb-4">
-          <Button
-            size="sm"
-            className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 text-xs font-semibold"
-            onClick={() => onBuy(service)}
-          >
-            <ShoppingCart className="w-3 h-3 mr-1.5" />Order Now
-          </Button>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
-  );
-}
-function OrderModal({
-  service,
-  onClose,
-  userBalance,
-}: {
-  service: LiveService | null;
-  onClose: () => void;
-  userBalance: number;
-}) {
-  const utils = trpc.useUtils();
-  const [link, setLink] = useState("");
-  const [quantity, setQuantity] = useState<number>(service?.minQty ?? 100);
-  const [speedLabel, setSpeedLabel] = useState<"slow" | "medium" | "fast" | "instant">("medium");
-  const [dripFeed, setDripFeed] = useState(false);
-  const [dripInterval, setDripInterval] = useState(60);
-
-  const placeOrder = trpc.growth.placeOrder.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Order #${data.apiOrderId} is processing. Balance: $${data.newBalance.toFixed(2)}`);
-      utils.growth.myOrders.invalidate();
-      utils.auth.me.invalidate();
-      onClose();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  if (!service) return null;
-  const qty = Math.min(Math.max(quantity, service.minQty), service.maxQty);
-  const totalPrice = (qty / 1000) * service.ratePerThousand;
-  const canAfford = userBalance >= totalPrice;
-
-  return (
-    <Dialog open={!!service} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-[#0d1117] border border-white/10 text-white max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
-            <ServiceIcon name={service.platform} size={18} />Place Order
-          </DialogTitle>
-          <DialogDescription className="text-white/50 text-sm leading-snug">{service.name}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-5 py-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="border-violet-500/40 text-violet-300 bg-violet-500/10">{PANEL_LABELS[service.panel]}</Badge>
-            <Badge variant="outline" className="border-white/20 text-white/50">Service #{service.service}</Badge>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm text-white/70">Target URL / Username</label>
-            <Input
-              placeholder="https://instagram.com/username"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500"
-            />
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-white/70">Quantity</label>
-              <span className="text-sm font-mono text-violet-300">{qty.toLocaleString()}</span>
-            </div>
-            <Slider
-              min={service.minQty}
-              max={Math.min(service.maxQty, 100000)}
-              step={Math.max(1, Math.floor(service.minQty / 10))}
-              value={[qty]}
-              onValueChange={([v]) => setQuantity(v)}
-              className="[&_[role=slider]]:bg-violet-500"
-            />
-            <div className="flex justify-between text-[11px] text-white/30">
-              <span>Min: {service.minQty.toLocaleString()}</span>
-              <span>Max: {service.maxQty.toLocaleString()}</span>
-            </div>
-          </div>
-          <div className="bg-white/5 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Rate</span>
-              <span className="text-white/80">${service.ratePerThousand.toFixed(4)} / 1,000</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Quantity</span>
-              <span className="text-white/80">{qty.toLocaleString()}</span>
-            </div>
-            <div className="border-t border-white/10 pt-2 flex justify-between font-semibold">
-              <span className="text-white/70">Total</span>
-              <span className={canAfford ? "text-green-400" : "text-red-400"}>${totalPrice.toFixed(4)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/40">Your balance</span>
-              <span className={canAfford ? "text-white/60" : "text-red-400"}>${userBalance.toFixed(2)}</span>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label className="text-sm text-white/70">Delivery Speed</label>
-              <div className="flex gap-2">
-                {(["slow", "medium", "fast", "instant"] as const).map((s) => (
-                  <button key={s} onClick={() => setSpeedLabel(s)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all capitalize ${speedLabel === s ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/50 hover:border-white/30"}`}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white/70">Drip-Feed Delivery</p>
-                <p className="text-xs text-white/40">Spread delivery over time</p>
-              </div>
-              <button onClick={() => setDripFeed(d => !d)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${dripFeed ? "bg-violet-600" : "bg-white/10"}`}>
-                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${dripFeed ? "left-5" : "left-0.5"}`} />
-              </button>
-            </div>
-            {dripFeed && (
-              <div className="space-y-1.5">
-                <label className="text-sm text-white/70">Interval (minutes)</label>
-                <Input type="number" value={dripInterval} onChange={e => setDripInterval(parseInt(e.target.value) || 60)}
-                  min={1} max={1440} className="bg-white/5 border-white/10 text-white h-8 text-sm" />
-              </div>
-            )}
-          </div>
-          {!canAfford && (
-            <p className="text-xs text-red-400 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" />Insufficient balance. Please top up your wallet.
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-white/10 text-white/70">Cancel</Button>
-          <Button
-            onClick={() => placeOrder.mutate({ panel: service.panel, serviceId: service.service, serviceName: service.name, targetUrl: link, quantity: qty, totalPrice, speedLabel, dripFeed, dripInterval: dripFeed ? dripInterval : undefined })}
-            disabled={!link || !canAfford || placeOrder.isPending}
-            className="bg-violet-600 hover:bg-violet-500 text-white"
-          >
-            {placeOrder.isPending ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Placing...</>
-            ) : (
-              <><Zap className="w-4 h-4 mr-2" />Place Order — ${totalPrice.toFixed(4)}</>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
+// ─── My Orders Tab ─────────────────────────────────────────────────────────────
 function MyOrdersTab() {
   const { data: orders, isLoading, refetch, isFetching } = trpc.growth.myOrders.useQuery(undefined, { refetchInterval: 30_000 });
   const utils = trpc.useUtils();
@@ -498,18 +124,10 @@ function MyOrdersTab() {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-xs font-mono text-white/40">#{order.id}</span>
-                    {order.apiOrderId && (
-                      <span className="text-xs font-mono text-violet-400/70">API#{order.apiOrderId}</span>
-                    )}
-                    {order.panel && order.panel !== "manual" && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-500/30 text-violet-300/70">
-                        {PANEL_LABELS[order.panel] ?? order.panel}
-                      </Badge>
-                    )}
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-xs text-white/40">{PANEL_LABELS[order.panel ?? ""] ?? order.panel}</span>
                   </div>
-                  <p className="text-sm text-white/80 line-clamp-1">{order.notes ?? "Growth Order"}</p>
+                  <p className="text-sm text-white font-medium truncate">{order.notes ?? `Service #${order.serviceId}`}</p>
                   <p className="text-xs text-white/40 mt-0.5 truncate">{order.targetUrl}</p>
                 </div>
                 <Badge variant="outline" className={`text-[10px] px-2 py-0.5 shrink-0 ${statusClass}`}>{order.status}</Badge>
@@ -551,6 +169,7 @@ function MyOrdersTab() {
   );
 }
 
+// ─── Mass Order Tab ─────────────────────────────────────────────────────────────
 function MassOrderTab({ services, userBalance, user }: { services: LiveService[]; userBalance: number; user: unknown }) {
   const utils = trpc.useUtils();
   type MassRow = { panel: "smmkings" | "smmkings2" | "peakerr"; serviceId: number; serviceName: string; targetUrl: string; quantity: number; totalPrice: number; speedLabel: "slow" | "medium" | "fast" | "instant"; dripFeed: boolean; dripInterval?: number };
@@ -619,7 +238,6 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
           </Button>
         </div>
       </div>
-
       <div className="space-y-2">
         {rows.map((row, i) => {
           const svc = services.find(s => s.service === row.serviceId && s.panel === row.panel);
@@ -627,7 +245,7 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
             <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-white/40 w-5">#{i+1}</span>
-                <select value={row.panel} onChange={e => updateRow(i, { panel: e.target.value as "smmkings" | "peakerr", serviceId: 0, serviceName: "", totalPrice: 0 })}
+                <select value={row.panel} onChange={e => updateRow(i, { panel: e.target.value as "smmkings" | "smmkings2" | "peakerr", serviceId: 0, serviceName: "", totalPrice: 0 })}
                   className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
                   <option value="smmkings">Server 1</option>
                   <option value="peakerr">Server 2</option>
@@ -658,20 +276,12 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
                   updateRow(i, { quantity: qty, totalPrice: price });
                 }} min={svc?.minQty ?? 10} max={svc?.maxQty ?? 100000}
                   className="w-24 bg-white/5 border-white/10 text-white h-7 text-xs" />
-                <select value={row.speedLabel} onChange={e => updateRow(i, { speedLabel: e.target.value as "slow" | "medium" | "fast" | "instant" })}
-                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
-                  <option value="slow">Slow</option>
-                  <option value="medium">Medium</option>
-                  <option value="fast">Fast</option>
-                  <option value="instant">Instant</option>
-                </select>
                 <span className={`text-xs font-mono ${row.totalPrice > 0 ? "text-violet-300" : "text-white/30"}`}>${row.totalPrice.toFixed(4)}</span>
               </div>
             </div>
           );
         })}
       </div>
-
       <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
         <div>
           <p className="text-sm text-white">{rows.length} order{rows.length !== 1 ? "s" : ""} \u00b7 Total: <span className={canAfford ? "text-green-400" : "text-red-400"}>${totalCost.toFixed(4)}</span></p>
@@ -693,54 +303,112 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
   );
 }
 
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function GrowthServices() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("browse");
+  const [activeTab, setActiveTab] = useState("order");
   const [selectedPlatform, setSelectedPlatform] = useState("instagram");
-  const [selectedType, setSelectedType] = useState("all");
-  const [selectedPanel, setSelectedPanel] = useState<"all" | "smmkings" | "smmkings2" | "peakerr">("all");
   const [search, setSearch] = useState("");
-  const [orderService, setOrderService] = useState<LiveService | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [link, setLink] = useState("");
+  const [quantity, setQuantity] = useState(100);
+  const [dripFeed, setDripFeed] = useState(false);
+  const [dripInterval, setDripInterval] = useState(60);
 
   const { data: services, isLoading, error, refetch, isFetching } = trpc.growth.listLive.useQuery(
-    { panel: selectedPanel },
+    { panel: "all" },
     { staleTime: 5 * 60 * 1000 }
   );
 
+  const utils = trpc.useUtils();
   const userBalance = parseFloat((user as { balance?: string } | null)?.balance ?? "0");
 
-  const filtered = useMemo(() => {
+  // Filter services by selected platform (or search)
+  const platformServices = useMemo(() => {
     if (!services) return [];
-    return services.filter((s) => {
-      if (selectedPlatform !== "all" && s.platform !== selectedPlatform) return false;
-      if (selectedType !== "all" && !s.serviceType.toLowerCase().includes(selectedType.toLowerCase())) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        if (!s.name.toLowerCase().includes(q) && !s.category.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [services, selectedPlatform, selectedType, search]);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return services.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || s.platform.toLowerCase().includes(q));
+    }
+    if (selectedPlatform === "all") return services;
+    return services.filter(s => s.platform === selectedPlatform);
+  }, [services, selectedPlatform, search]);
 
-  const handleBuy = useCallback(
-    (service: LiveService) => {
-      if (!user) { window.location.href = getLoginUrl("/growth-services"); return; }
-      setOrderService(service);
+  // Derive unique categories from filtered services
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(platformServices.map(s => s.category))).filter(Boolean).sort();
+    return cats;
+  }, [platformServices]);
+
+  // Reset category + service when platform changes
+  useEffect(() => {
+    setSelectedCategory("");
+    setSelectedServiceId(null);
+    setLink("");
+    setQuantity(100);
+  }, [selectedPlatform, search]);
+
+  // Reset service when category changes
+  useEffect(() => {
+    setSelectedServiceId(null);
+  }, [selectedCategory]);
+
+  // Services within selected category
+  const categoryServices = useMemo(() => {
+    if (!selectedCategory) return platformServices;
+    return platformServices.filter(s => s.category === selectedCategory);
+  }, [platformServices, selectedCategory]);
+
+  const selectedService = useMemo(() => {
+    if (!selectedServiceId) return null;
+    return categoryServices.find(s => s.service === selectedServiceId) ?? null;
+  }, [categoryServices, selectedServiceId]);
+
+  const qty = selectedService ? Math.min(Math.max(quantity, selectedService.minQty), selectedService.maxQty) : quantity;
+  const totalPrice = selectedService ? (qty / 1000) * selectedService.ratePerThousand : 0;
+  const canAfford = userBalance >= totalPrice;
+
+  const placeOrder = trpc.growth.placeOrder.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Order #${data.apiOrderId} placed! Balance: $${data.newBalance.toFixed(2)}`);
+      utils.growth.myOrders.invalidate();
+      utils.auth.me.invalidate();
+      setLink("");
+      setSelectedServiceId(null);
+      setSelectedCategory("");
     },
-    [user]
-  );
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleOrder = useCallback(() => {
+    if (!user) { window.location.href = getLoginUrl("/growth-services"); return; }
+    if (!selectedService || !link) return;
+    placeOrder.mutate({
+      panel: selectedService.panel,
+      serviceId: selectedService.service,
+      serviceName: selectedService.name,
+      targetUrl: link,
+      quantity: qty,
+      totalPrice,
+      speedLabel: "medium",
+      dripFeed,
+      dripInterval: dripFeed ? dripInterval : undefined,
+    });
+  }, [user, selectedService, link, qty, totalPrice, dripFeed, dripInterval, placeOrder]);
 
   return (
     <div className="min-h-screen bg-[#060910] text-white pb-mobile-nav md:pb-0">
+      {/* Header */}
       <div className="border-b border-white/5 bg-gradient-to-r from-violet-950/30 to-[#060910]">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                 <TrendingUp className="w-6 h-6 text-violet-400" />Social Growth Services
               </h1>
               <p className="text-white/50 text-sm mt-1">
-                Real services from 3 panels · Instant delivery · Refill guarantee
+                Real services from 3 panels \u00b7 Instant delivery \u00b7 Refill guarantee
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -757,11 +425,11 @@ export default function GrowthServices() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-white/5 border border-white/10 mb-6">
-            <TabsTrigger value="browse" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
-              Browse Services
+            <TabsTrigger value="order" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
+              New Order
             </TabsTrigger>
             <TabsTrigger value="orders" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
               My Orders
@@ -771,120 +439,246 @@ export default function GrowthServices() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="browse" className="space-y-5">
-            {/* Platform Tabs */}
-            <div className="border-b border-white/10 -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div className="flex overflow-x-auto scrollbar-none">
-                {PLATFORM_TABS.map((p) => {
-                  const count = services ? services.filter(s => s.platform === p.key).length : null;
+          {/* ── New Order Tab ── */}
+          <TabsContent value="order" className="space-y-6">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+              <input
+                type="text"
+                placeholder="Search for a service or platform..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); if (e.target.value) setSelectedPlatform("all"); }}
+                className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500 text-sm"
+              />
+            </div>
+
+            {/* Platform Grid */}
+            {!search && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                {PLATFORM_GRID.map((p) => {
+                  const isActive = selectedPlatform === p.key;
                   return (
                     <button
                       key={p.key}
-                      onClick={() => { setSelectedPlatform(p.key); setSelectedType("all"); setSearch(""); }}
-                      className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all flex-shrink-0 ${
-                        selectedPlatform === p.key
-                          ? "border-violet-500 text-white"
-                          : "border-transparent text-white/50 hover:text-white/80 hover:border-white/20"
+                      onClick={() => setSelectedPlatform(p.key)}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border text-sm font-medium transition-all ${
+                        isActive
+                          ? "bg-violet-600/20 border-violet-500 text-white"
+                          : "bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:text-white hover:bg-white/8"
                       }`}
                     >
-                      <ServiceIcon name={p.key} size={16} className="shrink-0" />
-                      {p.label}
-                      {count !== null && count > 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                          selectedPlatform === p.key ? "bg-violet-500/30 text-violet-300" : "bg-white/10 text-white/40"
-                        }`}>{count}</span>
-                      )}
+                      <ServiceIcon name={p.key === "all" ? "globe" : p.key === "website" ? "globe" : p.key} size={20} className="shrink-0" />
+                      <span>{p.label}</span>
                     </button>
                   );
                 })}
               </div>
-            </div>
-
-            {/* Search + Server Filter */}
-            <div className="flex flex-wrap gap-3 items-center">
-              <div className="relative flex-1 min-w-[200px] max-w-lg">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                <Input
-                  placeholder={`Search ${PLATFORM_TABS.find(p => p.key === selectedPlatform)?.label ?? ""} services...`}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500"
-                />
-              </div>
-              <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
-                {(["all", "smmkings", "peakerr", "smmkings2"] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setSelectedPanel(p)}
-                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${selectedPanel === p ? "bg-violet-600 text-white" : "text-white/50 hover:text-white/80"}`}
-                  >
-                    {p === "all" ? "All Servers" : PANEL_LABELS[p]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Service Type Filter */}
-            <div className="flex flex-wrap gap-2">
-              {SERVICE_TYPES.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setSelectedType(t.key)}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-all ${selectedType === t.key ? "bg-violet-600/30 border-violet-500/50 text-violet-300" : "bg-transparent border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"}`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {!isLoading && !error && (
-              <p className="text-xs text-white/40">
-                {filtered.length.toLocaleString()} service{filtered.length !== 1 ? "s" : ""} found
-                {services && ` \u00b7 ${services.length.toLocaleString()} total across all panels`}
-              </p>
             )}
 
+            {/* Loading / Error */}
             {isLoading && (
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-                <p className="text-white/50 text-sm">Loading live services from all panels...</p>
+              <div className="flex items-center justify-center py-10 gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                <p className="text-white/50 text-sm">Loading services...</p>
               </div>
             )}
-
             {error && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <AlertCircle className="w-10 h-10 text-red-400" />
-                <p className="text-white/60 text-sm">Failed to load services: {error.message}</p>
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+                <p className="text-white/60 text-sm">Failed to load services</p>
                 <Button variant="outline" size="sm" onClick={() => refetch()} className="border-white/10 text-white/60">Retry</Button>
               </div>
             )}
 
-            {!isLoading && !error && (
-              <>
-                {filtered.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16">
-                    <Search className="w-10 h-10 text-white/20 mb-3" />
-                    <p className="text-white/50 text-sm">No services match your filters.</p>
-                    <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSelectedPlatform("all"); setSelectedType("all"); }} className="mt-2 text-violet-400 hover:text-violet-300">
-                      Clear filters
+            {/* Order Form */}
+            {!isLoading && !error && platformServices.length > 0 && (
+              <div className="space-y-5">
+                {/* Category Dropdown */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-white">Deployment Category</label>
+                  <div className="relative">
+                    <select
+                      value={selectedCategory}
+                      onChange={e => setSelectedCategory(e.target.value)}
+                      className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 pr-10"
+                    >
+                      <option value="">-- Select a category --</option>
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Service Dropdown */}
+                {selectedCategory && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-white">Select Service</label>
+                    <div className="relative">
+                      <select
+                        value={selectedServiceId ?? ""}
+                        onChange={e => {
+                          const id = parseInt(e.target.value);
+                          setSelectedServiceId(isNaN(id) ? null : id);
+                          const svc = categoryServices.find(s => s.service === id);
+                          if (svc) setQuantity(svc.minQty);
+                        }}
+                        className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 pr-10"
+                      >
+                        <option value="">-- Select a service --</option>
+                        {categoryServices.map(s => (
+                          <option key={`${s.panel}-${s.service}`} value={s.service}>
+                            {s.service} - {s.name.slice(0, 80)}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Service Info Card */}
+                {selectedService && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2 text-sm">
+                    <div className="flex flex-wrap gap-2 mb-1">
+                      <Badge variant="outline" className="border-violet-500/40 text-violet-300 bg-violet-500/10 text-[11px]">
+                        {PANEL_LABELS[selectedService.panel]}
+                      </Badge>
+                      {selectedService.refill && (
+                        <Badge variant="outline" className="border-green-500/40 text-green-400 bg-green-500/10 text-[11px]">
+                          <RefreshCw className="w-2.5 h-2.5 mr-1" />Refill
+                        </Badge>
+                      )}
+                      {selectedService.cancel && (
+                        <Badge variant="outline" className="border-orange-500/40 text-orange-400 bg-orange-500/10 text-[11px]">
+                          Cancellable
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-white/5 rounded-lg p-2">
+                        <p className="text-[10px] text-white/40 mb-0.5">Rate</p>
+                        <p className="text-violet-400 font-bold text-sm">${selectedService.ratePerThousand.toFixed(3)}</p>
+                        <p className="text-[10px] text-white/30">per 1K</p>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-2">
+                        <p className="text-[10px] text-white/40 mb-0.5">Min</p>
+                        <p className="text-white font-semibold text-sm">{selectedService.minQty.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-2">
+                        <p className="text-[10px] text-white/40 mb-0.5">Max</p>
+                        <p className="text-white font-semibold text-sm">{selectedService.maxQty.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Link + Quantity */}
+                {selectedService && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-white">Link</label>
+                      <Input
+                        placeholder={`https://${selectedService.platform}.com/...`}
+                        value={link}
+                        onChange={e => setLink(e.target.value)}
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500 rounded-xl h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-white">Quantity</label>
+                        <span className="text-xs text-white/40">{selectedService.minQty.toLocaleString()} – {selectedService.maxQty.toLocaleString()}</span>
+                      </div>
+                      <Input
+                        type="number"
+                        value={qty}
+                        onChange={e => setQuantity(parseInt(e.target.value) || selectedService.minQty)}
+                        min={selectedService.minQty}
+                        max={selectedService.maxQty}
+                        className="bg-white/5 border-white/10 text-white focus:border-violet-500 rounded-xl h-11"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Drip Feed */}
+                {selectedService && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl">
+                    <div>
+                      <p className="text-sm text-white font-medium">Drip-Feed Delivery</p>
+                      <p className="text-xs text-white/40">Spread delivery over time for natural growth</p>
+                    </div>
+                    <button onClick={() => setDripFeed(d => !d)}
+                      className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${dripFeed ? "bg-violet-600" : "bg-white/10"}`}>
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${dripFeed ? "left-5" : "left-0.5"}`} />
+                    </button>
+                  </div>
+                )}
+                {selectedService && dripFeed && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-white">Interval (minutes)</label>
+                    <Input type="number" value={dripInterval} onChange={e => setDripInterval(parseInt(e.target.value) || 60)}
+                      min={1} max={1440} className="bg-white/5 border-white/10 text-white rounded-xl h-11" />
+                  </div>
+                )}
+
+                {/* Price + Order Button */}
+                {selectedService && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Rate</span>
+                      <span className="text-white/80">${selectedService.ratePerThousand.toFixed(4)} / 1,000</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Quantity</span>
+                      <span className="text-white/80">{qty.toLocaleString()}</span>
+                    </div>
+                    <div className="border-t border-white/10 pt-3 flex justify-between font-semibold">
+                      <span className="text-white/70">Total</span>
+                      <span className={canAfford ? "text-green-400 text-lg" : "text-red-400 text-lg"}>${totalPrice.toFixed(4)}</span>
+                    </div>
+                    {user && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white/40">Your balance</span>
+                        <span className={canAfford ? "text-white/60" : "text-red-400"}>${userBalance.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {!canAfford && user && (
+                      <p className="text-xs text-red-400 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" />Insufficient balance. Please top up your wallet.
+                      </p>
+                    )}
+                    <Button
+                      className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12 text-base font-semibold rounded-xl gap-2"
+                      disabled={!link || (!!user && !canAfford) || placeOrder.isPending}
+                      onClick={handleOrder}
+                    >
+                      {placeOrder.isPending ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" />Placing Order...</>
+                      ) : !user ? (
+                        <><Zap className="w-5 h-5" />Sign In to Order</>
+                      ) : (
+                        <><ShoppingCart className="w-5 h-5" />Place Order — ${totalPrice.toFixed(4)}</>
+                      )}
                     </Button>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-                    {filtered.slice(0, 200).map((s) => (
-                      <ServiceCard key={`${s.panel}-${s.service}`} service={s as LiveService} onBuy={handleBuy} />
-                    ))}
+                )}
+
+                {/* No services found */}
+                {platformServices.length === 0 && !isLoading && (
+                  <div className="flex flex-col items-center justify-center py-10">
+                    <Search className="w-10 h-10 text-white/20 mb-3" />
+                    <p className="text-white/50 text-sm">No services found for this platform.</p>
                   </div>
                 )}
-                {filtered.length > 200 && (
-                  <p className="text-center text-xs text-white/30 pt-2">
-                    Showing 200 of {filtered.length.toLocaleString()} — use filters to narrow down
-                  </p>
-                )}
-              </>
+              </div>
             )}
           </TabsContent>
 
+          {/* ── My Orders Tab ── */}
           <TabsContent value="orders">
             {!user ? (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -898,13 +692,13 @@ export default function GrowthServices() {
               <MyOrdersTab />
             )}
           </TabsContent>
+
+          {/* ── Mass Order Tab ── */}
           <TabsContent value="mass">
             <MassOrderTab services={services ?? []} userBalance={userBalance} user={user} />
           </TabsContent>
         </Tabs>
       </div>
-
-      <OrderModal service={orderService} onClose={() => setOrderService(null)} userBalance={userBalance} />
     </div>
   );
 }
