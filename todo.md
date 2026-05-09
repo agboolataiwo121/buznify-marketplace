@@ -352,3 +352,14 @@
 - [x] Add Categories tab to AdminPanel.tsx with create form, editable list, enable/disable toggle, delete
 - [x] Wire Marketplace category tabs to use dynamic categories from DB (with static fallback)
 - [x] Wire product create/edit form category dropdown to use dynamic categories
+
+## Lucide Icon Picker for Category Form
+- [x] Add `icon` (varchar, default "Package") column to productCategories table in schema.ts
+- [x] Push schema migration with pnpm db:push
+- [x] Update createCategory and updateCategory procedures to accept and persist icon name
+- [x] Update listCategories procedure to return icon field
+- [x] Build IconPicker component: searchable grid of ~60 curated Lucide icons with preview
+- [x] Wire IconPicker into category create form (replace iconColor field with icon + color)
+- [x] Wire IconPicker into category inline-edit form
+- [x] Update Marketplace.tsx to dynamically resolve Lucide icon component from icon name string
+- [x] Update AdminPanel Categories tab list to show selected icon preview next to each category

@@ -24,6 +24,7 @@ import {
   Globe,
   ShieldCheck,
 } from "lucide-react";
+import { ICON_MAP } from "@/components/IconPicker";
 
 const CATEGORIES = [
   { value: "", label: "All Products", icon: Package },
@@ -239,7 +240,7 @@ export default function Marketplace() {
   const dynamicCategories = dbCats && dbCats.length > 0
     ? [
         { value: "", label: "All Products", icon: Package },
-        ...dbCats.map((c) => ({ value: c.slug, label: c.label, icon: Package })),
+        ...dbCats.map((c) => ({ value: c.slug, label: c.label, icon: ICON_MAP[c.icon] ?? Package })),
       ]
     : CATEGORIES;
 

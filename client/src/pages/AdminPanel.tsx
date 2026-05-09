@@ -42,6 +42,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ComposedChart,
 } from "recharts";
+import IconPicker, { ICON_MAP } from "@/components/IconPicker";
 
 type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories";
 
@@ -1535,12 +1536,11 @@ export default function AdminPanel() {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Icon (Lucide name)</label>
-                <Input
-                  placeholder="e.g. Package, Bot, Globe"
+                <label className="text-xs text-muted-foreground mb-1 block">Icon</label>
+                <IconPicker
                   value={catForm.icon}
-                  onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))}
-                  className="glass border-white/10"
+                  onChange={icon => setCatForm(f => ({ ...f, icon }))}
+                  iconColor={catForm.iconColor}
                 />
               </div>
               <div>
@@ -1607,12 +1607,13 @@ export default function AdminPanel() {
                           placeholder="Label"
                           className="glass border-white/10 text-sm"
                         />
-                        <Input
-                          value={catEditForm.icon}
-                          onChange={e => setCatEditForm(f => ({ ...f, icon: e.target.value }))}
-                          placeholder="Icon (Lucide)"
-                          className="glass border-white/10 text-sm"
-                        />
+                        <div>
+                          <IconPicker
+                            value={catEditForm.icon}
+                            onChange={icon => setCatEditForm(f => ({ ...f, icon }))}
+                            iconColor="text-violet-400"
+                          />
+                        </div>
                         <Input
                           value={catEditForm.description}
                           onChange={e => setCatEditForm(f => ({ ...f, description: e.target.value }))}
@@ -1630,7 +1631,7 @@ export default function AdminPanel() {
                     ) : (
                       <div className="flex-1 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                          <Tag className={`w-4 h-4 ${cat.iconColor}`} />
+                          {(() => { const Icon = ICON_MAP[cat.icon] ?? ICON_MAP["Tag"]; return <Icon className={`w-4 h-4 ${cat.iconColor}`} />; })()}
                         </div>
                         <div>
                           <p className="text-sm font-medium text-foreground">{cat.label}</p>
