@@ -560,73 +560,106 @@ export default function AdminPanel() {
       </div>
       {/* Desktop: sticky sidebar only */}
       <div className="hidden lg:flex gap-6 items-start">
-        <aside className="sticky top-6 self-start w-[200px] xl:w-[220px] shrink-0">
-          <div className="glass-card rounded-2xl p-2 space-y-0.5 max-h-[calc(100vh-7rem)] overflow-y-auto">
-            {TABS.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setTab(value)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
-                  tab === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{label}</span>
-              </button>
-            ))}
-            <div className="border-t border-white/5 pt-2 mt-2">
+        <aside className="sticky top-6 self-start w-[220px] xl:w-[240px] shrink-0">
+          <div className="glass-card rounded-2xl overflow-hidden">
+            {/* Sidebar header */}
+            <div className="px-4 py-3 border-b border-white/[0.06]">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Admin Panel</p>
+            </div>
+            {/* Nav items */}
+            <div className="p-2 space-y-0.5 max-h-[calc(100vh-14rem)] overflow-y-auto">
+              {TABS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setTab(value)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative ${
+                    tab === value
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }`}
+                >
+                  {tab === value && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-full" />
+                  )}
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </button>
+              ))}
+            </div>
+            {/* Sidebar footer */}
+            <div className="px-2 pb-2 pt-1 border-t border-white/[0.06] space-y-1">
               <Button size="sm" variant="outline" className="w-full border-white/10 bg-white/5 h-8 text-xs" onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
                 <RefreshCw className={`w-3 h-3 mr-1.5 ${seedMutation.isPending ? "animate-spin" : ""}`} />Seed Demo Data
               </Button>
+              <a href="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                Back to site
+              </a>
             </div>
           </div>
         </aside>
       </div>
       {/* Tab content — shared mobile + desktop, offset on desktop */}
-      <div className="lg:pl-[216px] xl:pl-[236px] -mt-0">
+      <div className="lg:pl-[236px] xl:pl-[256px] -mt-0">
 
       {/* Overview */}
       {tab === "overview" && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Users, label: "Total Users", value: stats?.users ?? 0, color: "text-violet-400", bg: "from-violet-500/10 to-purple-500/10" },
-              { icon: ShoppingCart, label: "Total Orders", value: stats?.orders ?? 0, color: "text-cyan-400", bg: "from-cyan-500/10 to-blue-500/10" },
-              { icon: Package, label: "Products", value: stats?.products ?? 0, color: "text-emerald-400", bg: "from-emerald-500/10 to-teal-500/10" },
-              { icon: DollarSign, label: "Revenue", value: `$${stats?.revenue ?? "0.00"}`, color: "text-yellow-400", bg: "from-yellow-500/10 to-orange-500/10" },
-            ].map(({ icon: Icon, label, value, color, bg }) => (
-              <div key={label} className={`glass-card rounded-2xl p-4 bg-gradient-to-br ${bg}`}>
-                <Icon className={`w-5 h-5 ${color} mb-2`} />
-                <p className="text-2xl font-bold text-foreground">{value}</p>
-                <p className="text-xs text-muted-foreground">{label}</p>
+              { icon: Users, label: "Total Users", value: stats?.users ?? 0, color: "text-violet-400", iconBg: "bg-violet-500/15", border: "border-violet-500/20", sub: "Registered accounts" },
+              { icon: ShoppingCart, label: "Total Orders", value: stats?.orders ?? 0, color: "text-cyan-400", iconBg: "bg-cyan-500/15", border: "border-cyan-500/20", sub: "All time" },
+              { icon: Package, label: "Products", value: stats?.products ?? 0, color: "text-emerald-400", iconBg: "bg-emerald-500/15", border: "border-emerald-500/20", sub: "Listed" },
+              { icon: DollarSign, label: "Revenue", value: `$${stats?.revenue ?? "0.00"}`, color: "text-yellow-400", iconBg: "bg-yellow-500/15", border: "border-yellow-500/20", sub: "Total earned" },
+            ].map(({ icon: Icon, label, value, color, iconBg, border, sub }) => (
+              <div key={label} className={`glass-card rounded-2xl p-5 border ${border} hover:scale-[1.02] transition-transform cursor-default`}>
+                <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center mb-3`}>
+                  <Icon className={`w-4 h-4 ${color}`} />
+                </div>
+                <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
               </div>
             ))}
           </div>
 
-          {/* Recent orders */}
-          <div className="glass-card rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Recent Orders</h2>
+          {/* Recent orders — desktop table */}
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <h2 className="text-sm font-semibold text-foreground">Recent Orders</h2>
+              <button onClick={() => setTab("orders")} className="text-xs text-primary hover:underline">View all →</button>
+            </div>
             {!stats?.recentOrders || stats.recentOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No orders yet</p>
+              <p className="text-sm text-muted-foreground text-center py-8">No orders yet</p>
             ) : (
-              <div className="space-y-2">
-                {(stats.recentOrders as any[]).map((order: any) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Order #{order.id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        User #{order.userId} · {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-foreground">${order.totalAmount}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === "completed" ? "badge-success" : "badge-warning"}`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Order</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">User</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Date</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {(stats.recentOrders as any[]).map((order: any) => (
+                    <tr key={order.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-3 font-medium text-foreground">#{order.id}</td>
+                      <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">User #{order.userId}</td>
+                      <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">{new Date(order.createdAt).toLocaleDateString()}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-foreground">${order.totalAmount}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                          order.status === "completed" ? "bg-emerald-500/15 text-emerald-400" :
+                          order.status === "pending" ? "bg-yellow-500/15 text-yellow-400" :
+                          "bg-red-500/15 text-red-400"
+                        }`}>{order.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
@@ -634,42 +667,60 @@ export default function AdminPanel() {
 
       {/* Users */}
       {tab === "users" && (
-        <div className="glass-card rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">User Management</h2>
+        <div className="glass-card rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <h2 className="text-sm font-semibold text-foreground">User Management</h2>
+            <span className="text-xs text-muted-foreground">{allUsers?.length ?? 0} users</span>
+          </div>
           {!allUsers || allUsers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No users yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No users yet</p>
           ) : (
-            <div className="space-y-2">
-              {allUsers.map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">
-                      {u.name?.charAt(0).toUpperCase() ?? "U"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{u.name ?? "Unknown"}</p>
-                      <p className="text-xs text-muted-foreground">{u.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      u.role === "admin" ? "badge-purple" : false ? "badge-success" : "glass"
-                    }`}>
-                      {u.role}
-                    </span>
-                    <select
-                      value={u.role}
-                      onChange={(e) => updateRoleMutation.mutate({ userId: u.id, role: e.target.value as any })}
-                      className="h-7 rounded-lg bg-white/5 border border-white/10 text-xs text-foreground px-2 focus:outline-none"
-                    >
-                      <option value="user" className="bg-background">User</option>
-                      <option value="vendor" className="bg-background">Vendor</option>
-                      <option value="admin" className="bg-background">Admin</option>
-                    </select>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">User</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Joined</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Change Role</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {allUsers.map((u) => (
+                  <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                          {u.name?.charAt(0).toUpperCase() ?? "U"}
+                        </div>
+                        <span className="font-medium text-foreground truncate max-w-[120px]">{u.name ?? "Unknown"}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{u.email}</td>
+                    <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                        u.role === "admin" ? "bg-violet-500/15 text-violet-400" :
+                        "bg-white/10 text-muted-foreground"
+                      }`}>{u.role}</span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateRoleMutation.mutate({ userId: u.id, role: e.target.value as any })}
+                        className="h-7 rounded-lg bg-white/5 border border-white/10 text-xs text-foreground px-2 focus:outline-none"
+                      >
+                        <option value="user" className="bg-background">User</option>
+                        <option value="vendor" className="bg-background">Vendor</option>
+                        <option value="admin" className="bg-background">Admin</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}
@@ -1449,43 +1500,55 @@ export default function AdminPanel() {
 
       {/* Orders */}
       {tab === "orders" && (
-        <div className="glass-card rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">All Orders</h2>
+        <div className="glass-card rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <h2 className="text-sm font-semibold text-foreground">All Orders</h2>
+            <span className="text-xs text-muted-foreground">{allOrders?.length ?? 0} orders · auto-refreshes every 30s</span>
+          </div>
           {!allOrders || allOrders.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No orders yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No orders yet</p>
           ) : (
-            <div className="space-y-2">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Order ID</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">User</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Date</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
               {allOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {(order as any).productPlatform && (
-                      <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                        <ServiceIcon name={(order as any).productPlatform} size={16} />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {(order as any).productTitle ? (order as any).productTitle : `Order #${order.id}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
-                        <span>#{order.id}</span>
-                        <span>·</span>
-                        <span>User #{order.userId}</span>
-                        {(order as any).productPlatform && <><span>·</span><span>{(order as any).productPlatform}</span></>}
-                        <span>·</span>
-                        <span>{new Date(order.createdAt).toLocaleDateString()}</span>
-                      </p>
+                <tr key={order.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {(order as any).productPlatform && (
+                        <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                          <ServiceIcon name={(order as any).productPlatform} size={14} />
+                        </div>
+                      )}
+                      <span className="font-medium text-foreground truncate max-w-[160px]">
+                        {(order as any).productTitle ?? `Order #${order.id}`}
+                      </span>
                     </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-foreground">${order.totalAmount}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === "completed" ? "badge-success" : "badge-warning"}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">#{order.id}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">User #{order.userId}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden xl:table-cell">{new Date(order.createdAt).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-right font-semibold text-foreground">${order.totalAmount}</td>
+                  <td className="px-5 py-3 text-right">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                      order.status === "completed" ? "bg-emerald-500/15 text-emerald-400" :
+                      order.status === "pending" ? "bg-yellow-500/15 text-yellow-400" :
+                      "bg-red-500/15 text-red-400"
+                    }`}>{order.status}</span>
+                  </td>
+                </tr>
               ))}
-            </div>
+              </tbody>
+            </table>
           )}
         </div>
       )}
@@ -1682,91 +1745,138 @@ export default function AdminPanel() {
       )}
       {/* Refunds */}
       {tab === "refunds" && (
-        <div className="glass-card rounded-2xl p-5">
+        <div className="glass-card rounded-2xl overflow-hidden">
           <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <RotateCcw className="w-4 h-4 text-orange-400" /> Refund Requests
           </h2>
           {!allRefunds || allRefunds.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No refund requests</p>
           ) : (
-            <div className="space-y-3">
-              {(allRefunds as any[]).map((r: any) => (
-                <div key={r.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Refund #{r.id} — ${r.amount}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{r.reason?.slice(0, 80)}</p>
-                    <p className="text-xs text-muted-foreground">User #{r.userId} · {new Date(r.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      r.status === "approved" ? "badge-success" : r.status === "rejected" ? "badge-danger" : "badge-warning"
-                    }`}>{r.status}</span>
-                    {r.status === "pending" && (
-                      <>
-                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
-                          onClick={() => updateRefundMutation.mutate({ id: r.id, status: "approved" })}
-                          disabled={updateRefundMutation.isPending}>
-                          <CheckCircle className="w-3 h-3 mr-1" />Approve
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
-                          onClick={() => updateRefundMutation.mutate({ id: r.id, status: "rejected" })}
-                          disabled={updateRefundMutation.isPending}>
-                          <XCircle className="w-3 h-3 mr-1" />Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full text-sm">
+              <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Refund</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Reason</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">User / Date</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {(allRefunds as any[]).map((r: any) => (
+                    <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-foreground">#{r.id}</p>
+                        <p className="text-xs text-muted-foreground font-semibold">${r.amount}</p>
+                      </td>
+                      <td className="px-5 py-3 text-muted-foreground hidden md:table-cell max-w-[200px]">
+                        <p className="truncate">{r.reason?.slice(0, 60) ?? "—"}</p>
+                      </td>
+                      <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">
+                        <p>User #{r.userId}</p>
+                        <p className="text-xs">{new Date(r.createdAt).toLocaleDateString()}</p>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                          r.status === "approved" ? "bg-emerald-500/15 text-emerald-400" :
+                          r.status === "rejected" ? "bg-red-500/15 text-red-400" :
+                          "bg-yellow-500/15 text-yellow-400"
+                        }`}>{r.status}</span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {r.status === "pending" && (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                              onClick={() => updateRefundMutation.mutate({ id: r.id, status: "approved" })}
+                              disabled={updateRefundMutation.isPending}>
+                              <CheckCircle className="w-3 h-3 mr-1" />Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                              onClick={() => updateRefundMutation.mutate({ id: r.id, status: "rejected" })}
+                              disabled={updateRefundMutation.isPending}>
+                              <XCircle className="w-3 h-3 mr-1" />Reject
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
           )}
         </div>
       )}
 
       {/* Payouts */}
       {tab === "payouts" && (
-        <div className="glass-card rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-cyan-400" /> Vendor Payout Requests
-          </h2>
+        <div className="glass-card rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-cyan-400" /> Vendor Payout Requests
+            </h2>
+            <span className="text-xs text-muted-foreground">{allPayouts?.length ?? 0} requests</span>
+          </div>
           {!allPayouts || allPayouts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No payout requests</p>
           ) : (
-            <div className="space-y-3">
-              {(allPayouts as any[]).map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Payout #{p.id} — ${p.amount}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Method: {p.method} · To: {p.destination}</p>
-                    <p className="text-xs text-muted-foreground">Vendor #{p.vendorId} · {new Date(p.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      p.status === "paid" ? "badge-success" : p.status === "rejected" ? "badge-danger" : p.status === "processing" ? "badge-purple" : "badge-warning"
-                    }`}>{p.status}</span>
-                    {p.status === "pending" && (
-                      <>
-                        <Button size="sm" className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white border-0"
-                          onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "processing" })}
-                          disabled={updatePayoutMutation.isPending}>
-                          <Activity className="w-3 h-3 mr-1" />Process
-                        </Button>
-                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
-                          onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "paid" })}
-                          disabled={updatePayoutMutation.isPending}>
-                          <CheckCircle className="w-3 h-3 mr-1" />Mark Paid
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
-                          onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "rejected" })}
-                          disabled={updatePayoutMutation.isPending}>
-                          <XCircle className="w-3 h-3 mr-1" />Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payout</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Method / Destination</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Vendor / Date</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {(allPayouts as any[]).map((p: any) => (
+                  <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3">
+                      <p className="font-medium text-foreground">#{p.id}</p>
+                      <p className="text-xs font-semibold text-foreground">${p.amount}</p>
+                    </td>
+                    <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">
+                      <p className="capitalize">{p.method}</p>
+                      <p className="text-xs truncate max-w-[160px]">{p.destination}</p>
+                    </td>
+                    <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">
+                      <p>Vendor #{p.vendorId}</p>
+                      <p className="text-xs">{new Date(p.createdAt).toLocaleDateString()}</p>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                        p.status === "paid" ? "bg-emerald-500/15 text-emerald-400" :
+                        p.status === "rejected" ? "bg-red-500/15 text-red-400" :
+                        p.status === "processing" ? "bg-violet-500/15 text-violet-400" :
+                        "bg-yellow-500/15 text-yellow-400"
+                      }`}>{p.status}</span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {p.status === "pending" && (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button size="sm" className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white border-0"
+                            onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "processing" })}
+                            disabled={updatePayoutMutation.isPending}>
+                            <Activity className="w-3 h-3 mr-1" />Process
+                          </Button>
+                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                            onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "paid" })}
+                            disabled={updatePayoutMutation.isPending}>
+                            <CheckCircle className="w-3 h-3 mr-1" />Paid
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            onClick={() => updatePayoutMutation.mutate({ id: p.id, status: "rejected" })}
+                            disabled={updatePayoutMutation.isPending}>
+                            <XCircle className="w-3 h-3 mr-1" />Reject
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}

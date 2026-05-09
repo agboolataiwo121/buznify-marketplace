@@ -566,3 +566,9 @@
 - [x] Improve desktop experience — 2xl 5-column grids for Marketplace, GrowthServices, VirtualNumbers
 - [x] Improve desktop experience — DashboardShell wider sidebar on xl/2xl
 - [x] Improve desktop experience — AdminPanel vertical sidebar tab list on desktop
+- [x] AdminPanel desktop sidebar polish — active left border indicator, back-to-site link, wider sidebar (236px/256px)
+- [x] AdminPanel Overview tab — richer stat cards with trend indicators
+- [x] AdminPanel Users and Orders tabs — upgraded to proper desktop tables
+- [x] AdminPanel Refunds and Payouts tabs — upgraded to proper desktop tables
+- [x] Fix TS2367 vendor role comparison error in AdminPanel.tsx
+- [x] Fix JSX structure in Refunds tab (remove stale div wrapper)
