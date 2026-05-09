@@ -1164,6 +1164,15 @@ export const appRouter = router({
               ? Math.max(0, parseInt(live.start_count, 10) + order.quantity - parseInt(live.remains, 10))
               : order.deliveredCount,
           }).where(eq(growthOrdersTable.id, order.id));
+          // Fire push when order just transitioned to completed
+          if (newStatus === "completed" && order.status !== "completed") {
+            sendPushToUser(order.userId, {
+              title: "Growth order completed! 🎉",
+              body: `Your order for ${order.quantity.toLocaleString()} followers/likes has been fully delivered.`,
+              url: "/growth-services",
+              tag: `growth-order-${order.id}`,
+            }).catch(() => {});
+          }
           return { ...order, status: newStatus, liveStatus: live };
         } catch {
           return { ...order, liveStatus: null };
@@ -2053,6 +2062,22 @@ export const appRouter = router({
       }),
 
     getOrders: adminProcedure.query(async () => getAllOrders(100)),
+
+    /** Manually send a push notification to the buyer of a specific order */
+    sendOrderPush: adminProcedure
+      .input(z.object({ orderId: z.number() }))
+      .mutation(async ({ input }) => {
+        const order = await getOrderById(input.orderId);
+        if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        const product = await getProductById(order.productId);
+        await sendPushToUser(order.userId, {
+          title: "Your order has been delivered! 🎉",
+          body: `Order #${order.id} — ${product?.title ?? "your product"} is ready. Tap to view your credentials.`,
+          url: "/orders",
+          tag: `order-${order.id}`,
+        });
+        return { success: true };
+      }),
 
     seedDemo: adminProcedure.mutation(async ({ ctx }) => {
       await seedDemoProducts(ctx.user.id);

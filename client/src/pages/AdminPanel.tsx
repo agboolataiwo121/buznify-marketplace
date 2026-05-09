@@ -1983,6 +1983,9 @@ export default function AdminPanel() {
                       "bg-red-500/15 text-red-400"
                     }`}>{order.status}</span>
                   </td>
+                  <td className="px-5 py-3 text-right">
+                    <SendPushButton orderId={order.id} />
+                  </td>
                 </tr>
               ))}
               </tbody>
@@ -3258,3 +3261,30 @@ export default function AdminPanel() {
   );
 }
 
+
+function SendPushButton({ orderId }: { orderId: number }) {
+  const sendPush = trpc.admin.sendOrderPush.useMutation({
+    onSuccess: () => toast.success(`Push notification sent for order #${orderId}`),
+    onError: (err) => toast.error(err.message ?? "Failed to send push"),
+  });
+  return (
+    <button
+      onClick={() => sendPush.mutate({ orderId })}
+      disabled={sendPush.isPending}
+      title="Send push notification to buyer"
+      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition-colors disabled:opacity-50"
+    >
+      {sendPush.isPending ? (
+        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+      ) : (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+      )}
+      Push
+    </button>
+  );
+}

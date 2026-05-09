@@ -623,3 +623,8 @@
 - [x] Create server/pushNotification.ts helper to send push to a user's subscriptions
 - [x] Wire push dispatch in orders.updateStatus / order delivery flow
 - [x] Add push notification preferences toggle in user account settings page
+
+## Push Notification Extensions
+- [x] Admin Orders tab: "Send Push" button on processing orders to manually trigger delivery notification
+- [x] Growth Services: fire sendPushToUser when a growth order reaches 100% completion
+- [x] Notification history page: show timeline of push-triggered events (order delivered, refund approved, etc.)
