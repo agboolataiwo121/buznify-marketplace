@@ -36,7 +36,7 @@ const userNavItems = [
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/refunds", label: "Refunds", icon: RefreshCw },
   { href: "/dashboard/payouts", label: "Payouts", icon: DollarSign },
-  { href: "/dashboard/api-keys", label: "API Keys", icon: Key },
+  { href: "/dashboard/api-keys", label: "Server Keys", icon: Key },
   { href: "/dashboard/security", label: "Security", icon: Shield },
   { href: "/dashboard/loyalty", label: "Loyalty Rewards", icon: Star },
   { href: "/support", label: "Support", icon: MessageSquare },

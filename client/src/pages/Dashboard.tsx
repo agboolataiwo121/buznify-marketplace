@@ -255,7 +255,7 @@ export default function Dashboard() {
                   { label: "Get Number", href: "/virtual-numbers", icon: <MessageSquare className="w-3 h-3" />, col: "text-cyan-400" },
                   { label: "Marketplace", href: "/marketplace", icon: <ShoppingBag className="w-3 h-3" />, col: "text-blue-400" },
                   { label: "Support", href: "/support", icon: <Shield className="w-3 h-3" />, col: "text-orange-400" },
-                  { label: "API Keys", href: "/dashboard/api-keys", icon: <Key className="w-3 h-3" />, col: "text-pink-400" },
+                  { label: "Server Keys", href: "/dashboard/api-keys", icon: <Key className="w-3 h-3" />, col: "text-pink-400" },
                 ].map((a) => (
                   <Link key={a.label} href={a.href}>
                     <button className="w-full p-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all flex items-center gap-1.5">

@@ -57,7 +57,7 @@ export default function ApiDocs() {
   const copyKey = () => {
     navigator.clipboard.writeText("bz_live_sk_xxxxxxxxxxxxxxxxxxxxxxxx");
     setCopied(true);
-    toast.success("API key copied!");
+    toast.success("Server key copied!");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -74,10 +74,10 @@ export default function ApiDocs() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center mb-4">
             <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-foreground">API Documentation</span>
+            <span className="text-foreground">Server Documentation</span>
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-3">
-            <span className="gradient-text">API</span> Documentation
+            <span className="gradient-text">Server</span> Documentation
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
             Integrate Buznify into your application. Automate purchases, check order status, and manage virtual numbers programmatically.
@@ -89,7 +89,7 @@ export default function ApiDocs() {
         {/* Quick start */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           {[
-            { icon: Key, title: "Authentication", desc: "Bearer token via API key", color: "text-violet-400" },
+            { icon: Key, title: "Authentication", desc: "Bearer token via server key", color: "text-violet-400" },
             { icon: Globe, title: "Base URL", desc: "https://api.buznify.com/v1", color: "text-blue-400" },
             { icon: Zap, title: "Rate Limit", desc: "1,000 requests / hour", color: "text-yellow-400" },
           ].map(({ icon: Icon, title, desc, color }) => (
@@ -108,7 +108,7 @@ export default function ApiDocs() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Key className="w-4 h-4 text-violet-400" />
-              Your API Key
+              Your Server Key
             </h3>
             <span className="text-xs badge-warning px-2 py-0.5 rounded-full">Demo Key</span>
           </div>
@@ -121,7 +121,7 @@ export default function ApiDocs() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Include in all requests: <code className="text-violet-400">Authorization: Bearer &lt;your_api_key&gt;</code>
+            Include in all requests: <code className="text-violet-400">Authorization: Bearer &lt;your_server_key&gt;</code>
           </p>
         </div>
 

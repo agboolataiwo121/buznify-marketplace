@@ -29,7 +29,7 @@ const footerLinks = {
     { label: "Careers", href: "/careers" },
     { label: "Changelog", href: "/changelog" },
     { label: "System Status", href: "/status" },
-    { label: "API Docs", href: "/api-docs" },
+    { label: "Server Docs", href: "/api-docs" },
   ],
 };
 

@@ -18,12 +18,12 @@ export default function DashboardApiKeys() {
       setNewKey(data.key);
       setShowForm(false);
       setLabel("");
-      toast.success("API key created — copy it now, it won't be shown again!");
+              toast.success("Server key created — copy it now, it won't be shown again!");
     },
     onError: (e) => toast.error(e.message),
   });
   const revoke = trpc.apiKeys.revoke.useMutation({
-    onSuccess: () => { refetch(); toast.success("API key revoked"); },
+            onSuccess: () => { refetch(); toast.success("Server key revoked"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -33,10 +33,10 @@ export default function DashboardApiKeys() {
   };
 
   return (
-    <DashboardShell title="API Keys">
+    <DashboardShell title="Server Keys">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <p className="text-gray-400 text-sm">Manage your API keys for programmatic access to Buznify services</p>
+          <p className="text-gray-400 text-sm">Manage your server keys for programmatic access to Buznify services</p>
           <Button
             onClick={() => setShowForm(!showForm)}
             className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
@@ -51,7 +51,7 @@ export default function DashboardApiKeys() {
           <div className="glass-card rounded-xl p-4 border border-green-500/40 bg-green-500/5">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-green-400" />
-              <span className="text-green-400 font-semibold text-sm">New API Key Created</span>
+              <span className="text-green-400 font-semibold text-sm">New Server Key Created</span>
             </div>
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
@@ -82,7 +82,7 @@ export default function DashboardApiKeys() {
         {/* Create Form */}
         {showForm && (
           <div className="glass-card rounded-xl p-5 border border-violet-500/30">
-            <h3 className="text-white font-semibold mb-4">Create New API Key</h3>
+            <h3 className="text-white font-semibold mb-4">Create New Server Key</h3>
             <div className="mb-4">
               <label className="text-gray-400 text-xs mb-1 block">Key Label</label>
               <input
@@ -120,8 +120,8 @@ export default function DashboardApiKeys() {
         ) : keys.length === 0 ? (
           <div className="glass-card rounded-2xl p-12 text-center">
             <Key className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No API keys yet</h3>
-            <p className="text-gray-400">Create an API key to integrate Buznify into your applications</p>
+            <h3 className="text-xl font-semibold text-white mb-2">No server keys yet</h3>
+            <p className="text-gray-400">Create a server key to integrate Buznify into your applications</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -166,8 +166,8 @@ export default function DashboardApiKeys() {
           <div className="flex items-center gap-3">
             <Shield className="w-5 h-5 text-blue-400" />
             <div>
-              <div className="text-white text-sm font-medium">API Documentation</div>
-              <div className="text-gray-400 text-xs">Learn how to use the Buznify API to automate orders and manage services</div>
+              <div className="text-white text-sm font-medium">Server Documentation</div>
+              <div className="text-gray-400 text-xs">Learn how to use the Buznify server to automate orders and manage services</div>
             </div>
             <a href="/api-docs" className="ml-auto">
               <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 text-xs">
