@@ -58,6 +58,7 @@ import {
   ResponsiveContainer, ComposedChart,
 } from "recharts";
 import IconPicker, { ICON_MAP } from "@/components/IconPicker";
+import ServiceIcon from "@/components/ServiceIcon";
 
 type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories" | "transactions" | "security_logs" | "alerts";
 
@@ -875,8 +876,20 @@ export default function AdminPanel() {
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block">Platform</label>
-                      <Input value={productForm.platform} onChange={e => setProductForm(f => ({ ...f, platform: e.target.value }))}
-                        placeholder="e.g. Instagram, Netflix" className="bg-white/5 border-white/10 text-sm" />
+                      <div className="flex items-center gap-2">
+                        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center transition-all">
+                          <ServiceIcon name={productForm.platform} size={20} />
+                        </div>
+                        <Input
+                          value={productForm.platform}
+                          onChange={e => setProductForm(f => ({ ...f, platform: e.target.value }))}
+                          placeholder="e.g. Instagram, Netflix"
+                          className="bg-white/5 border-white/10 text-sm flex-1"
+                        />
+                      </div>
+                      {productForm.platform && (
+                        <p className="text-[10px] text-white/30 mt-1 ml-11">Icon preview updates as you type</p>
+                      )}
                     </div>
                   </div>
                   {/* Subcategory */}
