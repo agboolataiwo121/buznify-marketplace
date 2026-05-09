@@ -39,6 +39,7 @@ import {
   getVirtualNumbers,
   getWalletTransactions,
   getTransactionHistory,
+  getAdminTransactions,
   incrementCouponUsage,
   markAllNotificationsRead,
   markNotificationRead,
@@ -793,6 +794,26 @@ export const appRouter = router({
         });
       }),
 
+    /** Admin: paginated wallet transactions for ALL users, searchable by email or reference */
+    adminTransactions: adminProcedure
+      .input(
+        z.object({
+          search: z.string().default(""),
+          type: z.enum(["all", "deposit", "withdrawal", "purchase", "refund", "referral_reward", "admin_credit"]).default("all"),
+          status: z.enum(["all", "pending", "completed", "failed"]).default("all"),
+          page: z.number().min(1).default(1),
+          pageSize: z.number().min(5).max(100).default(20),
+        })
+      )
+      .query(async ({ input }) => {
+        return getAdminTransactions({
+          search: input.search,
+          type: input.type,
+          status: input.status,
+          page: input.page,
+          pageSize: input.pageSize,
+        });
+      }),
     withdraw: protectedProcedure
       .input(z.object({ amount: z.number().min(1).max(10000) }))
       .mutation(async ({ input, ctx }) => {

@@ -430,3 +430,16 @@
 - [x] Add pagination controls (page size 10, prev/next)
 - [x] Show Paystack reference link and payment method badge for webhook-credited deposits
 - [x] Write vitest test for the transaction history procedure
+
+## Admin Transaction Overview Page
+- [x] Audit AdminPanel.tsx routes and nav items to find where to add Transactions entry
+- [x] Add getAdminTransactions DB helper: paginated, searchable by user email or referenceId, filterable by type/status
+- [x] Add wallet.adminTransactions tRPC adminProcedure with search/type/status/page/pageSize inputs
+- [x] Create AdminTransactions.tsx page with full table: user email, date, type badge, reference (copy), method, USD amount, NGN amount, balance after, status badge
+- [x] Add search bar (email or reference) with debounce
+- [x] Add type and status filter dropdowns
+- [x] Add pagination controls
+- [x] Add CSV export for current filtered result set
+- [x] Register /admin/transactions route in App.tsx
+- [x] Add Transactions nav item in AdminPanel sidebar
+- [x] Write vitest test for adminTransactions procedure

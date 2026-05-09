@@ -175,3 +175,39 @@ describe("getTransactionHistory DB helper", () => {
     expect(result.pageSize).toBe(5);
   });
 });
+
+// ─── Admin Transactions DB Helper Tests ──────────────────────────────────────
+describe("getAdminTransactions DB helper", () => {
+  it("should be exported from db.ts", async () => {
+    const db = await import("./db");
+    expect(typeof db.getAdminTransactions).toBe("function");
+  });
+
+  it("should return rows, total, page, pageSize with no DB", async () => {
+    const { getAdminTransactions } = await import("./db");
+    const result = await getAdminTransactions({ page: 1, pageSize: 20 });
+    expect(result).toHaveProperty("rows");
+    expect(result).toHaveProperty("total");
+    expect(result).toHaveProperty("page");
+    expect(result).toHaveProperty("pageSize");
+    expect(Array.isArray(result.rows)).toBe(true);
+  });
+
+  it("should accept search parameter", async () => {
+    const { getAdminTransactions } = await import("./db");
+    const result = await getAdminTransactions({ search: "test@example.com", page: 1, pageSize: 20 });
+    expect(result.rows).toHaveLength(0);
+  });
+
+  it("should accept type filter", async () => {
+    const { getAdminTransactions } = await import("./db");
+    const result = await getAdminTransactions({ type: "deposit", page: 1, pageSize: 20 });
+    expect(result).toHaveProperty("rows");
+  });
+
+  it("should accept status filter", async () => {
+    const { getAdminTransactions } = await import("./db");
+    const result = await getAdminTransactions({ status: "completed", page: 1, pageSize: 20 });
+    expect(result).toHaveProperty("rows");
+  });
+});

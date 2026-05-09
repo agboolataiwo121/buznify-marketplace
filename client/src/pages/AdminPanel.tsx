@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -36,6 +36,17 @@ import {
   ToggleLeft,
   ToggleRight,
   Send,
+  ArrowDownLeft,
+  ArrowUpRight,
+  DollarSign as DollarCircle,
+  Gift,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Landmark,
+  Smartphone,
+  Filter,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -44,7 +55,7 @@ import {
 } from "recharts";
 import IconPicker, { ICON_MAP } from "@/components/IconPicker";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories" | "transactions";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -125,6 +136,58 @@ export default function AdminPanel() {
   const { data: allPayouts } = trpc.payouts.adminList.useQuery(undefined, { enabled: tab === "payouts" });
   const { data: serviceCategories, refetch: refetchCategories } = trpc.admin.getServiceCategories.useQuery(undefined, { enabled: tab === "services" });
   const { data: dbCategories, refetch: refetchDbCategories } = trpc.admin.listCategories.useQuery(undefined, { enabled: tab === "categories" });
+
+  // ── Admin Transactions ──────────────────────────────────────────────────
+  const [txSearch, setTxSearch] = useState("");
+  const [txDebouncedSearch, setTxDebouncedSearch] = useState("");
+  const [txType, setTxType] = useState<"all" | "deposit" | "withdrawal" | "purchase" | "refund" | "referral_reward" | "admin_credit">("all");
+  const [txStatus, setTxStatus] = useState<"all" | "pending" | "completed" | "failed">("all");
+  const [txPage, setTxPage] = useState(1);
+  const TX_PAGE_SIZE = 20;
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setTxDebouncedSearch(txSearch);
+      setTxPage(1);
+    }, 350);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [txSearch]);
+  const { data: adminTxData, isLoading: adminTxLoading } = trpc.wallet.adminTransactions.useQuery(
+    { search: txDebouncedSearch, type: txType, status: txStatus, page: txPage, pageSize: TX_PAGE_SIZE },
+    { enabled: tab === "transactions" }
+  );
+  const txTypeConfig: Record<string, { icon: React.ElementType; color: string; label: string; sign: string }> = {
+    deposit: { icon: ArrowDownLeft, color: "text-emerald-400", label: "Deposit", sign: "+" },
+    purchase: { icon: ArrowUpRight, color: "text-red-400", label: "Purchase", sign: "-" },
+    refund: { icon: ArrowDownLeft, color: "text-blue-400", label: "Refund", sign: "+" },
+    admin_credit: { icon: DollarCircle, color: "text-violet-400", label: "Admin Credit", sign: "+" },
+    withdrawal: { icon: ArrowUpRight, color: "text-orange-400", label: "Withdrawal", sign: "-" },
+    referral_reward: { icon: Gift, color: "text-pink-400", label: "Referral", sign: "+" },
+  };
+  function handleTxExportCSV() {
+    if (!adminTxData?.rows?.length) { toast.error("No transactions to export"); return; }
+    const headers = ["ID", "Date", "User Email", "User Name", "Type", "Amount (USD)", "Balance Before", "Balance After", "Reference", "Method", "NGN Amount", "Status", "Description"];
+    const rows = adminTxData.rows.map(tx => [
+      tx.id,
+      new Date(tx.createdAt).toISOString(),
+      tx.userEmail ?? "",
+      tx.userName ?? "",
+      tx.type,
+      tx.amount,
+      tx.balanceBefore,
+      tx.balanceAfter,
+      tx.referenceId ?? "",
+      tx.paymentChannel ?? (tx.paymentReference ? "paystack" : ""),
+      tx.paymentAmountNaira ?? "",
+      tx.status,
+      (tx.description ?? "").replace(/,/g, ";"),
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `buznify-admin-transactions-p${txPage}.csv`; a.click();
+  }
   // Load all categories (for product form dropdowns) — always enabled
   const { data: allDbCategories } = trpc.products.listCategories.useQuery();
   const { data: aiInsights, isLoading: aiInsightsLoading } = trpc.admin.getAiAnalyticsSummary.useQuery(undefined, { enabled: tab === "ai_insights" });
@@ -362,6 +425,7 @@ export default function AdminPanel() {
     { value: "services", label: "Service Controls", icon: Settings },
     { value: "ai_insights", label: "AI Insights", icon: Brain },
     { value: "categories", label: "Categories", icon: Tag },
+    { value: "transactions", label: "Transactions", icon: DollarCircle },
   ];
 
   return (
@@ -1811,6 +1875,208 @@ export default function AdminPanel() {
               <p className="text-sm text-muted-foreground">No data available.</p>
             )}
           </div>
+        </div>
+      )}
+      {/* ── Transactions Tab ─────────────────────────────────────────────── */}
+      {tab === "transactions" && (
+        <div className="glass-card rounded-2xl overflow-hidden">
+          {/* Controls */}
+          <div className="p-5 border-b border-white/5 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search by email or reference…"
+                  value={txSearch}
+                  onChange={e => setTxSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-violet-500/50 focus:bg-white/8 transition-all"
+                />
+              </div>
+              {/* Type filter */}
+              <select
+                value={txType}
+                onChange={e => { setTxType(e.target.value as typeof txType); setTxPage(1); }}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:border-violet-500/50 transition-all"
+              >
+                {(["all", "deposit", "withdrawal", "purchase", "refund", "referral_reward", "admin_credit"] as const).map(t => (
+                  <option key={t} value={t} className="bg-background">{t === "all" ? "All Types" : t === "admin_credit" ? "Admin Credit" : t === "referral_reward" ? "Referral Reward" : t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                ))}
+              </select>
+              {/* Status filter */}
+              <select
+                value={txStatus}
+                onChange={e => { setTxStatus(e.target.value as typeof txStatus); setTxPage(1); }}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:border-violet-500/50 transition-all"
+              >
+                {(["all", "completed", "pending", "failed"] as const).map(s => (
+                  <option key={s} value={s} className="bg-background">{s === "all" ? "All Statuses" : s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+              {/* Export */}
+              <Button variant="outline" size="sm" onClick={handleTxExportCSV} className="border-white/10 hover:bg-white/5 gap-1.5 shrink-0">
+                <Download className="w-3.5 h-3.5" /> CSV
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {adminTxData ? `${adminTxData.total.toLocaleString()} transaction${adminTxData.total !== 1 ? "s" : ""} found` : "Loading…"}
+            </p>
+          </div>
+
+          {/* Table */}
+          {adminTxLoading ? (
+            <div className="p-10 text-center text-sm text-muted-foreground">Loading transactions…</div>
+          ) : !adminTxData || adminTxData.rows.length === 0 ? (
+            <div className="p-10 text-center">
+              <DollarCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+              <p className="text-sm text-muted-foreground">No transactions match your filters.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/5 text-xs text-muted-foreground">
+                      <th className="text-left px-4 py-3 font-medium">Date</th>
+                      <th className="text-left px-4 py-3 font-medium">User</th>
+                      <th className="text-left px-4 py-3 font-medium">Type</th>
+                      <th className="text-left px-4 py-3 font-medium">Description</th>
+                      <th className="text-left px-4 py-3 font-medium">Reference</th>
+                      <th className="text-left px-4 py-3 font-medium">Method</th>
+                      <th className="text-right px-4 py-3 font-medium">Amount</th>
+                      <th className="text-right px-4 py-3 font-medium">Balance After</th>
+                      <th className="text-center px-4 py-3 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {adminTxData.rows.map(tx => {
+                      const cfg = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
+                      const Icon = cfg.icon;
+                      const isCredit = cfg.sign === "+";
+                      const isPaystack = !!tx.paymentReference;
+                      const channelIcon = tx.paymentChannel === "card" ? <CreditCard className="w-3 h-3" /> : tx.paymentChannel === "bank" ? <Landmark className="w-3 h-3" /> : tx.paymentChannel === "mobile_money" ? <Smartphone className="w-3 h-3" /> : null;
+                      return (
+                        <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors group">
+                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(tx.createdAt).toLocaleDateString()}<br />
+                            <span className="opacity-70">{new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-medium text-foreground truncate max-w-[160px]">{tx.userEmail ?? `UID ${tx.userId}`}</p>
+                            {tx.userName && <p className="text-xs text-muted-foreground truncate max-w-[160px]">{tx.userName}</p>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold border capitalize ${isCredit ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20"}`}>
+                              <Icon className="w-2.5 h-2.5" />{cfg.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground max-w-[180px] truncate">{tx.description ?? "—"}</td>
+                          <td className="px-4 py-3">
+                            {tx.referenceId ? (
+                              <div className="flex items-center gap-1.5">
+                                <code className="text-[10px] text-violet-300 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded truncate max-w-[110px]">{tx.referenceId}</code>
+                                <button onClick={() => { navigator.clipboard.writeText(tx.referenceId!); toast.success("Copied!"); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-white transition-all">
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {isPaystack ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#00C3F7]/10 text-[#00C3F7] border border-[#00C3F7]/20 font-medium">
+                                  <Zap className="w-2.5 h-2.5" /> Paystack
+                                </span>
+                                {channelIcon && <span className="text-xs text-muted-foreground flex items-center gap-0.5 capitalize">{channelIcon}{tx.paymentChannel}</span>}
+                              </div>
+                            ) : <span className="text-xs text-muted-foreground capitalize">{tx.type === "purchase" ? "Wallet" : tx.type === "referral_reward" ? "Referral" : tx.type === "admin_credit" ? "Admin" : "—"}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`font-bold text-sm ${isCredit ? "text-emerald-400" : "text-red-400"}`}>{cfg.sign}${parseFloat(tx.amount).toFixed(2)}</span>
+                            {isPaystack && tx.paymentAmountNaira && <p className="text-[10px] text-muted-foreground">₦{parseFloat(tx.paymentAmountNaira).toLocaleString()}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs text-muted-foreground font-mono">${parseFloat(tx.balanceAfter).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-center">
+                            {tx.status === "completed" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-medium"><CheckCircle className="w-2.5 h-2.5" /> Done</span>
+                            ) : tx.status === "pending" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 font-medium">Pending</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 font-medium">Failed</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="lg:hidden divide-y divide-white/[0.04]">
+                {adminTxData.rows.map(tx => {
+                  const cfg = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
+                  const Icon = cfg.icon;
+                  const isCredit = cfg.sign === "+";
+                  const isPaystack = !!tx.paymentReference;
+                  return (
+                    <div key={tx.id} className="p-4 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isCredit ? "bg-emerald-500/15" : "bg-red-500/15"}`}>
+                            <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{tx.userEmail ?? `UID ${tx.userId}`}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(tx.createdAt).toLocaleString()}</p>
+                          </div>
+                        </div>
+                        <span className={`text-sm font-bold ${isCredit ? "text-emerald-400" : "text-red-400"}`}>{cfg.sign}${parseFloat(tx.amount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border capitalize ${isCredit ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20"}`}>{cfg.label}</span>
+                        {isPaystack && <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#00C3F7]/10 text-[#00C3F7] border border-[#00C3F7]/20 font-medium"><Zap className="w-2 h-2" /> Paystack</span>}
+                        {tx.status === "completed" ? <span className="text-[10px] text-emerald-400">✓ Done</span> : tx.status === "pending" ? <span className="text-[10px] text-yellow-400">⏳ Pending</span> : <span className="text-[10px] text-red-400">✗ Failed</span>}
+                        {tx.referenceId && <code className="text-[10px] text-violet-300 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded">{tx.referenceId.slice(0, 16)}…</code>}
+                      </div>
+                      {tx.description && <p className="text-xs text-muted-foreground">{tx.description}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination */}
+              {adminTxData.total > TX_PAGE_SIZE && (
+                <div className="flex items-center justify-between px-5 py-3.5 border-t border-white/5">
+                  <p className="text-xs text-muted-foreground">
+                    Showing {((txPage - 1) * TX_PAGE_SIZE) + 1}–{Math.min(txPage * TX_PAGE_SIZE, adminTxData.total)} of {adminTxData.total.toLocaleString()}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => setTxPage(p => Math.max(1, p - 1))} disabled={txPage === 1} className="h-7 w-7 p-0 border-white/10 hover:bg-white/5 disabled:opacity-30">
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </Button>
+                    {Array.from({ length: Math.min(5, Math.ceil(adminTxData.total / TX_PAGE_SIZE)) }, (_, i) => {
+                      const totalPages = Math.ceil(adminTxData.total / TX_PAGE_SIZE);
+                      let p = i + 1;
+                      if (totalPages > 5) {
+                        if (txPage <= 3) p = i + 1;
+                        else if (txPage >= totalPages - 2) p = totalPages - 4 + i;
+                        else p = txPage - 2 + i;
+                      }
+                      return (
+                        <button key={p} onClick={() => setTxPage(p)} className={`h-7 w-7 rounded-lg text-xs font-medium transition-colors ${txPage === p ? "bg-violet-500/30 text-violet-300 border border-violet-500/40" : "text-muted-foreground hover:bg-white/5"}`}>{p}</button>
+                      );
+                    })}
+                    <Button variant="outline" size="sm" onClick={() => setTxPage(p => Math.min(Math.ceil(adminTxData.total / TX_PAGE_SIZE), p + 1))} disabled={txPage >= Math.ceil(adminTxData.total / TX_PAGE_SIZE)} className="h-7 w-7 p-0 border-white/10 hover:bg-white/5 disabled:opacity-30">
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </DashboardShell>

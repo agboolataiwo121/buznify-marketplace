@@ -884,3 +884,90 @@ export async function getTransactionHistory(
 
   return { rows, total, page, pageSize };
 }
+
+/**
+ * Admin: paginated wallet transaction overview across ALL users.
+ * Supports search by user email (via JOIN) or by referenceId (LIKE),
+ * plus optional type and status filters.
+ */
+export async function getAdminTransactions(opts: {
+  search?: string;
+  type?: "deposit" | "withdrawal" | "purchase" | "refund" | "referral_reward" | "admin_credit" | "all";
+  status?: "pending" | "completed" | "failed" | "all";
+  page?: number;
+  pageSize?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0, page: 1, pageSize: 20 };
+  const { search = "", type = "all", status = "all", page = 1, pageSize = 20 } = opts;
+  const offset = (page - 1) * pageSize;
+
+  const conditions: ReturnType<typeof eq | typeof like>[] = [];
+
+  if (type && type !== "all") {
+    conditions.push(eq(walletTransactions.type, type as typeof walletTransactions.$inferSelect["type"]));
+  }
+  if (status && status !== "all") {
+    conditions.push(eq(walletTransactions.status, status as typeof walletTransactions.$inferSelect["status"]));
+  }
+
+  const searchTrimmed = search.trim();
+  if (searchTrimmed) {
+    // Search by referenceId OR by user email (via subquery match)
+    conditions.push(
+      or(
+        like(walletTransactions.referenceId, `%${searchTrimmed}%`),
+        like(users.email, `%${searchTrimmed}%`)
+      ) as ReturnType<typeof eq>
+    );
+  }
+
+  const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+
+  // Count
+  const countQuery = db
+    .select({ count: sql<number>`count(*)` })
+    .from(walletTransactions)
+    .leftJoin(users, eq(walletTransactions.userId, users.id))
+    .leftJoin(payments, eq(walletTransactions.referenceId, payments.reference));
+
+  const [countRow] = where
+    ? await countQuery.where(where)
+    : await countQuery;
+  const total = Number(countRow?.count ?? 0);
+
+  // Rows
+  const rowsQuery = db
+    .select({
+      id: walletTransactions.id,
+      userId: walletTransactions.userId,
+      type: walletTransactions.type,
+      amount: walletTransactions.amount,
+      balanceBefore: walletTransactions.balanceBefore,
+      balanceAfter: walletTransactions.balanceAfter,
+      description: walletTransactions.description,
+      referenceId: walletTransactions.referenceId,
+      status: walletTransactions.status,
+      createdAt: walletTransactions.createdAt,
+      // user info
+      userEmail: users.email,
+      userName: users.name,
+      // paystack info
+      paymentReference: payments.reference,
+      paymentChannel: payments.channel,
+      paymentCurrency: payments.currency,
+      paymentAmountNaira: payments.amountNaira,
+      paymentStatus: payments.status,
+      paymentPaidAt: payments.paidAt,
+    })
+    .from(walletTransactions)
+    .leftJoin(users, eq(walletTransactions.userId, users.id))
+    .leftJoin(payments, eq(walletTransactions.referenceId, payments.reference))
+    .orderBy(desc(walletTransactions.createdAt))
+    .limit(pageSize)
+    .offset(offset);
+
+  const rows = where ? await rowsQuery.where(where) : await rowsQuery;
+
+  return { rows, total, page, pageSize };
+}
