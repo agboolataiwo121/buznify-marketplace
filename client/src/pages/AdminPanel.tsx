@@ -126,6 +126,22 @@ export default function AdminPanel() {
   // ── Icon picker ───────────────────────────────────────────────────────────
   const [iconPickerTab, setIconPickerTab] = useState<"icon" | "url">("icon");
   const [iconPickerSearch, setIconPickerSearch] = useState("");
+  // ── Credential fields builder ─────────────────────────────────────────────
+  type CredField = { id: string; label: string; value: string; sensitive: boolean };
+  const [credFields, setCredFields] = useState<CredField[]>([]);
+  const [credMode, setCredMode] = useState<"builder" | "json">("builder");
+  const PRESET_FIELDS = [
+    { label: "Email", sensitive: false },
+    { label: "Password", sensitive: true },
+    { label: "Username", sensitive: false },
+    { label: "Recovery Email", sensitive: false },
+    { label: "2FA Backup Code", sensitive: true },
+    { label: "Phone Number", sensitive: false },
+    { label: "License Key", sensitive: true },
+    { label: "Download Link", sensitive: false },
+    { label: "Redeem Code", sensitive: true },
+    { label: "Notes", sensitive: false },
+  ];
   const KNOWN_PLATFORMS = [
     "Instagram","TikTok","Twitter","Facebook","WhatsApp","Telegram","Snapchat","LinkedIn","Pinterest","Reddit","Discord","Threads",
     "Netflix","Spotify","Disney+","YouTube","Hulu","Amazon Prime","Apple TV+","HBO Max","Twitch","SoundCloud",
@@ -317,11 +333,15 @@ export default function AdminPanel() {
     bulkUpdateMutation.mutate({ ids, updates });
   };
 
-  const resetProductForm = () => setProductForm({
-    title: "", description: "", category: "social_media_accounts", subcategoryId: null, platform: "",
-    price: "", originalPrice: "", stock: "1", imageUrl: "", iconKey: "", deliveryType: "instant",
-    deliveryData: "", featured: false, status: "active",
-  });
+  const resetProductForm = () => {
+    setProductForm({
+      title: "", description: "", category: "social_media_accounts", subcategoryId: null, platform: "",
+      price: "", originalPrice: "", stock: "1", imageUrl: "", iconKey: "", deliveryType: "instant",
+      deliveryData: "", featured: false, status: "active",
+    });
+    setCredFields([]);
+    setCredMode("builder");
+  };
 
   const openEditProduct = (p: NonNullable<typeof allProducts>[number]) => {
     setEditingProduct(p as any);
@@ -341,12 +361,32 @@ export default function AdminPanel() {
       featured: p.featured,
       status: p.status as any,
     });
+    // Load existing deliveryData into credFields builder
+    if (p.deliveryData && typeof p.deliveryData === "object" && !Array.isArray(p.deliveryData)) {
+      const fields: CredField[] = Object.entries(p.deliveryData as Record<string, string>).map(([label, value]) => ({
+        id: Math.random().toString(36).slice(2),
+        label,
+        value: String(value),
+        sensitive: ["password","2fa","backup","secret","key","code","token"].some(k => label.toLowerCase().includes(k)),
+      }));
+      setCredFields(fields);
+      setCredMode("builder");
+    } else {
+      setCredFields([]);
+      setCredMode(p.deliveryData ? "json" : "builder");
+    }
     setProductModal("edit");
   };
 
   const handleProductSubmit = () => {
     let parsedDeliveryData: unknown = undefined;
-    if (productForm.deliveryData.trim()) {
+    if (credMode === "builder") {
+      if (credFields.length > 0) {
+        const obj: Record<string, string> = {};
+        credFields.forEach(f => { if (f.label.trim()) obj[f.label.trim()] = f.value; });
+        parsedDeliveryData = obj;
+      }
+    } else if (productForm.deliveryData.trim()) {
       try { parsedDeliveryData = JSON.parse(productForm.deliveryData); }
       catch { toast.error("Delivery Data must be valid JSON"); return; }
     }
@@ -1100,16 +1140,95 @@ export default function AdminPanel() {
                       </select>
                     </div>
                   </div>
-                  {/* Delivery Data (JSON) */}
+                  {/* Delivery Data — Credential Fields Builder */}
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">
-                      Delivery Data <span className="opacity-60">(JSON — account credentials, download links, etc.)</span>
-                    </label>
-                    <textarea value={productForm.deliveryData}
-                      onChange={e => setProductForm(f => ({ ...f, deliveryData: e.target.value }))}
-                      placeholder={'{ "email": "user@example.com", "password": "pass123" }'}
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-muted-foreground">Account Credentials / Delivery Data</label>
+                      <div className="flex rounded-lg overflow-hidden border border-white/10 text-[11px]">
+                        <button type="button" onClick={() => setCredMode("builder")}
+                          className={`px-3 py-1 transition-colors ${credMode === "builder" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                          Fields Builder
+                        </button>
+                        <button type="button" onClick={() => setCredMode("json")}
+                          className={`px-3 py-1 transition-colors ${credMode === "json" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                          Raw JSON
+                        </button>
+                      </div>
+                    </div>
+                    {credMode === "json" ? (
+                      <textarea value={productForm.deliveryData}
+                        onChange={e => setProductForm(f => ({ ...f, deliveryData: e.target.value }))}
+                        placeholder={'{ "email": "user@example.com", "password": "pass123" }'}
+                        rows={4}
+                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Preset quick-add buttons */}
+                        <div className="flex flex-wrap gap-1.5 mb-1">
+                          {PRESET_FIELDS.filter(p => !credFields.some(f => f.label === p.label)).map(preset => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => setCredFields(prev => [...prev, { id: Math.random().toString(36).slice(2), label: preset.label, value: "", sensitive: preset.sensitive }])}
+                              className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:bg-violet-500/20 hover:border-violet-500/40 hover:text-violet-300 transition-colors"
+                            >
+                              + {preset.label}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setCredFields(prev => [...prev, { id: Math.random().toString(36).slice(2), label: "", value: "", sensitive: false }])}
+                            className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          >
+                            + Custom
+                          </button>
+                        </div>
+                        {/* Field rows */}
+                        {credFields.length === 0 && (
+                          <p className="text-[11px] text-white/20 text-center py-3 border border-dashed border-white/10 rounded-xl">
+                            Click a field type above to add account credentials
+                          </p>
+                        )}
+                        {credFields.map((field, idx) => (
+                          <div key={field.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[10px] text-white/30 font-mono">{idx + 1}</div>
+                            <input
+                              value={field.label}
+                              onChange={e => setCredFields(prev => prev.map(f => f.id === field.id ? { ...f, label: e.target.value } : f))}
+                              placeholder="Field name"
+                              className="w-28 flex-shrink-0 bg-transparent border-b border-white/10 text-xs text-white/70 focus:outline-none focus:border-violet-500 pb-0.5 placeholder:text-white/20"
+                            />
+                            <input
+                              value={field.value}
+                              type={field.sensitive ? "password" : "text"}
+                              onChange={e => setCredFields(prev => prev.map(f => f.id === field.id ? { ...f, value: e.target.value } : f))}
+                              placeholder="Value"
+                              className="flex-1 bg-transparent border-b border-white/10 text-xs text-white/90 font-mono focus:outline-none focus:border-violet-500 pb-0.5 placeholder:text-white/20"
+                            />
+                            <button
+                              type="button"
+                              title={field.sensitive ? "Sensitive (masked)" : "Not sensitive"}
+                              onClick={() => setCredFields(prev => prev.map(f => f.id === field.id ? { ...f, sensitive: !f.sensitive } : f))}
+                              className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${field.sensitive ? "border-amber-500/40 text-amber-400 bg-amber-500/10" : "border-white/10 text-white/20 hover:border-white/30"}`}
+                            >
+                              {field.sensitive ? "🔒" : "👁"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCredFields(prev => prev.filter(f => f.id !== field.id))}
+                              className="flex-shrink-0 text-white/20 hover:text-red-400 transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        {credFields.length > 0 && (
+                          <p className="text-[10px] text-white/20 text-right">
+                            {credFields.length} field{credFields.length !== 1 ? "s" : ""} · will be delivered to buyer after purchase
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {/* Featured toggle */}
                   <label className="flex items-center gap-2 cursor-pointer select-none">

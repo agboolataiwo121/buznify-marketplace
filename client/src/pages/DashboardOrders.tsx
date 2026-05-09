@@ -9,10 +9,19 @@ import {
   Clock,
   XCircle,
   Package,
-  Eye,
   Copy,
   ChevronDown,
   ChevronUp,
+  EyeOff,
+  Eye,
+  KeyRound,
+  Mail,
+  Lock,
+  User,
+  Phone,
+  Link,
+  FileText,
+  Shield,
 } from "lucide-react";
 
 const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
@@ -23,13 +32,73 @@ const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; bg
   refunded: { icon: XCircle, color: "text-orange-400", bg: "bg-orange-500/20", label: "Refunded" },
 };
 
+function getFieldIcon(label: string) {
+  const l = label.toLowerCase();
+  if (l.includes("email") || l.includes("mail")) return <Mail className="w-3.5 h-3.5" />;
+  if (l.includes("password") || l.includes("pass")) return <Lock className="w-3.5 h-3.5" />;
+  if (l.includes("username") || l.includes("user")) return <User className="w-3.5 h-3.5" />;
+  if (l.includes("phone") || l.includes("number")) return <Phone className="w-3.5 h-3.5" />;
+  if (l.includes("key") || l.includes("license") || l.includes("code") || l.includes("2fa") || l.includes("backup") || l.includes("redeem")) return <KeyRound className="w-3.5 h-3.5" />;
+  if (l.includes("link") || l.includes("url") || l.includes("download")) return <Link className="w-3.5 h-3.5" />;
+  if (l.includes("recovery")) return <Shield className="w-3.5 h-3.5" />;
+  return <FileText className="w-3.5 h-3.5" />;
+}
+
+function isSensitiveField(label: string) {
+  return ["password", "pass", "2fa", "backup", "secret", "key", "license", "token", "code", "redeem"].some(k =>
+    label.toLowerCase().includes(k)
+  );
+}
+
+function CredentialRow({ label, value, icon, sensitive }: { label: string; value: string; icon: React.ReactNode; sensitive: boolean }) {
+  const [revealed, setRevealed] = useState(false);
+  const display = sensitive && !revealed ? "•".repeat(Math.min(value.length, 16)) : value;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    toast.success(`${label} copied to clipboard`);
+  };
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 group hover:bg-emerald-500/5 transition-colors">
+      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-emerald-400/60 uppercase tracking-wider font-medium mb-0.5">{label}</p>
+        <p className={`text-sm font-mono text-emerald-300 truncate ${sensitive && !revealed ? "tracking-widest" : ""}`}>
+          {display}
+        </p>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {sensitive && (
+          <button
+            onClick={() => setRevealed(r => !r)}
+            className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            title={revealed ? "Hide" : "Reveal"}
+          >
+            {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
+        )}
+        <button
+          onClick={handleCopy}
+          className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+          title="Copy"
+        >
+          <Copy className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardOrders() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data: orders, isLoading } = trpc.orders.myOrders.useQuery();
 
-  const handleCopyDelivery = (data: unknown) => {
+  const handleCopyAll = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    toast.success("Delivery data copied to clipboard");
+    toast.success("All credentials copied to clipboard");
   };
 
   return (
@@ -59,6 +128,8 @@ export default function DashboardOrders() {
             const config = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
             const Icon = config.icon;
             const isExpanded = expandedId === order.id;
+            const deliveryData = order.deliveryData as Record<string, string> | null;
+            const isStructured = deliveryData && typeof deliveryData === "object" && !Array.isArray(deliveryData);
 
             return (
               <div key={order.id} className="glass-card rounded-2xl overflow-hidden">
@@ -112,26 +183,47 @@ export default function DashboardOrders() {
                       ))}
                     </div>
 
-                    {order.deliveryData != null && (
-                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        <div className="flex items-center justify-between mb-2">
+                    {deliveryData != null && (
+                      <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-500/10">
                           <div className="flex items-center gap-2">
                             <Package className="w-4 h-4 text-emerald-400" />
-                            <span className="text-sm font-medium text-emerald-400">Delivery Details</span>
+                            <span className="text-sm font-medium text-emerald-400">Account Credentials</span>
+                            {isStructured && (
+                              <span className="text-[10px] text-emerald-400/50 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                                {Object.keys(deliveryData).length} fields
+                              </span>
+                            )}
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
                             className="h-7 text-xs text-emerald-400 hover:text-emerald-300"
-                            onClick={() => handleCopyDelivery(order.deliveryData)}
+                            onClick={() => handleCopyAll(deliveryData)}
                           >
                             <Copy className="w-3 h-3 mr-1" />
-                            Copy
+                            Copy All
                           </Button>
                         </div>
-                        <pre className="text-xs text-emerald-300 font-mono overflow-auto">
-                          {JSON.stringify(order.deliveryData as object, null, 2)}
-                        </pre>
+                        {/* Credential rows */}
+                        {isStructured ? (
+                          <div className="divide-y divide-emerald-500/10">
+                            {Object.entries(deliveryData).map(([label, value]) => (
+                              <CredentialRow
+                                key={label}
+                                label={label}
+                                value={String(value)}
+                                icon={getFieldIcon(label)}
+                                sensitive={isSensitiveField(label)}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <pre className="text-xs text-emerald-300 font-mono overflow-auto p-4">
+                            {JSON.stringify(deliveryData, null, 2)}
+                          </pre>
+                        )}
                       </div>
                     )}
 

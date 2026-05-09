@@ -187,7 +187,7 @@ function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: Live
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
           <div className="text-[11px] text-white/40">
             Min: <span className="text-white/60">{service.minQty.toLocaleString()}</span>
-            {" · "}
+            {" \u00b7 "}
             Max: <span className="text-white/60">{service.maxQty.toLocaleString()}</span>
           </div>
           <Button size="sm" onClick={() => onBuy(service)} className="h-7 px-3 text-xs bg-violet-600 hover:bg-violet-500 text-white">
@@ -206,7 +206,7 @@ function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: Live
         <div className="px-4 pt-4 pb-3 border-b border-white/5">
           <div className="flex items-center gap-2 mb-1">
             <ServiceIcon name={service.platform} size={14} />
-            <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{service.platform} · {service.serviceType}</span>
+            <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{service.platform} \u00b7 {service.serviceType}</span>
           </div>
           <p className="text-sm text-white/90 font-medium leading-snug line-clamp-3">{service.name}</p>
         </div>
@@ -507,7 +507,7 @@ function MyOrdersTab() {
                   <span>Progress</span>
                   <span>
                     {order.deliveredCount.toLocaleString()} / {order.quantity.toLocaleString()}
-                    {order.remains != null && <span className="text-white/30"> · {order.remains.toLocaleString()} remaining</span>}
+                    {order.remains != null && <span className="text-white/30"> \u00b7 {order.remains.toLocaleString()} remaining</span>}
                   </span>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -516,7 +516,7 @@ function MyOrdersTab() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-white/40">
-                  ${parseFloat(order.totalAmount).toFixed(4)} · {new Date(order.createdAt).toLocaleDateString()}
+                  ${parseFloat(order.totalAmount).toFixed(4)} \u00b7 {new Date(order.createdAt).toLocaleDateString()}
                 </div>
                 <div className="flex gap-2">
                   {order.refillRequested === false && order.apiOrderId && (
@@ -661,7 +661,7 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
 
       <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
         <div>
-          <p className="text-sm text-white">{rows.length} order{rows.length !== 1 ? "s" : ""} · Total: <span className={canAfford ? "text-green-400" : "text-red-400"}>${totalCost.toFixed(4)}</span></p>
+          <p className="text-sm text-white">{rows.length} order{rows.length !== 1 ? "s" : ""} \u00b7 Total: <span className={canAfford ? "text-green-400" : "text-red-400"}>${totalCost.toFixed(4)}</span></p>
           {!canAfford && <p className="text-xs text-red-400">Insufficient balance</p>}
         </div>
         <Button
@@ -730,7 +730,7 @@ export default function GrowthServices() {
                 <TrendingUp className="w-6 h-6 text-violet-400" />Social Growth Services
               </h1>
               <p className="text-white/50 text-sm mt-1">
-                Real services from Server 1 &amp; Server 2 · Instant delivery · Refill guarantee
+                Real services from Server 1 &amp; Server 2 \u00b7 Instant delivery \u00b7 Refill guarantee
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -819,7 +819,7 @@ export default function GrowthServices() {
             {!isLoading && !error && (
               <p className="text-xs text-white/40">
                 {filtered.length.toLocaleString()} service{filtered.length !== 1 ? "s" : ""} found
-                {services && ` · ${services.length.toLocaleString()} total from both servers`}
+                {services && ` \u00b7 ${services.length.toLocaleString()} total from both servers`}
               </p>
             )}
 

@@ -557,3 +557,7 @@
 - [x] Add ServiceIcon to Admin Products table rows next to platform name
 - [x] Add ServiceIcon to Admin Orders tab rows next to product platform
 - [x] Add icon picker option to Admin product form (visual grid of all ServiceIcons + image URL tab)
+- [x] Add structured credential fields builder to Admin product form (email, password, username, recovery email, 2FA, notes, etc.)
+- [x] Update DashboardOrders delivery display to render structured credentials as labeled rows with copy buttons
+- [x] Add structured credential fields builder to Admin product form
+- [x] Update DashboardOrders delivery display to render structured credentials as labeled rows with copy buttons
