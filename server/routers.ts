@@ -310,9 +310,22 @@ export const appRouter = router({
           title: z.string().optional(),
           description: z.string().optional(),
           price: z.string().optional(),
+          originalPrice: z.string().optional(),
           stock: z.number().optional(),
-          status: z.enum(["active", "inactive", "pending", "rejected"]).optional(),
+          platform: z.string().optional(),
+          imageUrl: z.string().optional(),
+          deliveryType: z.enum(["instant", "manual"]).optional(),
           deliveryData: z.any().optional(),
+          featured: z.boolean().optional(),
+          tags: z.array(z.string()).optional(),
+          status: z.enum(["active", "inactive", "pending", "rejected"]).optional(),
+          category: z.enum([
+            "social_media_accounts",
+            "streaming_accounts",
+            "gaming_accounts",
+            "virtual_numbers",
+            "growth_services",
+          ]).optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {

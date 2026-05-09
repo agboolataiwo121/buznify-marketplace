@@ -24,6 +24,10 @@ import {
   CreditCard,
   RotateCcw,
   Activity,
+  Edit2,
+  X,
+  ImageIcon,
+  Star,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -50,6 +54,25 @@ export default function AdminPanel() {
     { id: 1, title: "Platform Maintenance", message: "Scheduled maintenance on Sunday 2AM UTC. Expect 30 min downtime.", type: "warning", time: "2 hours ago", active: true },
     { id: 2, title: "New Payment Methods Added", message: "We now accept USDT and BNB for wallet top-ups!", type: "success", time: "1 day ago", active: true },
   ]);
+  // ── Product modal state ──────────────────────────────────────────────────
+  const [productModal, setProductModal] = useState<"add" | "edit" | null>(null);
+  const [editingProduct, setEditingProduct] = useState<NonNullable<typeof allProducts>[number] | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [productForm, setProductForm] = useState({
+    title: "",
+    description: "",
+    category: "social_media_accounts" as "social_media_accounts" | "streaming_accounts" | "gaming_accounts" | "virtual_numbers" | "growth_services",
+    platform: "",
+    price: "",
+    originalPrice: "",
+    stock: "1",
+    imageUrl: "",
+    deliveryType: "instant" as "instant" | "manual",
+    deliveryData: "",
+    featured: false,
+    status: "active" as "active" | "inactive" | "pending" | "rejected",
+  });
+
   const utils = trpc.useUtils();
   const { data: stats } = trpc.admin.getStats.useQuery();
   const { data: revenueChart } = trpc.admin.getRevenueChart.useQuery({ days: chartDays }, { enabled: tab === "overview" });
@@ -74,6 +97,85 @@ export default function AdminPanel() {
     onSuccess: () => { toast.success("Role updated"); utils.admin.getUsers.invalidate(); },
     onError: (err) => toast.error(err.message),
   });
+
+  const createProductMutation = trpc.products.create.useMutation({
+    onSuccess: () => {
+      toast.success("Product created successfully");
+      utils.admin.getProducts.invalidate();
+      setProductModal(null);
+      resetProductForm();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const updateProductMutation = trpc.products.update.useMutation({
+    onSuccess: () => {
+      toast.success("Product updated successfully");
+      utils.admin.getProducts.invalidate();
+      setProductModal(null);
+      setEditingProduct(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteProductMutation = trpc.products.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Product deleted");
+      utils.admin.getProducts.invalidate();
+      setDeleteConfirmId(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const resetProductForm = () => setProductForm({
+    title: "", description: "", category: "social_media_accounts", platform: "",
+    price: "", originalPrice: "", stock: "1", imageUrl: "", deliveryType: "instant",
+    deliveryData: "", featured: false, status: "active",
+  });
+
+  const openEditProduct = (p: NonNullable<typeof allProducts>[number]) => {
+    setEditingProduct(p as any);
+    setProductForm({
+      title: p.title,
+      description: p.description ?? "",
+      category: p.category as any,
+      platform: p.platform ?? "",
+      price: p.price,
+      originalPrice: p.originalPrice ?? "",
+      stock: String(p.stock),
+      imageUrl: p.imageUrl ?? "",
+      deliveryType: p.deliveryType as "instant" | "manual",
+      deliveryData: p.deliveryData ? JSON.stringify(p.deliveryData, null, 2) : "",
+      featured: p.featured,
+      status: p.status as any,
+    });
+    setProductModal("edit");
+  };
+
+  const handleProductSubmit = () => {
+    let parsedDeliveryData: unknown = undefined;
+    if (productForm.deliveryData.trim()) {
+      try { parsedDeliveryData = JSON.parse(productForm.deliveryData); }
+      catch { toast.error("Delivery Data must be valid JSON"); return; }
+    }
+    const payload = {
+      title: productForm.title,
+      description: productForm.description || undefined,
+      category: productForm.category,
+      platform: productForm.platform || undefined,
+      price: productForm.price,
+      originalPrice: productForm.originalPrice || undefined,
+      stock: parseInt(productForm.stock) || 0,
+      imageUrl: productForm.imageUrl || undefined,
+      deliveryType: productForm.deliveryType,
+      deliveryData: parsedDeliveryData,
+      featured: productForm.featured,
+      status: productForm.status,
+    };
+    if (productModal === "add") {
+      createProductMutation.mutate(payload);
+    } else if (productModal === "edit" && editingProduct) {
+      updateProductMutation.mutate({ id: (editingProduct as any).id, ...payload });
+    }
+  };
 
   const approveProductMutation = trpc.admin.approveProduct.useMutation({
     onSuccess: () => { toast.success("Product approved"); utils.admin.getProducts.invalidate(); },
@@ -254,46 +356,241 @@ export default function AdminPanel() {
 
       {/* Products */}
       {tab === "products" && (
-        <div className="glass-card rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Product Management</h2>
-          {!allProducts || allProducts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No products yet. Click "Seed Demo Data" to add sample products.</p>
-          ) : (
-            <div className="space-y-2">
-              {allProducts.map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
-                    <p className="text-xs text-muted-foreground">${p.price} · Stock: {p.stock} · {p.category}</p>
+        <div className="space-y-4">
+          {/* Header + Add button */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Product Management</h2>
+            <Button
+              size="sm"
+              className="bg-violet-600 hover:bg-violet-500 border-0 gap-1.5"
+              onClick={() => { resetProductForm(); setProductModal("add"); }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Product
+            </Button>
+          </div>
+
+          {/* Product list */}
+          <div className="glass-card rounded-2xl p-5">
+            {!allProducts || allProducts.length === 0 ? (
+              <div className="text-center py-10">
+                <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+                <p className="text-sm text-muted-foreground">No products yet.</p>
+                <Button size="sm" variant="outline" className="mt-3" onClick={() => { resetProductForm(); setProductModal("add"); }}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add your first product
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {allProducts.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 transition-colors">
+                    {/* Thumbnail */}
+                    <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {p.imageUrl
+                        ? <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover rounded-lg" />
+                        : <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                      }
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
+                        {p.featured && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 flex-shrink-0" />}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        ${p.price}{p.originalPrice ? <span className="line-through ml-1 opacity-50">${p.originalPrice}</span> : null}
+                        {" · "}Stock: {p.stock}
+                        {" · "}{p.category.replace(/_/g, " ")}
+                        {p.platform ? ` · ${p.platform}` : ""}
+                      </p>
+                    </div>
+                    {/* Status + actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        p.status === "active" ? "badge-success" :
+                        p.status === "pending" ? "badge-warning" :
+                        p.status === "inactive" ? "bg-white/10 text-muted-foreground" : "badge-error"
+                      }`}>
+                        {p.status}
+                      </span>
+                      {p.status === "pending" && (
+                        <>
+                          <Button size="sm" className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-500 border-0"
+                            onClick={() => approveProductMutation.mutate({ id: p.id })}>
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="sm" className="h-7 w-7 p-0 bg-red-600 hover:bg-red-500 border-0"
+                            onClick={() => rejectProductMutation.mutate({ id: p.id })}>
+                            <XCircle className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:text-violet-400"
+                        onClick={() => openEditProduct(p)}>
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:text-red-400"
+                        onClick={() => setDeleteConfirmId(p.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      p.status === "active" ? "badge-success" :
-                      p.status === "pending" ? "badge-warning" : "badge-warning"
-                    }`}>
-                      {p.status}
-                    </span>
-                    {p.status === "pending" && (
-                      <>
-                        <Button
-                          size="sm"
-                          className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-500 border-0"
-                          onClick={() => approveProductMutation.mutate({ id: p.id })}
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 w-7 p-0 bg-red-600 hover:bg-red-500 border-0"
-                          onClick={() => rejectProductMutation.mutate({ id: p.id })}
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add / Edit Product Modal */}
+          {productModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div className="flex items-center justify-between p-5 border-b border-white/10">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {productModal === "add" ? "Add New Product" : "Edit Product"}
+                  </h3>
+                  <button onClick={() => { setProductModal(null); setEditingProduct(null); }}
+                    className="text-muted-foreground hover:text-foreground transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              ))}
+                <div className="p-5 space-y-4">
+                  {/* Title */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Title *</label>
+                    <Input value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))}
+                      placeholder="e.g. Instagram 10K Followers Account" className="bg-white/5 border-white/10 text-sm" />
+                  </div>
+                  {/* Category + Platform */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Category *</label>
+                      <select value={productForm.category}
+                        onChange={e => setProductForm(f => ({ ...f, category: e.target.value as typeof f.category }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                        <option value="social_media_accounts">Social Media Accounts</option>
+                        <option value="streaming_accounts">Streaming Accounts</option>
+                        <option value="gaming_accounts">Gaming Accounts</option>
+                        <option value="virtual_numbers">Virtual Numbers</option>
+                        <option value="growth_services">Growth Services</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Platform</label>
+                      <Input value={productForm.platform} onChange={e => setProductForm(f => ({ ...f, platform: e.target.value }))}
+                        placeholder="e.g. Instagram, Netflix" className="bg-white/5 border-white/10 text-sm" />
+                    </div>
+                  </div>
+                  {/* Price + Original Price + Stock */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Price (USD) *</label>
+                      <Input type="number" step="0.01" min="0" value={productForm.price}
+                        onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))}
+                        placeholder="9.99" className="bg-white/5 border-white/10 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Original Price</label>
+                      <Input type="number" step="0.01" min="0" value={productForm.originalPrice}
+                        onChange={e => setProductForm(f => ({ ...f, originalPrice: e.target.value }))}
+                        placeholder="14.99" className="bg-white/5 border-white/10 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Stock *</label>
+                      <Input type="number" min="0" value={productForm.stock}
+                        onChange={e => setProductForm(f => ({ ...f, stock: e.target.value }))}
+                        placeholder="100" className="bg-white/5 border-white/10 text-sm" />
+                    </div>
+                  </div>
+                  {/* Description */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Description</label>
+                    <textarea value={productForm.description}
+                      onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Describe the product, what's included, warranty, etc."
+                      rows={3}
+                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
+                  </div>
+                  {/* Image URL */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Image URL</label>
+                    <Input value={productForm.imageUrl} onChange={e => setProductForm(f => ({ ...f, imageUrl: e.target.value }))}
+                      placeholder="https://..." className="bg-white/5 border-white/10 text-sm" />
+                  </div>
+                  {/* Delivery Type + Status */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Delivery Type</label>
+                      <select value={productForm.deliveryType}
+                        onChange={e => setProductForm(f => ({ ...f, deliveryType: e.target.value as "instant" | "manual" }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                        <option value="instant">Instant</option>
+                        <option value="manual">Manual</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
+                      <select value={productForm.status}
+                        onChange={e => setProductForm(f => ({ ...f, status: e.target.value as typeof f.status }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                  {/* Delivery Data (JSON) */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">
+                      Delivery Data <span className="opacity-60">(JSON — account credentials, download links, etc.)</span>
+                    </label>
+                    <textarea value={productForm.deliveryData}
+                      onChange={e => setProductForm(f => ({ ...f, deliveryData: e.target.value }))}
+                      placeholder={`{\n  "email": "user@example.com",\n  "password": "pass123"\n}`}
+                      rows={4}
+                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
+                  </div>
+                  {/* Featured toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" checked={productForm.featured}
+                      onChange={e => setProductForm(f => ({ ...f, featured: e.target.checked }))}
+                      className="w-4 h-4 accent-violet-500" />
+                    <span className="text-sm text-foreground">Featured product <span className="text-xs text-muted-foreground">(shown prominently on marketplace)</span></span>
+                  </label>
+                </div>
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10">
+                  <Button variant="ghost" size="sm" onClick={() => { setProductModal(null); setEditingProduct(null); }}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" className="bg-violet-600 hover:bg-violet-500 border-0"
+                    disabled={!productForm.title || !productForm.price || createProductMutation.isPending || updateProductMutation.isPending}
+                    onClick={handleProductSubmit}>
+                    {(createProductMutation.isPending || updateProductMutation.isPending)
+                      ? "Saving…"
+                      : productModal === "add" ? "Create Product" : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {deleteConfirmId !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+                <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
+                <h3 className="text-sm font-semibold text-foreground mb-1">Delete Product?</h3>
+                <p className="text-xs text-muted-foreground mb-5">This action cannot be undone. The product will be permanently removed.</p>
+                <div className="flex items-center justify-center gap-3">
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+                  <Button size="sm" className="bg-red-600 hover:bg-red-500 border-0"
+                    disabled={deleteProductMutation.isPending}
+                    onClick={() => deleteProductMutation.mutate({ id: deleteConfirmId })}>
+                    {deleteProductMutation.isPending ? "Deleting…" : "Delete"}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
