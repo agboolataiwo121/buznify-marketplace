@@ -51,6 +51,8 @@ import {
   Eye,
   Globe,
   UserX,
+  Upload,
+  FileText,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -144,6 +146,30 @@ export default function AdminPanel() {
   const [accountPool, setAccountPool] = useState<AccountSet[]>([]);
   // Which account in the pool is expanded for editing
   const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
+  // Bulk import state
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [bulkImportDelimiter, setBulkImportDelimiter] = useState<":" | "|" | "\t" | ",">(":");
+  const [bulkImportFieldNames, setBulkImportFieldNames] = useState<string[]>(["Email", "Password"]);
+  // Derived: parsed preview of bulk import
+  const bulkImportPreview = (() => {
+    if (!bulkImportText.trim()) return [];
+    const lines = bulkImportText.split("\n").map(l => l.trim()).filter(Boolean);
+    return lines.map(line => {
+      const parts = line.split(bulkImportDelimiter);
+      const fields: CredField[] = bulkImportFieldNames.map((name, i) => ({
+        id: Math.random().toString(36).slice(2),
+        label: name.trim() || `Field ${i + 1}`,
+        value: parts[i]?.trim() ?? "",
+        sensitive: ["password","2fa","backup","secret","key","code","token"].some(k => name.toLowerCase().includes(k)),
+      }));
+      // Append any extra columns beyond named fields as "Extra N"
+      for (let i = bulkImportFieldNames.length; i < parts.length; i++) {
+        fields.push({ id: Math.random().toString(36).slice(2), label: `Extra ${i + 1}`, value: parts[i]?.trim() ?? "", sensitive: false });
+      }
+      return { id: Math.random().toString(36).slice(2), fields };
+    });
+  })();
   const PRESET_FIELDS = [
     { label: "Email", sensitive: false },
     { label: "Password", sensitive: true },
@@ -1323,26 +1349,137 @@ export default function AdminPanel() {
                               <span className="text-[10px] text-violet-400/60">· stock auto-set to {accountPool.length}</span>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newId = Math.random().toString(36).slice(2);
-                              setAccountPool(prev => [...prev, {
-                                id: newId,
-                                fields: PRESET_FIELDS.slice(0, 2).map(p => ({ id: Math.random().toString(36).slice(2), label: p.label, value: "", sensitive: p.sensitive })),
-                              }]);
-                              setExpandedAccountId(newId);
-                            }}
-                            className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
-                          >
-                            <Plus className="w-3 h-3" /> Add Account
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setBulkImportOpen(true)}
+                              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white transition-colors"
+                            >
+                              <Upload className="w-3 h-3" /> Bulk Import
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newId = Math.random().toString(36).slice(2);
+                                setAccountPool(prev => [...prev, {
+                                  id: newId,
+                                  fields: PRESET_FIELDS.slice(0, 2).map(p => ({ id: Math.random().toString(36).slice(2), label: p.label, value: "", sensitive: p.sensitive })),
+                                }]);
+                                setExpandedAccountId(newId);
+                              }}
+                              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                            >
+                              <Plus className="w-3 h-3" /> Add Account
+                            </button>
+                          </div>
                         </div>
 
+                        {/* ── Bulk Import Panel ── */}
+                        {bulkImportOpen && (
+                          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
+                            {/* Panel header */}
+                            <div className="flex items-center justify-between px-3 py-2.5 border-b border-cyan-500/20">
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                                <span className="text-xs font-medium text-cyan-300">Bulk Import Accounts</span>
+                              </div>
+                              <button type="button" onClick={() => { setBulkImportOpen(false); setBulkImportText(""); }}
+                                className="text-white/30 hover:text-white/60 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="p-3 space-y-3">
+                              {/* Delimiter + field names row */}
+                              <div className="flex flex-wrap items-end gap-3">
+                                <div>
+                                  <p className="text-[10px] text-white/40 mb-1">Delimiter</p>
+                                  <div className="flex rounded-lg overflow-hidden border border-white/10 text-[11px]">
+                                    {([":", "|", ",", "\t"] as const).map(d => (
+                                      <button key={d} type="button"
+                                        onClick={() => setBulkImportDelimiter(d)}
+                                        className={`px-3 py-1 transition-colors ${bulkImportDelimiter === d ? "bg-cyan-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                                        {d === "\t" ? "Tab" : d === ":" ? "Colon (:)" : d === "|" ? "Pipe (|)" : "Comma (,)"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] text-white/40 mb-1">Column names <span className="text-white/20">(comma-separated, e.g. Email,Password,2FA)</span></p>
+                                  <input
+                                    value={bulkImportFieldNames.join(",")}
+                                    onChange={e => setBulkImportFieldNames(e.target.value.split(",").map(s => s.trim()))}
+                                    placeholder="Email,Password"
+                                    className="w-full bg-white/5 border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Paste area */}
+                              <div>
+                                <p className="text-[10px] text-white/40 mb-1">Paste accounts — one per line</p>
+                                <textarea
+                                  value={bulkImportText}
+                                  onChange={e => setBulkImportText(e.target.value)}
+                                  placeholder={`user1@example.com${bulkImportDelimiter === "\t" ? "\t" : bulkImportDelimiter}password1\nuser2@example.com${bulkImportDelimiter === "\t" ? "\t" : bulkImportDelimiter}password2`}
+                                  rows={5}
+                                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-white/15 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                />
+                              </div>
+
+                              {/* Preview */}
+                              {bulkImportPreview.length > 0 && (
+                                <div className="rounded-lg border border-white/10 overflow-hidden">
+                                  <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/10">
+                                    <span className="text-[10px] text-white/40">Preview — {bulkImportPreview.length} account{bulkImportPreview.length !== 1 ? "s" : ""} detected</span>
+                                  </div>
+                                  <div className="max-h-40 overflow-y-auto divide-y divide-white/5">
+                                    {bulkImportPreview.slice(0, 8).map((acct, i) => (
+                                      <div key={i} className="flex items-center gap-2 px-3 py-1.5">
+                                        <span className="text-[10px] text-white/20 w-4 flex-shrink-0">{i + 1}</span>
+                                        {acct.fields.map(f => (
+                                          <span key={f.id} className="text-[10px] text-white/60 font-mono truncate">
+                                            <span className="text-white/30">{f.label}: </span>
+                                            {f.sensitive ? "••••••" : f.value || <span className="text-white/20">empty</span>}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ))}
+                                    {bulkImportPreview.length > 8 && (
+                                      <div className="px-3 py-1.5 text-[10px] text-white/20">…and {bulkImportPreview.length - 8} more</div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Action buttons */}
+                              <div className="flex items-center justify-end gap-2">
+                                <button type="button"
+                                  onClick={() => { setBulkImportOpen(false); setBulkImportText(""); }}
+                                  className="text-[11px] px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 transition-colors">
+                                  Cancel
+                                </button>
+                                <button type="button"
+                                  disabled={bulkImportPreview.length === 0}
+                                  onClick={() => {
+                                    setAccountPool(prev => [...prev, ...bulkImportPreview]);
+                                    toast.success(`${bulkImportPreview.length} account${bulkImportPreview.length !== 1 ? "s" : ""} added to pool`);
+                                    setBulkImportOpen(false);
+                                    setBulkImportText("");
+                                  }}
+                                  className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors">
+                                  <Plus className="w-3 h-3" />
+                                  Add {bulkImportPreview.length > 0 ? bulkImportPreview.length : ""} Account{bulkImportPreview.length !== 1 ? "s" : ""}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Account cards */}
-                        {accountPool.length === 0 && (
+                        {accountPool.length === 0 && !bulkImportOpen && (
                           <p className="text-[11px] text-white/20 text-center py-4 border border-dashed border-white/10 rounded-xl">
-                            Click "Add Account" to add the first account to the pool
+                            Click "Add Account" or "Bulk Import" to populate the pool
                           </p>
                         )}
                         {accountPool.map((acct, acctIdx) => {

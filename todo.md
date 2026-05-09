@@ -581,3 +581,11 @@
 - [x] Update orders.create: for instant delivery, pop the first account from the pool, deliver it to the order, and remove it from the product's deliveryData array
 - [x] Update DashboardOrders: display the delivered account's credential fields (already handled by CredentialRow — just ensure single-account object is passed)
 - [x] Admin product table: show account pool count badge next to stock
+
+## Bulk Import for Account Pool
+- [x] Add "Bulk Import" button in the Account Pool tab header
+- [x] Bulk import modal/panel: textarea for pasting accounts, delimiter selector (colon, pipe, tab, comma), field name row (maps columns to field labels)
+- [x] Parse pasted text: each line = one account, split by delimiter into field values
+- [x] Preview parsed accounts before confirming import
+- [x] Append imported accounts to existing pool (don't replace)
+- [x] Show import summary toast (X accounts added)
