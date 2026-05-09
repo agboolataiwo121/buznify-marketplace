@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { Home, ShoppingBag, ShoppingCart, Wallet, LayoutDashboard, TrendingUp } from "lucide-react";
+import { Home, ShoppingBag, ShoppingCart, Wallet, LayoutDashboard, TrendingUp, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const PUBLIC_ITEMS = [
   { href: "/", icon: Home, label: "Home" },
@@ -17,6 +18,7 @@ const AUTH_ITEMS = [
 export default function MobileBottomNav() {
   const [location] = useLocation();
   const { isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   // Hide on auth/admin pages where bottom nav would conflict
   const hiddenPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/admin"];
@@ -28,8 +30,8 @@ export default function MobileBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* Blur backdrop */}
-      <div className="absolute inset-0 bg-[#0a0a14]/90 backdrop-blur-xl border-t border-white/10" />
+      {/* Blur backdrop — theme-aware */}
+      <div className="absolute inset-0 dark:bg-[#0a0a14]/90 bg-white/90 backdrop-blur-xl border-t border-border" />
       <div className="relative flex items-center justify-around px-1 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]">
         {items.map(({ href, icon: Icon, label }) => {
           const isActive =
@@ -54,6 +56,23 @@ export default function MobileBottomNav() {
             </Link>
           );
         })}
+
+        {/* Theme toggle */}
+        {toggleTheme && (
+          <button
+            onClick={toggleTheme}
+            className="relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all min-w-[52px] text-muted-foreground hover:text-foreground"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark"
+              ? <Sun className="w-5 h-5" />
+              : <Moon className="w-5 h-5" />
+            }
+            <span className="text-[10px] font-medium leading-none">
+              {theme === "dark" ? "Light" : "Dark"}
+            </span>
+          </button>
+        )}
       </div>
     </nav>
   );

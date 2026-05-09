@@ -628,3 +628,17 @@
 - [x] Admin Orders tab: "Send Push" button on processing orders to manually trigger delivery notification
 - [x] Growth Services: fire sendPushToUser when a growth order reaches 100% completion
 - [x] Notification history page: show timeline of push-triggered events (order delivered, refund approved, etc.)
+
+## Stripe Payment Integration
+- [ ] Set up Stripe via webdev_add_feature and configure STRIPE_SECRET_KEY + VITE_STRIPE_PUBLISHABLE_KEY secrets
+- [ ] Create Stripe Checkout Session tRPC procedure (wallet deposit)
+- [ ] Create Stripe webhook handler to confirm payment and credit wallet
+- [ ] Add Stripe as payment option in Wallet deposit UI alongside Paystack
+- [ ] Show Stripe payment method badge on checkout/deposit confirmation
+
+## Dark/Light Mode Toggle
+- [x] Audit current ThemeProvider and CSS variables for light mode support
+- [x] Add complete light mode CSS variable palette in index.css
+- [x] Wire toggle button in desktop navbar (Sun/Moon icon) — already existed
+- [x] Wire toggle in mobile bottom nav (Sun/Moon button added)
+- [x] Persist preference in localStorage via ThemeProvider — already implemented
