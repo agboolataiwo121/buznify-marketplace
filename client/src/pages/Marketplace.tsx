@@ -234,6 +234,15 @@ export default function Marketplace() {
   const [deliveryTime, setDeliveryTime] = useState("");
   const [sortBy, setSortBy] = useState("best_selling");
 
+  // Load dynamic categories from DB, fall back to static CATEGORIES
+  const { data: dbCats } = trpc.products.listCategories.useQuery();
+  const dynamicCategories = dbCats && dbCats.length > 0
+    ? [
+        { value: "", label: "All Products", icon: Package },
+        ...dbCats.map((c) => ({ value: c.slug, label: c.label, icon: Package })),
+      ]
+    : CATEGORIES;
+
   const aiSearchMutation = trpc.products.aiSearch.useMutation({
     onSuccess: (data) => setAiResults(data.results),
     onError: () => setAiResults([]),
@@ -373,7 +382,7 @@ export default function Marketplace() {
 
         {/* Category tabs */}
         <div className="flex flex-wrap gap-2 mb-8">
-          {CATEGORIES.map(({ value, label, icon: Icon }) => (
+          {dynamicCategories.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               onClick={() => setCategory(value)}
@@ -394,7 +403,7 @@ export default function Marketplace() {
           <p className="text-sm text-muted-foreground">
             Showing <span className="text-foreground font-medium">{displayProducts.length}</span> products
             {category && (
-              <> in <span className="text-primary">{CATEGORIES.find((c) => c.value === category)?.label}</span></>
+              <> in <span className="text-primary">{dynamicCategories.find((c) => c.value === category)?.label}</span></>
             )}
           </p>
           <div className="flex items-center gap-2">

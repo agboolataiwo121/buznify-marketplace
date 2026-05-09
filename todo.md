@@ -344,3 +344,11 @@
 - [x] Update hero headline to mention AI Tools, Subscriptions, and Gaming
 - [x] Update hero subheadline/description to reflect 10-category catalogue
 - [x] Update category highlight chips/badges in hero section
+
+## Admin Category Management
+- [x] Add `categories` table to drizzle/schema.ts (id, slug, label, icon, description, enabled, sortOrder, createdAt)
+- [x] Push schema migration with pnpm db:push
+- [x] Add admin CRUD procedures: listCategories, createCategory, updateCategory, deleteCategory, toggleCategory, seedDefaultCategories
+- [x] Add Categories tab to AdminPanel.tsx with create form, editable list, enable/disable toggle, delete
+- [x] Wire Marketplace category tabs to use dynamic categories from DB (with static fallback)
+- [x] Wire product create/edit form category dropdown to use dynamic categories

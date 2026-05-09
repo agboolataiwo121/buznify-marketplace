@@ -43,7 +43,7 @@ import {
   ResponsiveContainer, ComposedChart,
 } from "recharts";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -104,6 +104,11 @@ export default function AdminPanel() {
   const [notifForm, setNotifForm] = useState({ title: "", message: "", type: "info" as "info" | "success" | "warning" });
   // ── Service categories state ─────────────────────────────────────────────
   const [categoryUpdating, setCategoryUpdating] = useState<string | null>(null);
+  // ── Dynamic Product Categories ──────────────────────────────────────────
+  const [catForm, setCatForm] = useState({ slug: "", label: "", icon: "Tag", description: "", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 0 });
+  const [catEditId, setCatEditId] = useState<number | null>(null);
+  const [catEditForm, setCatEditForm] = useState({ label: "", icon: "", description: "", sortOrder: 0 });
+  const [catDeleteId, setCatDeleteId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: stats } = trpc.admin.getStats.useQuery();
@@ -117,6 +122,9 @@ export default function AdminPanel() {
   const { data: allRefunds } = trpc.refunds.adminList.useQuery(undefined, { enabled: tab === "refunds" });
   const { data: allPayouts } = trpc.payouts.adminList.useQuery(undefined, { enabled: tab === "payouts" });
   const { data: serviceCategories, refetch: refetchCategories } = trpc.admin.getServiceCategories.useQuery(undefined, { enabled: tab === "services" });
+  const { data: dbCategories, refetch: refetchDbCategories } = trpc.admin.listCategories.useQuery(undefined, { enabled: tab === "categories" });
+  // Load all categories (for product form dropdowns) — always enabled
+  const { data: allDbCategories } = trpc.products.listCategories.useQuery();
   const { data: aiInsights, isLoading: aiInsightsLoading } = trpc.admin.getAiAnalyticsSummary.useQuery(undefined, { enabled: tab === "ai_insights" });
 
   const updateRefundMutation = trpc.refunds.adminProcess.useMutation({
@@ -261,6 +269,27 @@ export default function AdminPanel() {
     onError: (err) => toast.error(err.message),
   });
 
+  const createCatMutation = trpc.admin.createCategory.useMutation({
+    onSuccess: () => { toast.success("Category created!"); refetchDbCategories(); setCatForm({ slug: "", label: "", icon: "Tag", description: "", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 0 }); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateCatMutation = trpc.admin.updateCategory.useMutation({
+    onSuccess: () => { toast.success("Category updated!"); refetchDbCategories(); setCatEditId(null); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const toggleCatMutation = trpc.admin.toggleCategory.useMutation({
+    onSuccess: () => { refetchDbCategories(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const deleteCatMutation = trpc.admin.deleteCategory.useMutation({
+    onSuccess: () => { toast.success("Category deleted!"); refetchDbCategories(); setCatDeleteId(null); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const seedCatsMutation = trpc.admin.seedDefaultCategories.useMutation({
+    onSuccess: (d) => { toast.success(`Seeded ${d.seeded} default categories!`); refetchDbCategories(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const broadcastMutation = trpc.admin.broadcastNotification.useMutation({
     onSuccess: (data) => {
       toast.success(`Notification sent to ${data.sentTo} users`);
@@ -328,6 +357,7 @@ export default function AdminPanel() {
     { value: "notifications", label: "Push Notifications", icon: Bell },
     { value: "services", label: "Service Controls", icon: Settings },
     { value: "ai_insights", label: "AI Insights", icon: Brain },
+    { value: "categories", label: "Categories", icon: Tag },
   ];
 
   return (
@@ -717,11 +747,25 @@ export default function AdminPanel() {
                       <select value={productForm.category}
                         onChange={e => setProductForm(f => ({ ...f, category: e.target.value as typeof f.category }))}
                         className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
-                        <option value="social_media_accounts">Social Media Accounts</option>
-                        <option value="streaming_accounts">Streaming Accounts</option>
-                        <option value="gaming_accounts">Gaming Accounts</option>
-                        <option value="virtual_numbers">Virtual Numbers</option>
-                        <option value="growth_services">Growth Services</option>
+                        {allDbCategories && allDbCategories.length > 0
+                          ? allDbCategories.map(c => (
+                              <option key={c.slug} value={c.slug}>{c.label}</option>
+                            ))
+                          : (
+                              <>
+                                <option value="social_media_accounts">Social Media Accounts</option>
+                                <option value="streaming_accounts">Streaming Accounts</option>
+                                <option value="gaming_accounts">Gaming Accounts</option>
+                                <option value="virtual_numbers">Virtual Numbers</option>
+                                <option value="growth_services">Growth Services</option>
+                                <option value="ai_tools">AI Tools</option>
+                                <option value="digital_subscriptions">Digital Subscriptions</option>
+                                <option value="gaming_currency">Gaming Currency</option>
+                                <option value="proxy_networking">Proxy &amp; Networking</option>
+                                <option value="verification_services">Verification Services</option>
+                              </>
+                            )
+                        }
                       </select>
                     </div>
                     <div>
@@ -1445,6 +1489,218 @@ export default function AdminPanel() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Categories Tab ─────────────────────────────────────────────────── */}
+      {tab === "categories" && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Product Categories</h3>
+              <p className="text-sm text-muted-foreground">Create and manage marketplace categories. Changes apply instantly to the Marketplace.</p>
+            </div>
+            <button
+              onClick={() => seedCatsMutation.mutate()}
+              disabled={seedCatsMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-all disabled:opacity-50"
+            >
+              {seedCatsMutation.isPending ? <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> : <Zap className="w-4 h-4" />}
+              Seed Defaults
+            </button>
+          </div>
+
+          {/* Create New Category Form */}
+          <div className="glass-card rounded-2xl p-6">
+            <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-400" /> Add New Category</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Slug <span className="text-red-400">*</span></label>
+                <Input
+                  placeholder="e.g. software_licenses"
+                  value={catForm.slug}
+                  onChange={e => setCatForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') }))}
+                  className="glass border-white/10"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Lowercase, underscores only</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Label <span className="text-red-400">*</span></label>
+                <Input
+                  placeholder="e.g. Software Licenses"
+                  value={catForm.label}
+                  onChange={e => setCatForm(f => ({ ...f, label: e.target.value }))}
+                  className="glass border-white/10"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Icon (Lucide name)</label>
+                <Input
+                  placeholder="e.g. Package, Bot, Globe"
+                  value={catForm.icon}
+                  onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))}
+                  className="glass border-white/10"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                <Input
+                  placeholder="Short description (optional)"
+                  value={catForm.description}
+                  onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))}
+                  className="glass border-white/10"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Sort Order</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={catForm.sortOrder}
+                  onChange={e => setCatForm(f => ({ ...f, sortOrder: parseInt(e.target.value) || 0 }))}
+                  className="glass border-white/10"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Icon Color Class</label>
+                <Input
+                  placeholder="e.g. text-violet-400"
+                  value={catForm.iconColor}
+                  onChange={e => setCatForm(f => ({ ...f, iconColor: e.target.value }))}
+                  className="glass border-white/10"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  if (!catForm.slug || !catForm.label) { toast.error("Slug and Label are required"); return; }
+                  createCatMutation.mutate(catForm);
+                }}
+                disabled={createCatMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all disabled:opacity-50"
+              >
+                {createCatMutation.isPending ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                Create Category
+              </button>
+            </div>
+          </div>
+
+          {/* Category List */}
+          <div className="glass-card rounded-2xl p-6">
+            <h4 className="font-semibold text-foreground mb-4">{dbCategories?.length ?? 0} Categories</h4>
+            {!dbCategories || dbCategories.length === 0 ? (
+              <div className="text-center py-12">
+                <Tag className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No categories yet. Click "Seed Defaults" to add the 10 built-in categories, or create one above.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {dbCategories.map(cat => (
+                  <div key={cat.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                    {catEditId === cat.id ? (
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <Input
+                          value={catEditForm.label}
+                          onChange={e => setCatEditForm(f => ({ ...f, label: e.target.value }))}
+                          placeholder="Label"
+                          className="glass border-white/10 text-sm"
+                        />
+                        <Input
+                          value={catEditForm.icon}
+                          onChange={e => setCatEditForm(f => ({ ...f, icon: e.target.value }))}
+                          placeholder="Icon (Lucide)"
+                          className="glass border-white/10 text-sm"
+                        />
+                        <Input
+                          value={catEditForm.description}
+                          onChange={e => setCatEditForm(f => ({ ...f, description: e.target.value }))}
+                          placeholder="Description"
+                          className="glass border-white/10 text-sm"
+                        />
+                        <Input
+                          type="number"
+                          value={catEditForm.sortOrder}
+                          onChange={e => setCatEditForm(f => ({ ...f, sortOrder: parseInt(e.target.value) || 0 }))}
+                          placeholder="Sort Order"
+                          className="glass border-white/10 text-sm"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                          <Tag className={`w-4 h-4 ${cat.iconColor}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{cat.label}</p>
+                          <p className="text-xs text-muted-foreground">{cat.slug}{cat.description ? ` · ${cat.description}` : ""} · Order: {cat.sortOrder}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {catEditId === cat.id ? (
+                        <>
+                          <button
+                            onClick={() => updateCatMutation.mutate({ id: cat.id, ...catEditForm })}
+                            disabled={updateCatMutation.isPending}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all disabled:opacity-50"
+                          >
+                            {updateCatMutation.isPending ? "Saving…" : "Save"}
+                          </button>
+                          <button onClick={() => setCatEditId(null)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-muted-foreground hover:text-foreground transition-all">Cancel</button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => { setCatEditId(cat.id); setCatEditForm({ label: cat.label, icon: cat.icon, description: cat.description ?? "", sortOrder: cat.sortOrder }); }}
+                          className="p-1.5 rounded-lg bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => toggleCatMutation.mutate({ id: cat.id, enabled: !cat.enabled })}
+                        disabled={toggleCatMutation.isPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                      >
+                        {cat.enabled ? (
+                          <><ToggleRight className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">On</span></>
+                        ) : (
+                          <><ToggleLeft className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">Off</span></>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setCatDeleteId(cat.id)}
+                        className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Delete Confirm */}
+          {catDeleteId !== null && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="glass-card rounded-2xl p-6 max-w-sm w-full">
+                <h3 className="font-semibold text-foreground mb-2">Delete Category?</h3>
+                <p className="text-sm text-muted-foreground mb-6">This will permanently remove the category. Products using this category will retain their category slug but it will no longer appear in the Marketplace filters.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setCatDeleteId(null)} className="flex-1 py-2 rounded-xl text-sm font-medium glass border border-white/10 text-muted-foreground hover:text-foreground transition-all">Cancel</button>
+                  <button
+                    onClick={() => deleteCatMutation.mutate({ id: catDeleteId! })}
+                    disabled={deleteCatMutation.isPending}
+                    className="flex-1 py-2 rounded-xl text-sm font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all disabled:opacity-50"
+                  >
+                    {deleteCatMutation.isPending ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

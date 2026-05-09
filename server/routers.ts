@@ -74,7 +74,7 @@ import {
   getAllVendorPayouts,
   updateUserProfile,
 } from "./db";
-import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable, siteSettings } from "../drizzle/schema";
+import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable, siteSettings, productCategories } from "../drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import {
   getProfile as fivesimGetProfile,
@@ -250,6 +250,17 @@ export const appRouter = router({
 
   // ── Products ──────────────────────────────────────────────────────────────
   products: router({
+    listCategories: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const cats = await db
+        .select()
+        .from(productCategories)
+        .where(eq(productCategories.enabled, true))
+        .orderBy(productCategories.sortOrder, productCategories.createdAt);
+      return cats;
+    }),
+
     list: publicProcedure
       .input(
         z.object({
@@ -1629,6 +1640,115 @@ export const appRouter = router({
       const response = await invokeLLM({ messages: [{ role: "user" as const, content: prompt }] });
       const summary = (response as any).choices?.[0]?.message?.content ?? "Unable to generate summary.";
       return { summary, stats: { revenue: revenue.toFixed(2), users: allUsers.length, newUsers7d, orders: allOrders.length, newOrders7d } };
+    }),
+
+    // ── Category Management ───────────────────────────────────────────────
+    listCategories: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const cats = await db.select().from(productCategories).orderBy(productCategories.sortOrder, productCategories.createdAt);
+      return cats;
+    }),
+
+    createCategory: adminProcedure
+      .input(z.object({
+        slug: z.string().min(2).max(64).regex(/^[a-z0-9_]+$/, "Slug must be lowercase letters, numbers, underscores only"),
+        label: z.string().min(2).max(128),
+        icon: z.string().max(64).default("Tag"),
+        description: z.string().max(255).optional(),
+        color: z.string().max(128).default("from-violet-500/20 to-purple-500/20"),
+        borderColor: z.string().max(128).default("border-violet-500/20 hover:border-violet-500/40"),
+        iconColor: z.string().max(64).default("text-violet-400"),
+        sortOrder: z.number().int().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Check slug uniqueness
+        const existing = await db.select({ id: productCategories.id }).from(productCategories).where(eq(productCategories.slug, input.slug));
+        if (existing.length > 0) throw new TRPCError({ code: "CONFLICT", message: "A category with this slug already exists." });
+        await db.insert(productCategories).values({
+          slug: input.slug,
+          label: input.label,
+          icon: input.icon,
+          description: input.description,
+          color: input.color,
+          borderColor: input.borderColor,
+          iconColor: input.iconColor,
+          sortOrder: input.sortOrder,
+          enabled: true,
+        });
+        return { success: true };
+      }),
+
+    updateCategory: adminProcedure
+      .input(z.object({
+        id: z.number().int(),
+        label: z.string().min(2).max(128).optional(),
+        icon: z.string().max(64).optional(),
+        description: z.string().max(255).optional(),
+        color: z.string().max(128).optional(),
+        borderColor: z.string().max(128).optional(),
+        iconColor: z.string().max(64).optional(),
+        sortOrder: z.number().int().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { id, ...fields } = input;
+        const updates: Record<string, unknown> = {};
+        if (fields.label !== undefined) updates.label = fields.label;
+        if (fields.icon !== undefined) updates.icon = fields.icon;
+        if (fields.description !== undefined) updates.description = fields.description;
+        if (fields.color !== undefined) updates.color = fields.color;
+        if (fields.borderColor !== undefined) updates.borderColor = fields.borderColor;
+        if (fields.iconColor !== undefined) updates.iconColor = fields.iconColor;
+        if (fields.sortOrder !== undefined) updates.sortOrder = fields.sortOrder;
+        if (Object.keys(updates).length === 0) return { success: true };
+        await db.update(productCategories).set(updates).where(eq(productCategories.id, id));
+        return { success: true };
+      }),
+
+    toggleCategory: adminProcedure
+      .input(z.object({ id: z.number().int(), enabled: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.update(productCategories).set({ enabled: input.enabled }).where(eq(productCategories.id, input.id));
+        return { success: true };
+      }),
+
+    deleteCategory: adminProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.delete(productCategories).where(eq(productCategories.id, input.id));
+        return { success: true };
+      }),
+
+    seedDefaultCategories: adminProcedure.mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const defaults = [
+        { slug: "social_media_accounts", label: "Social Media Accounts", icon: "Instagram", color: "from-pink-500/20 to-purple-500/20", borderColor: "border-pink-500/20 hover:border-pink-500/40", iconColor: "text-pink-400", sortOrder: 1 },
+        { slug: "streaming_accounts", label: "Streaming Accounts", icon: "Tv", color: "from-red-500/20 to-orange-500/20", borderColor: "border-red-500/20 hover:border-red-500/40", iconColor: "text-red-400", sortOrder: 2 },
+        { slug: "gaming_accounts", label: "Gaming Accounts", icon: "Gamepad2", color: "from-blue-500/20 to-cyan-500/20", borderColor: "border-blue-500/20 hover:border-blue-500/40", iconColor: "text-blue-400", sortOrder: 3 },
+        { slug: "gaming_currency", label: "Gaming Currency", icon: "Coins", color: "from-yellow-500/20 to-amber-500/20", borderColor: "border-yellow-500/20 hover:border-yellow-500/40", iconColor: "text-yellow-400", sortOrder: 4 },
+        { slug: "ai_tools", label: "AI Tools", icon: "Bot", color: "from-sky-500/20 to-blue-500/20", borderColor: "border-sky-500/20 hover:border-sky-500/40", iconColor: "text-sky-400", sortOrder: 5 },
+        { slug: "digital_subscriptions", label: "Digital Subscriptions", icon: "CreditCard", color: "from-indigo-500/20 to-violet-500/20", borderColor: "border-indigo-500/20 hover:border-indigo-500/40", iconColor: "text-indigo-400", sortOrder: 6 },
+        { slug: "proxy_networking", label: "Proxy & Networking", icon: "Globe", color: "from-slate-500/20 to-gray-500/20", borderColor: "border-slate-500/20 hover:border-slate-500/40", iconColor: "text-slate-400", sortOrder: 7 },
+        { slug: "verification_services", label: "Verification Services", icon: "ShieldCheck", color: "from-green-500/20 to-emerald-500/20", borderColor: "border-green-500/20 hover:border-green-500/40", iconColor: "text-green-400", sortOrder: 8 },
+        { slug: "virtual_numbers", label: "Virtual Numbers", icon: "Phone", color: "from-emerald-500/20 to-teal-500/20", borderColor: "border-emerald-500/20 hover:border-emerald-500/40", iconColor: "text-emerald-400", sortOrder: 9 },
+        { slug: "growth_services", label: "Growth Services", icon: "TrendingUp", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 10 },
+      ];
+      for (const cat of defaults) {
+        const existing = await db.select({ id: productCategories.id }).from(productCategories).where(eq(productCategories.slug, cat.slug));
+        if (existing.length === 0) {
+          await db.insert(productCategories).values({ ...cat, enabled: true });
+        }
+      }
+      return { seeded: defaults.length };
     }),
   }),
   // ── AI Chat ──────────────────────────────────────────────────────────────

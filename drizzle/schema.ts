@@ -389,3 +389,19 @@ export const siteSettings = mysqlTable("site_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type SiteSetting = typeof siteSettings.$inferSelect;
+// ─── Product Categories ───────────────────────────────────────────────────────
+export const productCategories = mysqlTable("product_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  label: varchar("label", { length: 128 }).notNull(),
+  icon: varchar("icon", { length: 64 }).default("Tag").notNull(),
+  description: varchar("description", { length: 255 }),
+  color: varchar("color", { length: 128 }).default("from-violet-500/20 to-purple-500/20").notNull(),
+  borderColor: varchar("borderColor", { length: 128 }).default("border-violet-500/20 hover:border-violet-500/40").notNull(),
+  iconColor: varchar("iconColor", { length: 64 }).default("text-violet-400").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProductCategory = typeof productCategories.$inferSelect;
