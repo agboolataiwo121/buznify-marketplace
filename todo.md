@@ -674,3 +674,6 @@
 - [x] Update DashboardWallet withdrawal tab: bank account form (bank selector, account number, verify button), saved accounts list, real transfer dispatch
 - [x] Handle Paystack transfer webhook (transfer.success, transfer.failed) to update withdrawal status
 - [x] Admin withdrawal management: view pending withdrawals, approve/reject — Withdrawals tab in AdminPanel with status filter, approve (initiates Paystack transfer) and reject (refunds wallet) actions
+
+## Platform Tabs Redesign
+- [x] Replace scrollable platform filter with dedicated tabs: Instagram, TikTok, YouTube, Telegram, Discord, Twitter/X, Spotify, Twitch

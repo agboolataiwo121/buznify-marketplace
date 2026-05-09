@@ -45,6 +45,17 @@ import {
 import { getLoginUrl } from "@/const";
 import ServiceIcon from "@/components/ServiceIcon";
 
+const PLATFORM_TABS = [
+  { key: "instagram", label: "Instagram" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "youtube", label: "YouTube" },
+  { key: "telegram", label: "Telegram" },
+  { key: "discord", label: "Discord" },
+  { key: "twitter", label: "Twitter/X" },
+  { key: "spotify", label: "Spotify" },
+  { key: "twitch", label: "Twitch" },
+];
+
 const PLATFORMS = [
   { key: "all", label: "All Platforms", emoji: "🌐" },
   { key: "instagram", label: "Instagram", emoji: "📸" },
@@ -685,12 +696,11 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
 export default function GrowthServices() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("browse");
-  const [selectedPlatform, setSelectedPlatform] = useState("all");
+  const [selectedPlatform, setSelectedPlatform] = useState("instagram");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedPanel, setSelectedPanel] = useState<"all" | "smmkings" | "smmkings2" | "peakerr">("all");
   const [search, setSearch] = useState("");
   const [orderService, setOrderService] = useState<LiveService | null>(null);
-  const [showAllPlatforms, setShowAllPlatforms] = useState(false);
 
   const { data: services, isLoading, error, refetch, isFetching } = trpc.growth.listLive.useQuery(
     { panel: selectedPanel },
@@ -719,8 +729,6 @@ export default function GrowthServices() {
     },
     [user]
   );
-
-  const visiblePlatforms = showAllPlatforms ? PLATFORMS : PLATFORMS.slice(0, 8);
 
   return (
     <div className="min-h-screen bg-[#060910] text-white pb-mobile-nav md:pb-0">
@@ -764,11 +772,40 @@ export default function GrowthServices() {
           </TabsList>
 
           <TabsContent value="browse" className="space-y-5">
+            {/* Platform Tabs */}
+            <div className="border-b border-white/10 -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="flex overflow-x-auto scrollbar-none">
+                {PLATFORM_TABS.map((p) => {
+                  const count = services ? services.filter(s => s.platform === p.key).length : null;
+                  return (
+                    <button
+                      key={p.key}
+                      onClick={() => { setSelectedPlatform(p.key); setSelectedType("all"); setSearch(""); }}
+                      className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all flex-shrink-0 ${
+                        selectedPlatform === p.key
+                          ? "border-violet-500 text-white"
+                          : "border-transparent text-white/50 hover:text-white/80 hover:border-white/20"
+                      }`}
+                    >
+                      <ServiceIcon name={p.key} size={16} className="shrink-0" />
+                      {p.label}
+                      {count !== null && count > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                          selectedPlatform === p.key ? "bg-violet-500/30 text-violet-300" : "bg-white/10 text-white/40"
+                        }`}>{count}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Search + Server Filter */}
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[200px] max-w-lg">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                 <Input
-                  placeholder="Search services..."
+                  placeholder={`Search ${PLATFORM_TABS.find(p => p.key === selectedPlatform)?.label ?? ""} services...`}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500"
@@ -787,35 +824,17 @@ export default function GrowthServices() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-                {visiblePlatforms.map((p) => (
-                  <button
-                    key={p.key}
-                    onClick={() => setSelectedPlatform(p.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap flex-shrink-0 ${selectedPlatform === p.key ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30 hover:text-white/80"}`}
-                  >
-                    <ServiceIcon name={p.key === "all" ? "globe" : p.key === "website" ? "globe" : p.key} size={12} className="shrink-0" />{p.label}
-                  </button>
-                ))}
+            {/* Service Type Filter */}
+            <div className="flex flex-wrap gap-2">
+              {SERVICE_TYPES.map((t) => (
                 <button
-                  onClick={() => setShowAllPlatforms(!showAllPlatforms)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-dashed border-white/20 text-white/40 hover:text-white/60 whitespace-nowrap flex-shrink-0"
+                  key={t.key}
+                  onClick={() => setSelectedType(t.key)}
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-all ${selectedType === t.key ? "bg-violet-600/30 border-violet-500/50 text-violet-300" : "bg-transparent border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"}`}
                 >
-                  {showAllPlatforms ? "Less" : `+${PLATFORMS.length - 8} more`}
+                  {t.label}
                 </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {SERVICE_TYPES.map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => setSelectedType(t.key)}
-                    className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-all ${selectedType === t.key ? "bg-violet-600/30 border-violet-500/50 text-violet-300" : "bg-transparent border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"}`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
 
             {!isLoading && !error && (
