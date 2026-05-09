@@ -222,14 +222,14 @@ export default function AdminPanel() {
   const { data: dbCategories, refetch: refetchDbCategories } = trpc.admin.listCategories.useQuery(undefined, { enabled: tab === "categories" });
   const { data: currentMarkup, refetch: refetchMarkup } = trpc.admin.getGrowthMarkup.useQuery(undefined, { enabled: tab === "services" });
   const [markupInput, setMarkupInput] = useState<string>("30");
-  useEffect(() => { if (currentMarkup !== undefined) setMarkupInput(String(currentMarkup)); }, [currentMarkup]);
+  useEffect(() => { if (currentMarkup !== undefined) setMarkupInput(String(typeof currentMarkup === 'object' ? currentMarkup.value : currentMarkup)); }, [currentMarkup]);
   const setMarkupMutation = trpc.admin.setGrowthMarkup.useMutation({
     onSuccess: () => { refetchMarkup(); toast.success("Growth markup updated!"); },
     onError: (e) => toast.error(e.message),
   });
   const { data: currentVnMarkup, refetch: refetchVnMarkup } = trpc.admin.getVirtualNumberMarkup.useQuery(undefined, { enabled: tab === "services" });
   const [vnMarkupInput, setVnMarkupInput] = useState<string>("30");
-  useEffect(() => { if (currentVnMarkup !== undefined) setVnMarkupInput(String(currentVnMarkup)); }, [currentVnMarkup]);
+  useEffect(() => { if (currentVnMarkup !== undefined) setVnMarkupInput(String(typeof currentVnMarkup === 'object' ? currentVnMarkup.value : currentVnMarkup)); }, [currentVnMarkup]);
   const setVnMarkupMutation = trpc.admin.setVirtualNumberMarkup.useMutation({
     onSuccess: () => { refetchVnMarkup(); toast.success("Virtual Number markup updated!"); },
     onError: (e) => toast.error(e.message),
@@ -2690,7 +2690,7 @@ export default function AdminPanel() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500"
                   placeholder="30"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-violet-400 font-semibold">{currentMarkup ?? 30}%</span> — preview below updates live as you type</p>
+                <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-violet-400 font-semibold">{(typeof currentMarkup === 'object' ? currentMarkup?.value : currentMarkup) ?? 30}%</span>{typeof currentMarkup === 'object' && currentMarkup?.updatedAt ? <span className="ml-2 text-white/40">· Last updated: {new Date(currentMarkup.updatedAt).toLocaleString()}</span> : null} — preview below updates live as you type</p>
               </div>
               <button
                 onClick={() => setMarkupMutation.mutate({ markup: parseFloat(markupInput) || 30 })}
@@ -2766,7 +2766,7 @@ export default function AdminPanel() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500"
                   placeholder="30"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-cyan-400 font-semibold">{currentVnMarkup ?? 30}%</span> — preview below updates live as you type</p>
+                <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-cyan-400 font-semibold">{(typeof currentVnMarkup === 'object' ? currentVnMarkup?.value : currentVnMarkup) ?? 30}%</span>{typeof currentVnMarkup === 'object' && currentVnMarkup?.updatedAt ? <span className="ml-2 text-white/40">· Last updated: {new Date(currentVnMarkup.updatedAt).toLocaleString()}</span> : null} — preview below updates live as you type</p>
               </div>
               <button
                 onClick={() => setVnMarkupMutation.mutate({ markup: parseFloat(vnMarkupInput) || 30 })}

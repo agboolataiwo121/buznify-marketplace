@@ -699,3 +699,8 @@
 - [x] Add admin.getVirtualNumberMarkup and admin.setVirtualNumberMarkup tRPC procedures
 - [x] Apply markup in virtualNumbers.getProducts so prices shown to users = API cost * (1 + markup/100)
 - [x] Add Virtual Number Markup card with live preview calculator to Admin Panel Service Controls tab
+
+## Markup Last Updated Timestamp
+- [x] Add updatedAt column to site_settings table in schema.ts (already existed)
+- [x] Update getGrowthMarkup and getVirtualNumberMarkup procedures to return { value, updatedAt }
+- [x] Display last updated timestamp on both markup cards in AdminPanel.tsx

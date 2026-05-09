@@ -2552,16 +2552,18 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    /** Get the current global growth services markup percentage */
+     /** Get the global growth services markup percentage */
     getGrowthMarkup: adminProcedure.query(async () => {
       const db = await getDb();
-      if (!db) return 30;
+      if (!db) return { value: 30, updatedAt: null as Date | null };
       const rows = await db
         .select()
         .from(siteSettings)
         .where(eq(siteSettings.key, "growth_markup"))
         .limit(1);
-      return rows.length > 0 ? parseFloat(rows[0].value) : 30;
+      return rows.length > 0
+        ? { value: parseFloat(rows[0].value), updatedAt: rows[0].updatedAt }
+        : { value: 30, updatedAt: null as Date | null };
     }),
 
     /** Set the global growth services markup percentage */
@@ -2589,13 +2591,15 @@ export const appRouter = router({
     /** Get the global virtual number markup percentage */
     getVirtualNumberMarkup: adminProcedure.query(async () => {
       const db = await getDb();
-      if (!db) return 30;
+      if (!db) return { value: 30, updatedAt: null as Date | null };
       const rows = await db
         .select()
         .from(siteSettings)
         .where(eq(siteSettings.key, "virtual_number_markup"))
         .limit(1);
-      return rows.length > 0 ? parseFloat(rows[0].value) : 30;
+      return rows.length > 0
+        ? { value: parseFloat(rows[0].value), updatedAt: rows[0].updatedAt }
+        : { value: 30, updatedAt: null as Date | null };
     }),
 
     /** Set the global virtual number markup percentage */
