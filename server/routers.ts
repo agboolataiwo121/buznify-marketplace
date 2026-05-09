@@ -769,8 +769,21 @@ export const appRouter = router({
         if (couponId) await incrementCouponUsage(couponId);
 
         // Create order with delivery data (instant delivery)
-        const deliveryData =
-          product.deliveryType === "instant" ? product.deliveryData : null;
+        // If deliveryData is an array (account pool), pop the first account for this order
+        let deliveryData: unknown = null;
+        let updatedPoolData: unknown = product.deliveryData;
+        if (product.deliveryType === "instant") {
+          const rawData = product.deliveryData;
+          if (Array.isArray(rawData) && rawData.length > 0) {
+            // Account pool: deliver first account, remove it from the pool
+            deliveryData = rawData[0];
+            updatedPoolData = rawData.slice(1); // remaining accounts
+          } else {
+            // Single credential object (legacy) or null
+            deliveryData = rawData ?? null;
+            updatedPoolData = rawData; // unchanged
+          }
+        }
 
         await createOrder({
           userId: ctx.user.id,
@@ -786,14 +799,20 @@ export const appRouter = router({
           deliveredAt: product.deliveryType === "instant" ? new Date() : undefined,
         });
 
-        // Update product stock
+        // Update product stock and pool
         const db = await getDb();
         if (db) {
+          const remainingPool = Array.isArray(updatedPoolData) ? (updatedPoolData as unknown[]) : null;
+          const newStock = remainingPool !== null
+            ? remainingPool.length  // pool mode: stock = remaining accounts
+            : product.stock - input.quantity; // legacy mode: decrement normally
           await db
             .update(products)
             .set({
-              stock: product.stock - input.quantity,
+              stock: newStock,
               totalSold: (product.totalSold ?? 0) + input.quantity,
+              // Update pool: remove delivered account
+              ...(remainingPool !== null ? { deliveryData: remainingPool } : {}),
             })
             .where(eq(products.id, product.id));
         }

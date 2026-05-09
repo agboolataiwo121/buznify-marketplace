@@ -128,8 +128,16 @@ export default function DashboardOrders() {
             const config = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
             const Icon = config.icon;
             const isExpanded = expandedId === order.id;
-            const deliveryData = order.deliveryData as Record<string, string> | null;
-            const isStructured = deliveryData && typeof deliveryData === "object" && !Array.isArray(deliveryData);
+            // deliveryData is always a single-account object on orders (pool accounts are popped at purchase time)
+            // Guard against edge case where an array was stored directly on the order
+            const rawDelivery = order.deliveryData;
+            const deliveryData: Record<string, string> | null =
+              rawDelivery && typeof rawDelivery === "object" && !Array.isArray(rawDelivery)
+                ? (rawDelivery as Record<string, string>)
+                : Array.isArray(rawDelivery) && rawDelivery.length > 0
+                  ? (rawDelivery[0] as Record<string, string>)
+                  : null;
+            const isStructured = deliveryData !== null;
 
             return (
               <div key={order.id} className="glass-card rounded-2xl overflow-hidden">

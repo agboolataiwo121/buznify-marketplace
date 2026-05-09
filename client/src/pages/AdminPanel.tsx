@@ -135,8 +135,15 @@ export default function AdminPanel() {
   const [iconPickerSearch, setIconPickerSearch] = useState("");
   // ── Credential fields builder ─────────────────────────────────────────────
   type CredField = { id: string; label: string; value: string; sensitive: boolean };
+  // Account pool: array of credential sets (each set = array of CredField)
+  type AccountSet = { id: string; fields: CredField[] };
+  const [credMode, setCredMode] = useState<"pool" | "single" | "json">("pool");
+  // Single-account mode (legacy)
   const [credFields, setCredFields] = useState<CredField[]>([]);
-  const [credMode, setCredMode] = useState<"builder" | "json">("builder");
+  // Multi-account pool mode
+  const [accountPool, setAccountPool] = useState<AccountSet[]>([]);
+  // Which account in the pool is expanded for editing
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
   const PRESET_FIELDS = [
     { label: "Email", sensitive: false },
     { label: "Password", sensitive: true },
@@ -347,7 +354,9 @@ export default function AdminPanel() {
       deliveryData: "", featured: false, status: "active",
     });
     setCredFields([]);
-    setCredMode("builder");
+    setAccountPool([]);
+    setExpandedAccountId(null);
+    setCredMode("pool");
   };
 
   const openEditProduct = (p: NonNullable<typeof allProducts>[number]) => {
@@ -368,8 +377,23 @@ export default function AdminPanel() {
       featured: p.featured,
       status: p.status as any,
     });
-    // Load existing deliveryData into credFields builder
-    if (p.deliveryData && typeof p.deliveryData === "object" && !Array.isArray(p.deliveryData)) {
+    // Load existing deliveryData into credential state
+    if (p.deliveryData && Array.isArray(p.deliveryData)) {
+      // Multi-account pool: array of {label: value} objects
+      const pool: AccountSet[] = (p.deliveryData as Record<string, string>[]).map(account => ({
+        id: Math.random().toString(36).slice(2),
+        fields: Object.entries(account).map(([label, value]) => ({
+          id: Math.random().toString(36).slice(2),
+          label,
+          value: String(value),
+          sensitive: ["password","2fa","backup","secret","key","code","token"].some(k => label.toLowerCase().includes(k)),
+        })),
+      }));
+      setAccountPool(pool);
+      setCredFields([]);
+      setCredMode("pool");
+    } else if (p.deliveryData && typeof p.deliveryData === "object" && !Array.isArray(p.deliveryData)) {
+      // Single-account (legacy): flat {label: value} object
       const fields: CredField[] = Object.entries(p.deliveryData as Record<string, string>).map(([label, value]) => ({
         id: Math.random().toString(36).slice(2),
         label,
@@ -377,17 +401,32 @@ export default function AdminPanel() {
         sensitive: ["password","2fa","backup","secret","key","code","token"].some(k => label.toLowerCase().includes(k)),
       }));
       setCredFields(fields);
-      setCredMode("builder");
+      setAccountPool([]);
+      setCredMode("single");
     } else {
       setCredFields([]);
-      setCredMode(p.deliveryData ? "json" : "builder");
+      setAccountPool([]);
+      setCredMode("pool");
     }
+    setExpandedAccountId(null);
     setProductModal("edit");
   };
 
   const handleProductSubmit = () => {
     let parsedDeliveryData: unknown = undefined;
-    if (credMode === "builder") {
+    let stockOverride: number | undefined = undefined;
+    if (credMode === "pool") {
+      if (accountPool.length > 0) {
+        // Serialize pool as array of {label: value} objects
+        parsedDeliveryData = accountPool.map(acct => {
+          const obj: Record<string, string> = {};
+          acct.fields.forEach(f => { if (f.label.trim()) obj[f.label.trim()] = f.value; });
+          return obj;
+        });
+        // Auto-sync stock to number of accounts in pool
+        stockOverride = accountPool.length;
+      }
+    } else if (credMode === "single") {
       if (credFields.length > 0) {
         const obj: Record<string, string> = {};
         credFields.forEach(f => { if (f.label.trim()) obj[f.label.trim()] = f.value; });
@@ -405,7 +444,7 @@ export default function AdminPanel() {
       platform: productForm.platform || undefined,
       price: productForm.price,
       originalPrice: productForm.originalPrice || undefined,
-      stock: parseInt(productForm.stock) || 0,
+      stock: stockOverride !== undefined ? stockOverride : (parseInt(productForm.stock) || 0),
       imageUrl: productForm.imageUrl || undefined,
       iconKey: productForm.iconKey || undefined,
       deliveryType: productForm.deliveryType,
@@ -927,7 +966,15 @@ export default function AdminPanel() {
                       </div>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                         ${p.price}{p.originalPrice ? <span className="line-through ml-1 opacity-50">${p.originalPrice}</span> : null}
-                        {" · "}Stock: {p.stock}
+                        {" · "}
+                        {Array.isArray(p.deliveryData) ? (
+                          <span className="inline-flex items-center gap-0.5 text-violet-400">
+                            <Package className="w-2.5 h-2.5" />
+                            {(p.deliveryData as unknown[]).length} accounts
+                          </span>
+                        ) : (
+                          <span>Stock: {p.stock}</span>
+                        )}
                         {" · "}{p.category.replace(/_/g, " ")}
                         {p.platform && <><span>·</span><ServiceIcon name={p.platform} size={12} /><span>{p.platform}</span></>}
                       </p>
@@ -1242,14 +1289,18 @@ export default function AdminPanel() {
                       </RadixSelect>
                     </div>
                   </div>
-                  {/* Delivery Data — Credential Fields Builder */}
+                  {/* Delivery Data — Account Pool / Single / Raw JSON */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs text-muted-foreground">Account Credentials / Delivery Data</label>
                       <div className="flex rounded-lg overflow-hidden border border-white/10 text-[11px]">
-                        <button type="button" onClick={() => setCredMode("builder")}
-                          className={`px-3 py-1 transition-colors ${credMode === "builder" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
-                          Fields Builder
+                        <button type="button" onClick={() => setCredMode("pool")}
+                          className={`px-3 py-1 transition-colors ${credMode === "pool" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                          Account Pool
+                        </button>
+                        <button type="button" onClick={() => setCredMode("single")}
+                          className={`px-3 py-1 transition-colors ${credMode === "single" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                          Single
                         </button>
                         <button type="button" onClick={() => setCredMode("json")}
                           className={`px-3 py-1 transition-colors ${credMode === "json" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
@@ -1257,15 +1308,180 @@ export default function AdminPanel() {
                         </button>
                       </div>
                     </div>
-                    {credMode === "json" ? (
-                      <textarea value={productForm.deliveryData}
-                        onChange={e => setProductForm(f => ({ ...f, deliveryData: e.target.value }))}
-                        placeholder={'{ "email": "user@example.com", "password": "pass123" }'}
-                        rows={4}
-                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
-                    ) : (
+
+                    {/* ── ACCOUNT POOL MODE ── */}
+                    {credMode === "pool" && (
                       <div className="space-y-2">
-                        {/* Preset quick-add buttons */}
+                        {/* Pool summary */}
+                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-3.5 h-3.5 text-violet-400" />
+                            <span className="text-xs text-violet-300 font-medium">
+                              {accountPool.length} account{accountPool.length !== 1 ? "s" : ""} in pool
+                            </span>
+                            {accountPool.length > 0 && (
+                              <span className="text-[10px] text-violet-400/60">· stock auto-set to {accountPool.length}</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newId = Math.random().toString(36).slice(2);
+                              setAccountPool(prev => [...prev, {
+                                id: newId,
+                                fields: PRESET_FIELDS.slice(0, 2).map(p => ({ id: Math.random().toString(36).slice(2), label: p.label, value: "", sensitive: p.sensitive })),
+                              }]);
+                              setExpandedAccountId(newId);
+                            }}
+                            className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                          >
+                            <Plus className="w-3 h-3" /> Add Account
+                          </button>
+                        </div>
+
+                        {/* Account cards */}
+                        {accountPool.length === 0 && (
+                          <p className="text-[11px] text-white/20 text-center py-4 border border-dashed border-white/10 rounded-xl">
+                            Click "Add Account" to add the first account to the pool
+                          </p>
+                        )}
+                        {accountPool.map((acct, acctIdx) => {
+                          const isOpen = expandedAccountId === acct.id;
+                          return (
+                            <div key={acct.id} className="rounded-xl border border-white/10 overflow-hidden">
+                              {/* Account header */}
+                              <div
+                                className="flex items-center gap-2 px-3 py-2.5 bg-white/5 cursor-pointer hover:bg-white/8 transition-colors"
+                                onClick={() => setExpandedAccountId(isOpen ? null : acct.id)}
+                              >
+                                <div className="w-5 h-5 rounded-md bg-violet-500/20 flex items-center justify-center text-[10px] text-violet-300 font-bold flex-shrink-0">{acctIdx + 1}</div>
+                                <span className="flex-1 text-xs text-foreground font-medium">
+                                  Account #{acctIdx + 1}
+                                  {acct.fields.find(f => f.label.toLowerCase().includes("email"))?.value && (
+                                    <span className="text-white/30 ml-1.5 font-normal">
+                                      — {acct.fields.find(f => f.label.toLowerCase().includes("email"))?.value}
+                                    </span>
+                                  )}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-white/30">{acct.fields.length} field{acct.fields.length !== 1 ? "s" : ""}</span>
+                                  {/* Duplicate button */}
+                                  <button
+                                    type="button"
+                                    title="Duplicate account"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      const newId = Math.random().toString(36).slice(2);
+                                      setAccountPool(prev => [
+                                        ...prev,
+                                        { id: newId, fields: acct.fields.map(f => ({ ...f, id: Math.random().toString(36).slice(2), value: "" })) },
+                                      ]);
+                                      setExpandedAccountId(newId);
+                                    }}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                  {/* Remove button */}
+                                  <button
+                                    type="button"
+                                    title="Remove account"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      setAccountPool(prev => prev.filter(a => a.id !== acct.id));
+                                      if (expandedAccountId === acct.id) setExpandedAccountId(null);
+                                    }}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                  <ChevronRight className={`w-3.5 h-3.5 text-white/20 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                                </div>
+                              </div>
+
+                              {/* Account fields (expanded) */}
+                              {isOpen && (
+                                <div className="p-3 space-y-2 bg-white/[0.02]">
+                                  {/* Preset quick-add */}
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {PRESET_FIELDS.filter(p => !acct.fields.some(f => f.label === p.label)).map(preset => (
+                                      <button
+                                        key={preset.label}
+                                        type="button"
+                                        onClick={() => setAccountPool(prev => prev.map(a => a.id !== acct.id ? a : {
+                                          ...a,
+                                          fields: [...a.fields, { id: Math.random().toString(36).slice(2), label: preset.label, value: "", sensitive: preset.sensitive }],
+                                        }))}
+                                        className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/40 hover:bg-violet-500/20 hover:border-violet-500/40 hover:text-violet-300 transition-colors"
+                                      >+ {preset.label}</button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => setAccountPool(prev => prev.map(a => a.id !== acct.id ? a : {
+                                        ...a,
+                                        fields: [...a.fields, { id: Math.random().toString(36).slice(2), label: "", value: "", sensitive: false }],
+                                      }))}
+                                      className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60 transition-colors"
+                                    >+ Custom</button>
+                                  </div>
+                                  {/* Field rows */}
+                                  {acct.fields.map((field, fIdx) => (
+                                    <div key={field.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/[0.06]">
+                                      <div className="flex-shrink-0 w-5 h-5 rounded bg-white/5 flex items-center justify-center text-[9px] text-white/20 font-mono">{fIdx + 1}</div>
+                                      <input
+                                        value={field.label}
+                                        onChange={e => setAccountPool(prev => prev.map(a => a.id !== acct.id ? a : {
+                                          ...a,
+                                          fields: a.fields.map(f => f.id === field.id ? { ...f, label: e.target.value } : f),
+                                        }))}
+                                        placeholder="Field name"
+                                        className="w-24 flex-shrink-0 bg-transparent border-b border-white/10 text-xs text-white/60 focus:outline-none focus:border-violet-500 pb-0.5 placeholder:text-white/15"
+                                      />
+                                      <input
+                                        value={field.value}
+                                        type={field.sensitive ? "password" : "text"}
+                                        onChange={e => setAccountPool(prev => prev.map(a => a.id !== acct.id ? a : {
+                                          ...a,
+                                          fields: a.fields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f),
+                                        }))}
+                                        placeholder="Value"
+                                        className="flex-1 bg-transparent border-b border-white/10 text-xs text-white/90 font-mono focus:outline-none focus:border-violet-500 pb-0.5 placeholder:text-white/15"
+                                      />
+                                      <button
+                                        type="button"
+                                        title={field.sensitive ? "Sensitive" : "Not sensitive"}
+                                        onClick={() => setAccountPool(prev => prev.map(a => a.id !== acct.id ? a : {
+                                          ...a,
+                                          fields: a.fields.map(f => f.id === field.id ? { ...f, sensitive: !f.sensitive } : f),
+                                        }))}
+                                        className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${field.sensitive ? "border-amber-500/40 text-amber-400 bg-amber-500/10" : "border-white/10 text-white/20 hover:border-white/30"}`}
+                                      >{field.sensitive ? "🔒" : "👁"}</button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAccountPool(prev => prev.map(a => a.id !== acct.id ? a : {
+                                          ...a,
+                                          fields: a.fields.filter(f => f.id !== field.id),
+                                        }))}
+                                        className="flex-shrink-0 text-white/20 hover:text-red-400 transition-colors"
+                                      ><X className="w-3 h-3" /></button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {accountPool.length > 0 && (
+                          <p className="text-[10px] text-white/20 text-right">
+                            {accountPool.length} account{accountPool.length !== 1 ? "s" : ""} · each buyer gets 1 unique account · stock = {accountPool.length}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── SINGLE ACCOUNT MODE (legacy) ── */}
+                    {credMode === "single" && (
+                      <div className="space-y-2">
                         <div className="flex flex-wrap gap-1.5 mb-1">
                           {PRESET_FIELDS.filter(p => !credFields.some(f => f.label === p.label)).map(preset => (
                             <button
@@ -1273,19 +1489,14 @@ export default function AdminPanel() {
                               type="button"
                               onClick={() => setCredFields(prev => [...prev, { id: Math.random().toString(36).slice(2), label: preset.label, value: "", sensitive: preset.sensitive }])}
                               className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:bg-violet-500/20 hover:border-violet-500/40 hover:text-violet-300 transition-colors"
-                            >
-                              + {preset.label}
-                            </button>
+                            >+ {preset.label}</button>
                           ))}
                           <button
                             type="button"
                             onClick={() => setCredFields(prev => [...prev, { id: Math.random().toString(36).slice(2), label: "", value: "", sensitive: false }])}
                             className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
-                          >
-                            + Custom
-                          </button>
+                          >+ Custom</button>
                         </div>
-                        {/* Field rows */}
                         {credFields.length === 0 && (
                           <p className="text-[11px] text-white/20 text-center py-3 border border-dashed border-white/10 rounded-xl">
                             Click a field type above to add account credentials
@@ -1312,24 +1523,29 @@ export default function AdminPanel() {
                               title={field.sensitive ? "Sensitive (masked)" : "Not sensitive"}
                               onClick={() => setCredFields(prev => prev.map(f => f.id === field.id ? { ...f, sensitive: !f.sensitive } : f))}
                               className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${field.sensitive ? "border-amber-500/40 text-amber-400 bg-amber-500/10" : "border-white/10 text-white/20 hover:border-white/30"}`}
-                            >
-                              {field.sensitive ? "🔒" : "👁"}
-                            </button>
+                            >{field.sensitive ? "🔒" : "👁"}</button>
                             <button
                               type="button"
                               onClick={() => setCredFields(prev => prev.filter(f => f.id !== field.id))}
                               className="flex-shrink-0 text-white/20 hover:text-red-400 transition-colors"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
+                            ><X className="w-3.5 h-3.5" /></button>
                           </div>
                         ))}
                         {credFields.length > 0 && (
                           <p className="text-[10px] text-white/20 text-right">
-                            {credFields.length} field{credFields.length !== 1 ? "s" : ""} · will be delivered to buyer after purchase
+                            {credFields.length} field{credFields.length !== 1 ? "s" : ""} · same credentials delivered to every buyer
                           </p>
                         )}
                       </div>
+                    )}
+
+                    {/* ── RAW JSON MODE ── */}
+                    {credMode === "json" && (
+                      <textarea value={productForm.deliveryData}
+                        onChange={e => setProductForm(f => ({ ...f, deliveryData: e.target.value }))}
+                        placeholder={'[{"Email":"user@example.com","Password":"pass123"},{"Email":"user2@example.com","Password":"pass456"}]'}
+                        rows={5}
+                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
                     )}
                   </div>
                   {/* Featured toggle */}

@@ -572,3 +572,12 @@
 - [x] AdminPanel Refunds and Payouts tabs — upgraded to proper desktop tables
 - [x] Fix TS2367 vendor role comparison error in AdminPanel.tsx
 - [x] Fix JSX structure in Refunds tab (remove stale div wrapper)
+
+## Multi-Account Credential Pool
+- [x] Redesign Admin product form: "Account Pool" tab — add multiple credential sets (accounts) per product listing
+- [x] Each account set is a named group of fields (Email, Password, etc.) with Add/Remove account buttons
+- [x] Account pool stored as JSON array in product.deliveryData: [{ Email: "...", Password: "..." }, ...]
+- [x] Stock auto-syncs to the number of remaining (undelivered) accounts in the pool
+- [x] Update orders.create: for instant delivery, pop the first account from the pool, deliver it to the order, and remove it from the product's deliveryData array
+- [x] Update DashboardOrders: display the delivered account's credential fields (already handled by CredentialRow — just ensure single-account object is passed)
+- [x] Admin product table: show account pool count badge next to stock
