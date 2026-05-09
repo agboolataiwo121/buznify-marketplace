@@ -120,6 +120,16 @@ export default function AdminPanel() {
 
   // ── Push notification state ──────────────────────────────────────────────
   const [notifForm, setNotifForm] = useState({ title: "", message: "", type: "info" as "info" | "success" | "warning" });
+  // ── Platform autocomplete ─────────────────────────────────────────────────
+  const [showPlatformSuggestions, setShowPlatformSuggestions] = useState(false);
+  const KNOWN_PLATFORMS = [
+    "Instagram","TikTok","Twitter","Facebook","WhatsApp","Telegram","Snapchat","LinkedIn","Pinterest","Reddit","Discord","Threads",
+    "Netflix","Spotify","Disney+","YouTube","Hulu","Amazon Prime","Apple TV+","HBO Max","Twitch","SoundCloud",
+    "Steam","Roblox","Minecraft","Fortnite","Valorant","CSGO","PUBG","League of Legends","PlayStation","Xbox","Epic Games",
+    "ChatGPT","Claude","Midjourney","OpenAI","Perplexity","ElevenLabs","Runway","Canva","Grammarly","Notion","Adobe",
+    "NordVPN","Mullvad VPN","GoLogin","Residential Proxy","Mobile Proxy","IPv6 Proxy","RDP/VPS",
+    "Gmail","Outlook","PayPal","Microsoft","CapCut",
+  ];
   // ── Service categories state ─────────────────────────────────────────────
   const [categoryUpdating, setCategoryUpdating] = useState<string | null>(null);
   // ── Dynamic Product Categories ──────────────────────────────────────────
@@ -781,11 +791,11 @@ export default function AdminPanel() {
                         <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
                         {p.featured && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 flex-shrink-0" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                         ${p.price}{p.originalPrice ? <span className="line-through ml-1 opacity-50">${p.originalPrice}</span> : null}
                         {" · "}Stock: {p.stock}
                         {" · "}{p.category.replace(/_/g, " ")}
-                        {p.platform ? ` · ${p.platform}` : ""}
+                        {p.platform && <><span>·</span><ServiceIcon name={p.platform} size={12} /><span>{p.platform}</span></>}
                       </p>
                     </div>
                     {/* Status + actions */}
@@ -874,7 +884,7 @@ export default function AdminPanel() {
                         }
                       </select>
                     </div>
-                    <div>
+                    <div className="relative">
                       <label className="text-xs text-muted-foreground mb-1.5 block">Platform</label>
                       <div className="flex items-center gap-2">
                         <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center transition-all">
@@ -882,12 +892,35 @@ export default function AdminPanel() {
                         </div>
                         <Input
                           value={productForm.platform}
-                          onChange={e => setProductForm(f => ({ ...f, platform: e.target.value }))}
+                          onChange={e => { setProductForm(f => ({ ...f, platform: e.target.value })); setShowPlatformSuggestions(true); }}
+                          onFocus={() => setShowPlatformSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowPlatformSuggestions(false), 150)}
                           placeholder="e.g. Instagram, Netflix"
                           className="bg-white/5 border-white/10 text-sm flex-1"
+                          autoComplete="off"
                         />
                       </div>
-                      {productForm.platform && (
+                      {showPlatformSuggestions && productForm.platform && (() => {
+                        const q = productForm.platform.toLowerCase();
+                        const matches = KNOWN_PLATFORMS.filter(p => p.toLowerCase().includes(q) && p.toLowerCase() !== q);
+                        if (!matches.length) return null;
+                        return (
+                          <div className="absolute z-50 left-11 right-0 mt-1 bg-[#0d1117] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                            {matches.slice(0, 8).map(platform => (
+                              <button
+                                key={platform}
+                                type="button"
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/80 hover:bg-white/5 transition-colors text-left"
+                                onMouseDown={() => { setProductForm(f => ({ ...f, platform })); setShowPlatformSuggestions(false); }}
+                              >
+                                <ServiceIcon name={platform} size={16} />
+                                {platform}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      {productForm.platform && !showPlatformSuggestions && (
                         <p className="text-[10px] text-white/30 mt-1 ml-11">Icon preview updates as you type</p>
                       )}
                     </div>
@@ -1157,14 +1190,28 @@ export default function AdminPanel() {
           ) : (
             <div className="space-y-2">
               {allOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Order #{order.id}</p>
-                    <p className="text-xs text-muted-foreground">
-                      User #{order.userId} · Product #{order.productId} · {new Date(order.createdAt).toLocaleDateString()}
-                    </p>
+                <div key={order.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {(order as any).productPlatform && (
+                      <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                        <ServiceIcon name={(order as any).productPlatform} size={16} />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {(order as any).productTitle ? (order as any).productTitle : `Order #${order.id}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                        <span>#{order.id}</span>
+                        <span>·</span>
+                        <span>User #{order.userId}</span>
+                        {(order as any).productPlatform && <><span>·</span><span>{(order as any).productPlatform}</span></>}
+                        <span>·</span>
+                        <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-foreground">${order.totalAmount}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === "completed" ? "badge-success" : "badge-warning"}`}>
                       {order.status}

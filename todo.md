@@ -553,3 +553,6 @@
 - [x] Add hover tooltip to Growth Services service cards (refill policy, delivery time, success rate, min/max, panel info)
 - [x] Add service icons to all products in Digital Marketplace page (replace first-letter placeholder with brand SVG icons)
 - [x] Add live ServiceIcon preview next to platform name field in Admin product management panel
+- [x] Add platform autocomplete dropdown in Admin product form platform field
+- [x] Add ServiceIcon to Admin Products table rows next to platform name
+- [x] Add ServiceIcon to Admin Orders tab rows next to product platform
