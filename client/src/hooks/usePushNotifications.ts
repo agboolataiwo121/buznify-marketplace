@@ -81,5 +81,18 @@ export function usePushNotifications() {
     }
   }, [vapidKeyData, subscribeMutation]);
 
-  return { permission, isSubscribed, isLoading, subscribe };
+  const unsubscribe = useCallback(async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+        setPermission("default");
+      }
+    } catch (err) {
+      console.warn("[push] Failed to unsubscribe:", err);
+    }
+  }, []);
+
+  return { permission, isSubscribed, isLoading, subscribe, unsubscribe };
 }

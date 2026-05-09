@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardShell from "@/components/DashboardShell";
@@ -576,7 +577,68 @@ export default function UserProfile() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Push Notification Preferences */}
+          <NotificationPreferencesCard />
       </div>
     </DashboardShell>
+  );
+}
+
+function NotificationPreferencesCard() {
+  const { permission, isLoading, subscribe, unsubscribe } = usePushNotifications();
+  const isSupported = permission !== "unsupported";
+  const isEnabled = permission === "granted";
+
+  return (
+    <Card className="bg-white/5 border-white/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </span>
+          Push Notifications
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">Get instant alerts when your orders are delivered</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!isSupported ? (
+          <p className="text-xs text-muted-foreground">Push notifications are not supported in your browser.</p>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {isEnabled ? "Notifications enabled" : "Notifications disabled"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isEnabled
+                  ? "You will receive a push alert when an order is delivered."
+                  : "Enable to get instant delivery alerts on this device."}
+              </p>
+            </div>
+            <button
+              onClick={isEnabled ? unsubscribe : subscribe}
+              disabled={isLoading || permission === "denied"}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                isEnabled ? "bg-violet-600" : "bg-white/10"
+              } disabled:opacity-50`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  isEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        )}
+        {permission === "denied" && (
+          <p className="text-xs text-amber-400">
+            Notifications are blocked in your browser settings. To re-enable, click the lock icon in your browser address bar.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

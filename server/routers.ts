@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { sendPushToUser } from "./pushNotification";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -877,12 +878,19 @@ export const appRouter = router({
               totalPrice: Math.round(totalAmount * 100),
               deliveryType: product.deliveryType,
             }).catch(() => {});
-            // If instant delivery, also send delivery email
+            // If instant delivery, also send delivery email + push notification
             if (product.deliveryType === "instant" && deliveryData) {
               sendOrderDeliveredEmail(orderUser.email, {
                 orderId: String(latestOrder.id),
                 productTitle: product.title,
                 deliveryData: typeof deliveryData === "string" ? deliveryData : JSON.stringify(deliveryData, null, 2),
+              }).catch(() => {});
+              // Fire push notification to buyer's subscribed devices
+              sendPushToUser(ctx.user.id, {
+                title: "Your order is ready! 🎉",
+                body: `${product.title} has been delivered. Tap to view your credentials.`,
+                url: `/orders`,
+                tag: `order-${latestOrder.id}`,
               }).catch(() => {});
             }
           }

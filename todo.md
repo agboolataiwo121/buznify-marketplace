@@ -616,3 +616,10 @@
 - [x] Apply pull-to-refresh to DashboardWallet page
 - [x] Product Detail sticky Buy Now bottom bar on mobile — always-visible CTA with price, quantity, and Buy Now button fixed at bottom on small screens
 - [x] Browser push notification opt-in — prompt after first successful order, store subscription in DB, send notification when order status changes to delivered
+
+## Push Notification — Full Integration
+- [x] Install web-push npm package
+- [x] Generate VAPID key pair and add VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY as secrets
+- [x] Create server/pushNotification.ts helper to send push to a user's subscriptions
+- [x] Wire push dispatch in orders.updateStatus / order delivery flow
+- [x] Add push notification preferences toggle in user account settings page
