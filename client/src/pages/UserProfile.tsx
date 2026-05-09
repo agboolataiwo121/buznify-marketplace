@@ -1,0 +1,377 @@
+import { useState, useRef } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import DashboardShell from "@/components/DashboardShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import {
+  User,
+  Camera,
+  Edit3,
+  Check,
+  X,
+  ShoppingBag,
+  Package,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Copy,
+  Star,
+} from "lucide-react";
+
+const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  pending: { label: "Pending", color: "text-yellow-400", icon: Clock },
+  processing: { label: "Processing", color: "text-blue-400", icon: Loader2 },
+  completed: { label: "Completed", color: "text-emerald-400", icon: CheckCircle2 },
+  cancelled: { label: "Cancelled", color: "text-red-400", icon: XCircle },
+  refunded: { label: "Refunded", color: "text-orange-400", icon: XCircle },
+};
+
+export default function UserProfile() {
+  const { user: authUser } = useAuth();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(10);
+
+  const { data: profile, refetch: refetchProfile } = trpc.profile.get.useQuery(undefined, {
+    enabled: !!authUser,
+  });
+
+  const { data: purchaseHistory, isLoading: historyLoading } = trpc.profile.purchaseHistory.useQuery(
+    { limit: historyLimit },
+    { enabled: !!authUser }
+  );
+
+  const updateName = trpc.profile.updateName.useMutation({
+    onSuccess: () => {
+      toast.success("Display name updated.");
+      setEditingName(false);
+      refetchProfile();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const handleStartEditName = () => {
+    setNameValue(profile?.name ?? "");
+    setEditingName(true);
+  };
+
+  const handleSaveName = () => {
+    if (!nameValue.trim()) return;
+    updateName.mutate({ name: nameValue.trim() });
+  };
+
+  const handleAvatarClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Avatar must be under 5 MB.");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      const res = await fetch("/api/upload/avatar", { method: "POST", body: formData });
+      const data = await res.json() as { success?: boolean; avatarUrl?: string; error?: string };
+      if (!res.ok || !data.success) throw new Error(data.error ?? "Upload failed");
+      toast.success("Profile picture updated.");
+      refetchProfile();
+    } catch (err) {
+      toast.error(String(err));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const copyReferralCode = () => {
+    if (!profile?.referralCode) return;
+    navigator.clipboard.writeText(profile.referralCode);
+      toast.success("Referral code copied!");
+  };
+
+  const memberSince = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long" })
+    : "—";
+
+  const avatarInitials = (profile?.name ?? authUser?.name ?? "U")
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  if (!authUser) {
+    return (
+    <DashboardShell title="Profile">
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Please log in to view your profile.</p>
+      </div>
+    </DashboardShell>
+    );
+  }
+
+  return (
+    <DashboardShell title="My Profile" subtitle="Manage your account details and purchase history">
+      <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6">
+        {/* ── Header ── */}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your account details and view your purchase history.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ── Left: Avatar + Basic Info ── */}
+          <div className="lg:col-span-1 space-y-4">
+            <Card className="bg-white/5 border-white/10">
+              <CardContent className="pt-6 flex flex-col items-center text-center gap-4">
+                {/* Avatar */}
+                <div className="relative group">
+                  <div
+                    className="w-24 h-24 rounded-full overflow-hidden border-2 border-violet-500/40 cursor-pointer"
+                    onClick={handleAvatarClick}
+                  >
+                    {profile?.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
+                        {avatarInitials}
+                      </div>
+                    )}
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleAvatarClick}
+                    disabled={uploading}
+                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-500 border-2 border-background flex items-center justify-center transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+
+                {/* Name */}
+                <div className="w-full">
+                  {editingName ? (
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        value={nameValue}
+                        onChange={(e) => setNameValue(e.target.value)}
+                        className="h-8 text-sm bg-white/5 border-white/20"
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                        autoFocus
+                      />
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 hover:text-emerald-300" onClick={handleSaveName} disabled={updateName.isPending}>
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setEditingName(false)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <h2 className="text-lg font-semibold text-foreground">{profile?.name ?? authUser.name}</h2>
+                      <button onClick={handleStartEditName} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">{profile?.email ?? authUser.email}</p>
+                </div>
+
+                <Separator className="bg-white/10" />
+
+                {/* Stats */}
+                <div className="w-full grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-lg font-bold text-violet-400">${(profile?.balance ?? 0).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Balance</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-lg font-bold text-foreground">{purchaseHistory?.length ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">Orders</p>
+                  </div>
+                </div>
+
+                {/* Role badge */}
+                <div className="flex items-center gap-2">
+                  {profile?.role === "admin" ? (
+                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                      <Star className="w-3 h-3 mr-1" /> Admin
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
+                      <User className="w-3 h-3 mr-1" /> Member
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Account Details */}
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold text-foreground">Account Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Member since</span>
+                  <span className="text-foreground font-medium">{memberSince}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Last sign in</span>
+                  <span className="text-foreground font-medium">
+                    {profile?.lastSignedIn ? new Date(profile.lastSignedIn).toLocaleDateString() : "—"}
+                  </span>
+                </div>
+                {profile?.referralCode && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Referral code</span>
+                    <button
+                      onClick={copyReferralCode}
+                      className="flex items-center gap-1.5 text-violet-400 hover:text-violet-300 font-mono text-xs transition-colors"
+                    >
+                      {profile.referralCode}
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── Right: Purchase History ── */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-violet-400" />
+                      Purchase History
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-0.5">All your marketplace orders</CardDescription>
+                  </div>
+                  {purchaseHistory && purchaseHistory.length > 0 && (
+                    <Badge variant="secondary" className="bg-white/5 text-muted-foreground">
+                      {purchaseHistory.length} orders
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {historyLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+                  </div>
+                ) : !purchaseHistory || purchaseHistory.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm font-medium text-foreground">No purchases yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Your orders will appear here once you make a purchase.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                      onClick={() => window.location.href = "/marketplace"}
+                    >
+                      Browse Marketplace
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {purchaseHistory.map((order) => {
+                      const statusCfg = ORDER_STATUS_CONFIG[order.status] ?? ORDER_STATUS_CONFIG.pending;
+                      const StatusIcon = statusCfg.icon;
+                      return (
+                        <div
+                          key={order.id}
+                          className="flex items-start justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Package className="w-4 h-4 text-violet-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                Order #{order.id}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(order.createdAt).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </p>
+                              {order.deliveryData != null && (
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
+                                  {(() => {
+                                    const raw = typeof order.deliveryData === "string"
+                                      ? order.deliveryData
+                                      : JSON.stringify(order.deliveryData as Record<string, unknown>);
+                                    return raw.length > 60 ? raw.slice(0, 60) + "…" : raw;
+                                  })()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-3">
+                            <span className="text-sm font-bold text-foreground">
+                              ${parseFloat(order.totalAmount).toFixed(2)}
+                            </span>
+                            <div className={`flex items-center gap-1 text-xs font-medium ${statusCfg.color}`}>
+                              <StatusIcon className="w-3 h-3" />
+                              {statusCfg.label}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {purchaseHistory.length >= historyLimit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground hover:text-foreground"
+                        onClick={() => setHistoryLimit((l) => l + 20)}
+                      >
+                        Load more
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </DashboardShell>
+  );
+}

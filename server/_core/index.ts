@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import multer from "multer";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -16,7 +17,9 @@ import {
   getUserById,
   updateUserBalance,
   createWalletTransaction,
+  updateUserProfile,
 } from "../db";
+import { storagePut } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +42,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  app.set("trust proxy", 1); // trust first proxy (required for rate-limit behind reverse proxy)
   const server = createServer(app);
 
   // ── Paystack Webhook ──────────────────────────────────────────────────────
@@ -149,6 +153,37 @@ async function startServer() {
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+
+  // ── Avatar upload ─────────────────────────────────────────────────────────
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+  app.post("/api/upload/avatar", upload.single("avatar"), async (req, res) => {
+    try {
+      const { sdk } = await import("./sdk");
+      const { COOKIE_NAME } = await import("@shared/const");
+      const token = req.cookies?.[COOKIE_NAME];
+      if (!token) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const session = await sdk.verifySession(token);
+      if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+      // Look up by openId
+      const { getDb } = await import("../db");
+      const { users: usersTable } = await import("../../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) { res.status(500).json({ error: "DB unavailable" }); return; }
+      const rows = await db.select().from(usersTable).where(eqOp(usersTable.openId, session.openId)).limit(1);
+      const dbUser2 = rows[0];
+      if (!dbUser2) { res.status(401).json({ error: "User not found" }); return; }
+      if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+      const ext = req.file.mimetype.split("/")[1] ?? "jpg";
+      const key = `avatars/user-${dbUser2.id}-${Date.now()}.${ext}`;
+      const { url } = await storagePut(key, req.file.buffer, req.file.mimetype);
+      await updateUserProfile(dbUser2.id, { avatarUrl: url });
+      res.json({ success: true, avatarUrl: url });
+    } catch (err) {
+      console.error("Avatar upload error:", err);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
 
   // tRPC API
   app.use(

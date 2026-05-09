@@ -135,6 +135,16 @@ export async function updateUserRole(userId: number, role: "user" | "admin") {
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
+export async function updateUserProfile(userId: number, data: { name?: string; avatarUrl?: string }) {
+  const db = await getDb();
+  if (!db) return;
+  const updates: Record<string, unknown> = {};
+  if (data.name !== undefined) updates.name = data.name;
+  if (data.avatarUrl !== undefined) updates.avatarUrl = data.avatarUrl;
+  if (Object.keys(updates).length === 0) return;
+  await db.update(users).set(updates).where(eq(users.id, userId));
+}
+
 export async function updateUserBalance(userId: number, newBalance: string) {
   const db = await getDb();
   if (!db) return;

@@ -21,10 +21,12 @@ import {
   RefreshCw,
   DollarSign,
   Key,
+  User,
 } from "lucide-react";
 
 const userNavItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/profile", label: "My Profile", icon: User },
   { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
   { href: "/dashboard/orders", label: "Orders", icon: ShoppingCart },
   { href: "/dashboard/growth-orders", label: "Growth Orders", icon: TrendingUp },

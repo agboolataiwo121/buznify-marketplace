@@ -72,6 +72,7 @@ import {
   getVendorPayouts,
   createVendorPayout,
   getAllVendorPayouts,
+  updateUserProfile,
 } from "./db";
 import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable } from "../drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
@@ -1829,6 +1830,42 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
       .mutation(async ({ input }) => {
         await updatePayoutStatus(input.id, input.status, input.notes);
         return { success: true };
+      }),
+  }),
+  // ── Profile ────────────────────────────────────────────────────────────────
+  profile: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const user = await getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        role: user.role,
+        balance: parseFloat(user.balance ?? "0"),
+        createdAt: user.createdAt,
+        lastSignedIn: user.lastSignedIn,
+        referralCode: user.referralCode,
+      };
+    }),
+    updateName: protectedProcedure
+      .input(z.object({ name: z.string().min(1).max(64) }))
+      .mutation(async ({ input, ctx }) => {
+        await updateUserProfile(ctx.user.id, { name: input.name });
+        return { success: true };
+      }),
+    updateAvatar: protectedProcedure
+      .input(z.object({ avatarUrl: z.string().url() }))
+      .mutation(async ({ input, ctx }) => {
+        await updateUserProfile(ctx.user.id, { avatarUrl: input.avatarUrl });
+        return { success: true };
+      }),
+    purchaseHistory: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(100).default(50) }).optional())
+      .query(async ({ input, ctx }) => {
+        const userOrders = await getOrdersByUser(ctx.user.id);
+        return userOrders.slice(0, input?.limit ?? 50);
       }),
   }),
   // ── Scheduled endpoint ────────────────────────────────────────────────────

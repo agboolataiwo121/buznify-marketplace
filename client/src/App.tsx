@@ -36,6 +36,7 @@ import DashboardRefunds from "./pages/DashboardRefunds";
 import DashboardPayouts from "./pages/DashboardPayouts";
 import DashboardApiKeys from "./pages/DashboardApiKeys";
 import Login from "./pages/Login";
+import UserProfile from "./pages/UserProfile";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -73,6 +74,7 @@ function Router() {
       <Route path="/dashboard/loyalty" component={DashboardLoyalty} />
       <Route path="/dashboard/wishlist" component={DashboardWishlist} />
       <Route path="/dashboard/growth-orders" component={DashboardGrowthOrders} />
+      <Route path="/dashboard/profile" component={UserProfile} />
       <Route path="/dashboard/refunds" component={DashboardRefunds} />
       <Route path="/dashboard/payouts" component={DashboardPayouts} />
       <Route path="/dashboard/api-keys" component={DashboardApiKeys} />

@@ -497,33 +497,35 @@ export default function DashboardWallet() {
         ) : (
           <div className="space-y-2">
             {filteredTransactions.length === 0 ? (
-              <div className="text-center py-6 text-sm text-muted-foreground">No {txFilter === 'all' ? '' : txFilter} transactions found.</div>
-            ) : filteredTransactions.map((tx) => {
-              const config = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
-              const Icon = config.icon;
-              const isCredit = config.sign === "+";
-              return (
-                <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCredit ? "bg-emerald-500/20" : "bg-red-500/20"}`}>
-                      <Icon className={`w-4 h-4 ${config.color}`} />
+              <div className="text-center py-6 text-sm text-muted-foreground">No {txFilter === "all" ? "" : txFilter} transactions found.</div>
+            ) : (
+              filteredTransactions.map((tx) => {
+                const config = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
+                const Icon = config.icon;
+                const isCredit = config.sign === "+";
+                return (
+                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCredit ? "bg-emerald-500/20" : "bg-red-500/20"}`}>
+                        <Icon className={`w-4 h-4 ${config.color}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{tx.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.createdAt).toLocaleString()} · Balance: ${tx.balanceAfter}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{tx.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(tx.createdAt).toLocaleString()} · Balance: ${tx.balanceAfter}
-                      </p>
+                    <div className="text-right">
+                      <span className={`text-sm font-bold ${isCredit ? "text-emerald-400" : "text-red-400"}`}>
+                        {config.sign}${tx.amount}
+                      </span>
+                      <p className="text-xs text-muted-foreground capitalize">{config.label}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`text-sm font-bold ${isCredit ? "text-emerald-400" : "text-red-400"}`}>
-                      {config.sign}${tx.amount}
-                    </span>
-                    <p className="text-xs text-muted-foreground capitalize">{config.label}</p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         )}
       </div>
