@@ -80,6 +80,7 @@ const SERVICE_TYPES = [
 
 const PANEL_LABELS: Record<string, string> = {
   smmkings: "Server 1",
+  smmkings2: "Server 3",
   peakerr: "Server 2",
 };
 
@@ -104,7 +105,7 @@ interface LiveService {
   max: string;
   refill: boolean;
   cancel: boolean;
-  panel: "smmkings" | "peakerr";
+  panel: "smmkings" | "smmkings2" | "peakerr";
   platform: string;
   serviceType: string;
   ratePerThousand: number;
@@ -541,7 +542,7 @@ function MyOrdersTab() {
 
 function MassOrderTab({ services, userBalance, user }: { services: LiveService[]; userBalance: number; user: unknown }) {
   const utils = trpc.useUtils();
-  type MassRow = { panel: "smmkings" | "peakerr"; serviceId: number; serviceName: string; targetUrl: string; quantity: number; totalPrice: number; speedLabel: "slow" | "medium" | "fast" | "instant"; dripFeed: boolean; dripInterval?: number };
+  type MassRow = { panel: "smmkings" | "smmkings2" | "peakerr"; serviceId: number; serviceName: string; targetUrl: string; quantity: number; totalPrice: number; speedLabel: "slow" | "medium" | "fast" | "instant"; dripFeed: boolean; dripInterval?: number };
   const [rows, setRows] = useState<MassRow[]>([{ panel: "smmkings", serviceId: 0, serviceName: "", targetUrl: "", quantity: 100, totalPrice: 0, speedLabel: "medium", dripFeed: false }]);
   const [results, setResults] = useState<{ serviceName: string; apiOrderId?: string; error?: string }[] | null>(null);
 
@@ -619,6 +620,7 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
                   className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
                   <option value="smmkings">Server 1</option>
                   <option value="peakerr">Server 2</option>
+                  <option value="smmkings2">Server 3</option>
                 </select>
                 <select value={row.serviceId} onChange={e => {
                   const id = parseInt(e.target.value);
@@ -685,7 +687,7 @@ export default function GrowthServices() {
   const [activeTab, setActiveTab] = useState("browse");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedPanel, setSelectedPanel] = useState<"all" | "smmkings" | "peakerr">("all");
+  const [selectedPanel, setSelectedPanel] = useState<"all" | "smmkings" | "smmkings2" | "peakerr">("all");
   const [search, setSearch] = useState("");
   const [orderService, setOrderService] = useState<LiveService | null>(null);
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
@@ -730,7 +732,7 @@ export default function GrowthServices() {
                 <TrendingUp className="w-6 h-6 text-violet-400" />Social Growth Services
               </h1>
               <p className="text-white/50 text-sm mt-1">
-                Real services from Server 1 &amp; Server 2 \u00b7 Instant delivery \u00b7 Refill guarantee
+                Real services from 3 panels · Instant delivery · Refill guarantee
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -773,7 +775,7 @@ export default function GrowthServices() {
                 />
               </div>
               <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
-                {(["all", "smmkings", "peakerr"] as const).map((p) => (
+                {(["all", "smmkings", "peakerr", "smmkings2"] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => setSelectedPanel(p)}
@@ -819,14 +821,14 @@ export default function GrowthServices() {
             {!isLoading && !error && (
               <p className="text-xs text-white/40">
                 {filtered.length.toLocaleString()} service{filtered.length !== 1 ? "s" : ""} found
-                {services && ` \u00b7 ${services.length.toLocaleString()} total from both servers`}
+                {services && ` \u00b7 ${services.length.toLocaleString()} total across all panels`}
               </p>
             )}
 
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-                <p className="text-white/50 text-sm">Loading live services from Server 1 &amp; Server 2...</p>
+                <p className="text-white/50 text-sm">Loading live services from all panels...</p>
               </div>
             )}
 

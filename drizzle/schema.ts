@@ -338,7 +338,7 @@ export const growthOrders = mysqlTable("growth_orders", {
   notes: text("notes"),
   // SMM panel API fields
   apiOrderId: varchar("apiOrderId", { length: 64 }),
-  panel: mysqlEnum("panel", ["smmkings", "peakerr", "manual"]).default("manual"),
+  panel: mysqlEnum("panel", ["smmkings", "smmkings2", "peakerr", "manual"]).default("manual"),
   apiServiceId: int("apiServiceId"),
   startCount: int("startCount"),
   remains: int("remains"),

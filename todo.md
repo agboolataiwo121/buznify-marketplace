@@ -629,6 +629,17 @@
 - [x] Growth Services: fire sendPushToUser when a growth order reaches 100% completion
 - [x] Notification history page: show timeline of push-triggered events (order delivered, refund approved, etc.)
 
+## Social Growth Services Improvements
+- [x] Fix Peakerr API key (currently returning "Invalid API key") — updated and verified
+- [x] Update smm.ts to add SMMKINGS_API_KEY_2 as Server 3 (smmkings2 panel) alongside existing Server 1 and Server 2
+- [x] Improve GrowthServices page hero section with live stats (service count, platform count)
+- [x] Redesign platform filter as a visual icon grid with service counts per platform
+- [x] Improve service card design: cleaner layout, better price display, delivery speed badge
+- [x] Add "Popular" badge to top services by order volume
+- [x] Add category-level description/tips per platform
+- [x] Improve order dialog: better link validation per platform, quantity presets, clearer price breakdown
+- [x] Add loading skeleton for services grid
+
 ## Stripe Payment Integration
 - [ ] Set up Stripe via webdev_add_feature and configure STRIPE_SECRET_KEY + VITE_STRIPE_PUBLISHABLE_KEY secrets
 - [ ] Create Stripe Checkout Session tRPC procedure (wallet deposit)

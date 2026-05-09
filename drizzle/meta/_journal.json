@@ -134,6 +134,13 @@
       "when": 1778364084939,
       "tag": "0018_odd_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1778366927833,
+      "tag": "0019_orange_blue_shield",
+      "breakpoints": true
     }
   ]
 }

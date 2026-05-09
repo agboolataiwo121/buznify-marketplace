@@ -1,19 +1,19 @@
 /**
  * Universal SMM Panel API v2 Client
- * Supports SMMKings and Peakerr (both use the same API v2 spec)
+ * Supports SMMKings (primary), SMMKings2 (secondary key), and Peakerr
  */
 
-export type SmmPanel = "smmkings" | "peakerr";
+export type SmmPanel = "smmkings" | "smmkings2" | "peakerr";
 
 const PANEL_URLS: Record<SmmPanel, string> = {
-  smmkings: "https://smmkings.com/api/v2",
-  peakerr: "https://peakerr.com/api/v2",
+  smmkings:  "https://smmkings.com/api/v2",
+  smmkings2: "https://smmkings.com/api/v2",
+  peakerr:   "https://peakerr.com/api/v2",
 };
 
 function getKey(panel: SmmPanel): string {
-  if (panel === "smmkings") {
-    return process.env.SMMKINGS_API_KEY ?? "";
-  }
+  if (panel === "smmkings")  return process.env.SMMKINGS_API_KEY ?? "";
+  if (panel === "smmkings2") return process.env.SMMKINGS_API_KEY_2 ?? "";
   return process.env.PEAKERR_API_KEY ?? "";
 }
 
@@ -80,16 +80,19 @@ export async function smmGetServices(panel: SmmPanel): Promise<SmmService[]> {
   return services.map((s) => ({ ...s, panel }));
 }
 
-/** Fetch services from both panels and merge */
+/** Fetch services from all active panels and merge */
 export async function smmGetAllServices(): Promise<SmmService[]> {
-  const [kings, peakerr] = await Promise.allSettled([
-    smmGetServices("smmkings"),
-    smmGetServices("peakerr"),
-  ]);
+  const panels: SmmPanel[] = ["smmkings", "peakerr"];
+  // Include smmkings2 only if a distinct key is configured
+  const key2 = process.env.SMMKINGS_API_KEY_2;
+  const key1 = process.env.SMMKINGS_API_KEY;
+  if (key2 && key2 !== key1) panels.push("smmkings2");
 
+  const settled = await Promise.allSettled(panels.map((p) => smmGetServices(p)));
   const result: SmmService[] = [];
-  if (kings.status === "fulfilled") result.push(...kings.value);
-  if (peakerr.status === "fulfilled") result.push(...peakerr.value);
+  settled.forEach((r) => {
+    if (r.status === "fulfilled") result.push(...r.value);
+  });
   return result;
 }
 
@@ -173,4 +176,11 @@ export function normalizeSmmStatus(
   if (s === "canceled" || s === "cancelled") return "cancelled";
   if (s === "in progress" || s === "processing") return "processing";
   return "pending";
+}
+
+/** Human-readable label for a panel */
+export function getPanelLabel(panel: SmmPanel): string {
+  if (panel === "smmkings")  return "Server 1";
+  if (panel === "smmkings2") return "Server 3";
+  return "Server 2";
 }

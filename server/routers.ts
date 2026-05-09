@@ -1155,7 +1155,7 @@ export const appRouter = router({
         z.object({
           platform: z.string().optional(),
           serviceType: z.string().optional(),
-          panel: z.enum(["smmkings", "peakerr", "all"]).default("all"),
+          panel: z.enum(["smmkings", "smmkings2", "peakerr", "all"]).default("all"),
         })
       )
       .query(async ({ input }) => {
@@ -1183,7 +1183,7 @@ export const appRouter = router({
     placeOrder: protectedProcedure
       .input(
         z.object({
-          panel: z.enum(["smmkings", "peakerr"]),
+          panel: z.enum(["smmkings", "smmkings2", "peakerr"]),
           serviceId: z.number(),
           serviceName: z.string(),
           targetUrl: z.string().url("Must be a valid URL"),
@@ -1248,7 +1248,7 @@ export const appRouter = router({
             status: "processing",
             deliveredCount: 0,
             apiOrderId,
-            panel: input.panel as "smmkings" | "peakerr",
+            panel: input.panel as "smmkings" | "smmkings2" | "peakerr",
             apiServiceId: input.serviceId,
             speedLabel: input.speedLabel ?? "medium",
             dripFeed: input.dripFeed ?? false,
@@ -1361,12 +1361,14 @@ export const appRouter = router({
 
     /** Admin: get panel balances */
     getPanelBalances: adminProcedure.query(async () => {
-      const [kings, peakerr] = await Promise.allSettled([
+      const [kings, kings2, peakerr] = await Promise.allSettled([
         smmGetBalance("smmkings"),
+        smmGetBalance("smmkings2"),
         smmGetBalance("peakerr"),
       ]);
       return {
         smmkings: kings.status === "fulfilled" ? kings.value : null,
+        smmkings2: kings2.status === "fulfilled" ? kings2.value : null,
         peakerr: peakerr.status === "fulfilled" ? peakerr.value : null,
       };
     }),
@@ -1382,7 +1384,7 @@ export const appRouter = router({
     massOrder: protectedProcedure
       .input(z.object({
         orders: z.array(z.object({
-          panel: z.enum(["smmkings", "peakerr"]),
+          panel: z.enum(["smmkings", "smmkings2", "peakerr"]),
           serviceId: z.number(),
           serviceName: z.string(),
           targetUrl: z.string().url(),
@@ -1430,7 +1432,7 @@ export const appRouter = router({
                 status: "processing",
                 deliveredCount: 0,
                 apiOrderId,
-                panel: order.panel as "smmkings" | "peakerr",
+                panel: order.panel as "smmkings" | "smmkings2" | "peakerr",
                 apiServiceId: order.serviceId,
                 speedLabel: order.speedLabel ?? "medium",
                 dripFeed: order.dripFeed ?? false,

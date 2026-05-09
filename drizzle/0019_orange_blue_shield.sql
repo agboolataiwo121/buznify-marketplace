@@ -1,0 +1,1 @@
+ALTER TABLE `growth_orders` MODIFY COLUMN `panel` enum('smmkings','smmkings2','peakerr','manual') DEFAULT 'manual';
