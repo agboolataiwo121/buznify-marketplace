@@ -324,12 +324,12 @@
 - [x] Add bulk delete with confirmation
 
 ## Service Expansion — More Marketplace Categories
-- [ ] Add new categories: software_licenses, gift_cards, email_accounts, vpn_proxies, seo_tools, freelance_services, crypto_tools, educational_accounts
-- [ ] Expand DEMO_PRODUCTS in Marketplace.tsx with 40+ new products across all categories
-- [ ] Expand DEMO_PRODUCTS in ProductDetail.tsx with matching product detail data
-- [ ] Update CATEGORIES array in Marketplace.tsx to include new category tabs
-- [ ] Update seed data in routers.ts to include new categories and products
-- [ ] Add category icons for new categories
+- [x] Add new categories: software_licenses, gift_cards, email_accounts, vpn_proxies, seo_tools, freelance_services, crypto_tools, educational_accounts (superseded by Service Expansion phase)
+- [x] Expand DEMO_PRODUCTS in Marketplace.tsx with 40+ new products across all categories
+- [x] Expand DEMO_PRODUCTS in ProductDetail.tsx with matching product detail data
+- [x] Update CATEGORIES array in Marketplace.tsx to include new category tabs
+- [x] Update seed data in routers.ts to include new categories and products
+- [x] Add category icons for new categories
 
 ## Service Expansion — 5 New Categories
 - [x] Add new category enum values to schema: ai_tools, digital_subscriptions, gaming_currency, proxy_networking, verification_services
