@@ -10,6 +10,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { validateWebhookSignature } from "../paystack";
+import { ngnToUsd } from "../currency";
 import rateLimit from "express-rate-limit";
 import {
   getPaymentByReference,
@@ -81,8 +82,7 @@ async function startServer() {
 
           if (payment && payment.status !== "success") {
             const paidNaira = data.amount / 100;
-            const NGN_TO_USD = 0.00065;
-            const amountUsd = paidNaira * NGN_TO_USD;
+            const amountUsd = await ngnToUsd(paidNaira);
 
             const user = await getUserById(payment.userId);
             if (user) {

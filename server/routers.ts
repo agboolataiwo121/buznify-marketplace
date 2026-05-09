@@ -108,6 +108,7 @@ import {
   generateReference,
   getPaystackBalance,
 } from "./paystack";
+import { ngnToUsd } from "./currency";
 import {
   createPayment,
   getPaymentByReference,
@@ -2640,9 +2641,8 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
           throw new TRPCError({ code: "BAD_REQUEST", message: "Amount mismatch — please contact support" });
         }
 
-        // Credit wallet (convert NGN to USD at ~1 NGN = 0.00065 USD)
-        const NGN_TO_USD = 0.00065;
-        const amountUsd = paidNaira * NGN_TO_USD;
+        // Credit wallet using live NGN/USD rate (cached 1h, falls back to ~₦1360/$1)
+        const amountUsd = await ngnToUsd(paidNaira);
 
         const user = await getUserById(ctx.user.id);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });

@@ -648,3 +648,10 @@
 - [x] Replace hardcoded bg-white/5, border-white/10, border-white/5 with semantic tokens in Navbar
 - [x] Replace hardcoded dark colors in DashboardShell mobile sheet
 - [x] Add theme toggle card to UserProfile settings page
+
+## Paystack Integration Audit & Fixes
+- [x] Fix key mismatch: both keys now set to live mode (sk_live + pk_live)
+- [x] Update NGN-to-USD conversion rate: now uses live rate from exchangerate-api.com (1h cache, fallback ₦1360/$1)
+- [ ] Withdrawal flow: currently just deducts balance with no real payout — add admin review step or Paystack Transfer API
+- [x] Paystack webhook URL: /api/webhooks/paystack — configure in Paystack Dashboard → Settings → Webhooks
+- [ ] Test deposit flow end-to-end with live card
