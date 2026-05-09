@@ -806,3 +806,17 @@ export async function getAllPayments(limit = 50, offset = 0) {
   if (!db) return [];
   return db.select().from(payments).orderBy(desc(payments.createdAt)).limit(limit).offset(offset);
 }
+
+// ─── Two-Factor Authentication ────────────────────────────────────────────────
+export async function updateUserTwoFactor(
+  userId: number,
+  data: { twoFactorSecret?: string | null; twoFactorEnabled?: boolean }
+) {
+  const db = await getDb();
+  if (!db) return;
+  const updates: Record<string, unknown> = {};
+  if (data.twoFactorSecret !== undefined) updates.twoFactorSecret = data.twoFactorSecret;
+  if (data.twoFactorEnabled !== undefined) updates.twoFactorEnabled = data.twoFactorEnabled;
+  if (Object.keys(updates).length === 0) return;
+  await db.update(users).set(updates).where(eq(users.id, userId));
+}

@@ -31,6 +31,9 @@ export const users = mysqlTable("users", {
   emailVerified: boolean("emailVerified").default(false).notNull(),
   resetToken: varchar("resetToken", { length: 128 }),
   resetTokenExpiry: timestamp("resetTokenExpiry"),
+  // Two-Factor Authentication
+  twoFactorSecret: varchar("twoFactorSecret", { length: 64 }),
+  twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
 });
 
 export type User = typeof users.$inferSelect;

@@ -390,3 +390,33 @@
 - [x] Wire subcategoryId through createProduct and updateProduct mutations
 - [x] Clear subcategoryId when category changes in both forms
 - [x] Show "No subcategories" placeholder when selected category has no children
+
+## Email Notifications (SMTP/SendGrid)
+- [x] Install nodemailer and @types/nodemailer
+- [x] Add SMTP secrets: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+- [x] Build server/email.ts helper with sendEmail(to, subject, html) function
+- [x] Send order confirmation email on order creation
+- [x] Send delivery email when order status changes to "delivered"
+- [x] Send password reset email in forgotPassword procedure
+- [x] Send welcome email on new user registration
+- [x] Build reusable HTML email templates (order, delivery, reset, welcome)
+
+## Paystack Webhook Receiver
+- [x] Add POST /api/webhooks/paystack Express route (outside tRPC)
+- [x] Verify Paystack HMAC-SHA512 signature from x-paystack-signature header
+- [x] Handle charge.success event: find payment by reference, credit wallet, record transaction
+- [x] Handle transfer.success event: mark payout as completed
+- [x] Return 200 immediately to Paystack to prevent retries
+- [x] Add webhook secret to secrets (PAYSTACK_WEBHOOK_SECRET)
+
+## Two-Factor Authentication (TOTP/2FA)
+- [x] Install otplib and qrcode packages
+- [x] Add twoFactorSecret and twoFactorEnabled columns to users table
+- [x] Push schema migration with pnpm db:push
+- [x] Add setup2FA procedure: generate secret, return QR code data URL
+- [x] Add verify2FA procedure: verify TOTP token, enable 2FA on success
+- [x] Add disable2FA procedure: verify password before disabling
+- [x] Update login procedure: if 2FA enabled, return requires2FA flag instead of session
+- [x] Add complete2FALogin procedure: verify TOTP token, issue session
+- [x] Build 2FA Setup page in Dashboard Security settings
+- [x] Build 2FA verification step in Login page (shown after password success)

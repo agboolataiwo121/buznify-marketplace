@@ -117,6 +117,13 @@ import {
   getUserByResetToken,
 } from "./db";
 import bcrypt from "bcryptjs";
+import {
+  sendWelcomeEmail,
+  sendOrderConfirmationEmail,
+  sendOrderDeliveredEmail,
+  sendPasswordResetEmail,
+} from "./email";
+import { updateUserTwoFactor } from "./db";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -179,6 +186,10 @@ export const appRouter = router({
         const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "" });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        // Send welcome email (fire-and-forget)
+        if (user.email) {
+          sendWelcomeEmail(user.email, user.name ?? "there").catch(() => {});
+        }
         return { success: true, user: { id: user.id, name: user.name, email: user.email } };
       }),
 
@@ -204,11 +215,15 @@ export const appRouter = router({
         if (!user.isActive) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Account is suspended" });
         }
+        // If 2FA is enabled, do not issue session yet — return requires2FA flag
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          return { success: true, requires2FA: true, email: user.email, user: null };
+        }
         // Issue session cookie
         const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "" });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-        return { success: true, user: { id: user.id, name: user.name, email: user.email } };
+        return { success: true, requires2FA: false, email: user.email, user: { id: user.id, name: user.name, email: user.email } };
       }),
 
     /** Request password reset — returns token (in production, email it) */
@@ -221,9 +236,96 @@ export const appRouter = router({
         const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
         const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
         await updateUserResetToken(user.id, token, expiry);
-        // In production, send email. For now, return token in response (dev mode).
+        // Send password reset email
+        const origin = process.env.APP_ORIGIN || "https://buznify-mktp-kunzevat.manus.space";
+        sendPasswordResetEmail(user.email!, { resetToken: token, origin }).catch(() => {});
+        // Also return token in response for dev mode convenience
         return { success: true, resetToken: token };
       }),
+
+    /** Setup TOTP 2FA — generates a secret and returns a QR code data URL */
+    setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
+      const { generateSecret, generateURI } = await import("otplib");
+      const QRCode = await import("qrcode");
+      const user = await getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      // Generate a new secret
+      const secret = generateSecret();
+      // Build the otpauth URI
+      const label = user.email ?? user.name ?? `user-${user.id}`;
+      const otpauthUrl = generateURI({ issuer: "Buznify", label, secret });
+      // Generate QR code as data URL
+      const qrCodeDataUrl = await QRCode.default.toDataURL(otpauthUrl);
+      // Store secret (not yet enabled — user must verify first)
+      await updateUserTwoFactor(user.id, { twoFactorSecret: secret, twoFactorEnabled: false });
+      return { secret, qrCodeDataUrl, otpauthUrl };
+    }),
+
+    /** Verify a TOTP token and enable 2FA */
+    verify2FA: protectedProcedure
+      .input(z.object({ token: z.string().min(6).max(8) }))
+      .mutation(async ({ input, ctx }) => {
+        const { verify } = await import("otplib");
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.twoFactorSecret) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "2FA not set up. Call setup2FA first." });
+        }
+        const result = await verify({ token: input.token, secret: user.twoFactorSecret });
+        if (!result.valid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid verification code. Please try again." });
+        }
+        await updateUserTwoFactor(user.id, { twoFactorEnabled: true });
+        return { success: true };
+      }),
+
+    /** Disable 2FA — requires password confirmation */
+    disable2FA: protectedProcedure
+      .input(z.object({ password: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.twoFactorEnabled) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "2FA is not enabled" });
+        }
+        // Require password verification (OAuth users without password can skip)
+        if (user.passwordHash) {
+          const valid = await bcrypt.compare(input.password, user.passwordHash);
+          if (!valid) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect password" });
+          }
+        }
+        await updateUserTwoFactor(user.id, { twoFactorSecret: null, twoFactorEnabled: false });
+        return { success: true };
+      }),
+
+    /** Complete 2FA login — verify TOTP token and issue session */
+    complete2FALogin: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string().min(6).max(8) }))
+      .mutation(async ({ input, ctx }) => {
+        const { sdk } = await import("./_core/sdk");
+        const { ONE_YEAR_MS } = await import("@shared/const");
+        const { verify } = await import("otplib");
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.twoFactorSecret || !user.twoFactorEnabled) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "2FA not configured for this account" });
+        }
+        const result = await verify({ token: input.token, secret: user.twoFactorSecret });
+        if (!result.valid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid 2FA code" });
+        }
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "" });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true, user: { id: user.id, name: user.name, email: user.email } };
+      }),
+
+    /** Get 2FA status for the current user */
+    get2FAStatus: protectedProcedure.query(async ({ ctx }) => {
+      const user = await getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      return { enabled: user.twoFactorEnabled ?? false };
+    }),
 
     /** Reset password using token */
     resetPassword: publicProcedure
@@ -594,6 +696,31 @@ export const appRouter = router({
           message: `Your order for "${product.title}" has been ${product.deliveryType === "instant" ? "delivered" : "placed"}.`,
           referenceId: `order_${product.id}`,
         });
+
+        // Send order confirmation email (fire-and-forget)
+        const orderUser = await getUserById(ctx.user.id);
+        if (orderUser?.email) {
+          // Get the newly created order for its ID
+          const latestOrders = await getOrdersByUser(ctx.user.id);
+          const latestOrder = latestOrders[0];
+          if (latestOrder) {
+            sendOrderConfirmationEmail(orderUser.email, {
+              orderId: String(latestOrder.id),
+              productTitle: product.title,
+              quantity: input.quantity,
+              totalPrice: Math.round(totalAmount * 100),
+              deliveryType: product.deliveryType,
+            }).catch(() => {});
+            // If instant delivery, also send delivery email
+            if (product.deliveryType === "instant" && deliveryData) {
+              sendOrderDeliveredEmail(orderUser.email, {
+                orderId: String(latestOrder.id),
+                productTitle: product.title,
+                deliveryData: typeof deliveryData === "string" ? deliveryData : JSON.stringify(deliveryData, null, 2),
+              }).catch(() => {});
+            }
+          }
+        }
 
         return {
           success: true,
