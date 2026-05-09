@@ -254,7 +254,7 @@ export default function VirtualNumbers() {
 
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"browse" | "my-numbers">("browse");
-  const [selectedCountry, setSelectedCountry] = useState<{ iso: string; name: string; prefix: string } | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<{ iso: string; isoCode: string; name: string; prefix: string } | null>(null);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -272,15 +272,40 @@ export default function VirtualNumbers() {
 
   const countries = useMemo(() => {
     if (!countriesRaw) return [];
-    return Object.entries(countriesRaw as Record<string, { name?: string; prefix?: string }>)
-      .map(([iso, c]) => ({ iso, name: c.name ?? iso, prefix: c.prefix ?? "" }))
+    return Object.entries(
+      countriesRaw as Record<string, {
+        iso?: Record<string, number> | string;
+        prefix?: Record<string, number> | string;
+        text_en?: string;
+        name?: string;
+      }>
+    )
+      .map(([countryKey, c]) => {
+        // Handle both old format (iso: "ru") and new format (iso: {"ru": 1})
+        const isoCode = c.iso
+          ? typeof c.iso === "string"
+            ? c.iso
+            : Object.keys(c.iso)[0] ?? countryKey.slice(0, 2)
+          : countryKey.slice(0, 2);
+        const prefix = c.prefix
+          ? typeof c.prefix === "string"
+            ? c.prefix
+            : Object.keys(c.prefix)[0] ?? ""
+          : "";
+        const name = c.text_en ?? c.name ?? countryKey;
+        return { iso: countryKey, isoCode, name, prefix };
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [countriesRaw]);
 
   useEffect(() => {
     if (countries.length > 0 && !selectedCountry) {
-      const russia = countries.find((c) => c.iso === "russia") ?? countries[0];
-      setSelectedCountry(russia);
+      // Default to Nigeria, then USA, then first available country
+      const defaultCountry =
+        countries.find((c) => c.iso === "nigeria") ??
+        countries.find((c) => c.iso === "usa") ??
+        countries[0];
+      setSelectedCountry(defaultCountry);
     }
   }, [countries, selectedCountry]);
 
@@ -295,7 +320,8 @@ export default function VirtualNumbers() {
   const filteredCountries = useMemo(() =>
     countries.filter((c) =>
       c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-      c.iso.toLowerCase().includes(countrySearch.toLowerCase())
+      c.iso.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.isoCode.toLowerCase().includes(countrySearch.toLowerCase())
     ), [countries, countrySearch]);
 
   const filteredProducts = useMemo(() => {
@@ -322,8 +348,8 @@ export default function VirtualNumbers() {
     if (!selectedCountry) { toast.error("Please select a country first."); return; }
     setPurchasing(product.name);
     purchaseMutation.mutate({
-      country: selectedCountry.iso,
-      countryCode: selectedCountry.iso.toUpperCase().slice(0, 2),
+      country: selectedCountry.iso,        // country name key used by 5sim API (e.g. 'nigeria')
+      countryCode: selectedCountry.isoCode.toUpperCase().slice(0, 2), // 2-letter ISO code (e.g. 'NG')
       countryName: selectedCountry.name,
       product: product.name,
       operator: "any",
@@ -380,7 +406,7 @@ export default function VirtualNumbers() {
                   onClick={() => setShowCountryPicker(!showCountryPicker)}
                   className="glass border border-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-medium hover:border-violet-500/40 transition-all w-full sm:min-w-[200px] sm:w-auto"
                 >
-                  <span className="text-lg">{selectedCountry ? countryFlag(selectedCountry.iso.toUpperCase().slice(0, 2)) : "\u{1F310}"}</span>
+                  <span className="text-lg">{selectedCountry ? countryFlag(selectedCountry.isoCode.toUpperCase().slice(0, 2)) : "\u{1F310}"}</span>
                   <span className="text-foreground capitalize">{selectedCountry?.name ?? "Select Country"}</span>
                   <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
                 </button>
@@ -409,9 +435,9 @@ export default function VirtualNumbers() {
                           onClick={() => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(""); }}
                           className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/5 transition-colors text-left ${selectedCountry?.iso === c.iso ? "bg-violet-500/10 text-violet-400" : "text-foreground"}`}
                         >
-                          <span className="text-base">{countryFlag(c.iso.toUpperCase().slice(0, 2))}</span>
+                          <span className="text-base">{countryFlag(c.isoCode.toUpperCase().slice(0, 2))}</span>
                           <span className="capitalize flex-1">{c.name}</span>
-                          {c.prefix && <span className="text-xs text-muted-foreground">+{c.prefix}</span>}
+                          {c.prefix && <span className="text-xs text-muted-foreground">{c.prefix}</span>}
                         </button>
                       ))}
                     </div>
