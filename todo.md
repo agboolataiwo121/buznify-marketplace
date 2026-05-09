@@ -339,3 +339,8 @@
 - [x] Update CATEGORIES array in Marketplace.tsx with new tabs and icons
 - [x] Expand DEMO_PRODUCTS in Marketplace.tsx with new products
 - [x] Update ProductDetail.tsx DEMO_PRODUCTS with new product details
+
+## Homepage Hero Text Update
+- [x] Update hero headline to mention AI Tools, Subscriptions, and Gaming
+- [x] Update hero subheadline/description to reflect 10-category catalogue
+- [x] Update category highlight chips/badges in hero section

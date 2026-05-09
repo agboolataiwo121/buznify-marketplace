@@ -47,6 +47,9 @@ import {
   Repeat,
   Gift,
   HelpCircle,
+  Bot,
+  Coins,
+  ShieldCheck,
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -54,40 +57,80 @@ import {
 const stats = [
   { value: "127,483", label: "Orders Completed" },
   { value: "52K+", label: "Active Users" },
-  { value: "4,800+", label: "Available Services" },
+  { value: "10,000+", label: "Available Services" },
   { value: "99.97%", label: "Delivery Rate" },
 ];
 
 const categories = [
   {
+    icon: Bot,
+    label: "AI Tools",
+    desc: "ChatGPT, Claude, Midjourney & more",
+    count: "700+ products",
+    href: "/marketplace?category=ai_tools",
+    color: "from-sky-500/20 to-blue-500/20",
+    border: "border-sky-500/20 hover:border-sky-500/40",
+    iconColor: "text-sky-400",
+  },
+  {
+    icon: CreditCard,
+    label: "Subscriptions",
+    desc: "YouTube, Canva, Adobe, Microsoft & more",
+    count: "1,200+ products",
+    href: "/marketplace?category=digital_subscriptions",
+    color: "from-indigo-500/20 to-violet-500/20",
+    border: "border-indigo-500/20 hover:border-indigo-500/40",
+    iconColor: "text-indigo-400",
+  },
+  {
+    icon: Gamepad2,
+    label: "Gaming",
+    desc: "Accounts, V-Bucks, Robux, gift cards",
+    count: "2,500+ products",
+    href: "/marketplace?category=gaming_accounts",
+    color: "from-blue-500/20 to-cyan-500/20",
+    border: "border-blue-500/20 hover:border-blue-500/40",
+    iconColor: "text-blue-400",
+  },
+  {
     icon: Instagram,
-    label: "Social Media Accounts",
+    label: "Social Media",
     desc: "Instagram, TikTok, Twitter & more",
     count: "2,400+ products",
-    href: "/marketplace?category=social_media",
+    href: "/marketplace?category=social_media_accounts",
     color: "from-pink-500/20 to-purple-500/20",
     border: "border-pink-500/20 hover:border-pink-500/40",
     iconColor: "text-pink-400",
   },
   {
     icon: Tv,
-    label: "Streaming Accounts",
+    label: "Streaming",
     desc: "Netflix, Spotify, Disney+ & more",
     count: "850+ products",
-    href: "/marketplace?category=streaming",
+    href: "/marketplace?category=streaming_accounts",
     color: "from-red-500/20 to-orange-500/20",
     border: "border-red-500/20 hover:border-red-500/40",
     iconColor: "text-red-400",
   },
   {
-    icon: Gamepad2,
-    label: "Gaming Accounts",
-    desc: "Valorant, CSGO, FIFA & more",
-    count: "1,200+ products",
-    href: "/marketplace?category=gaming",
-    color: "from-blue-500/20 to-cyan-500/20",
-    border: "border-blue-500/20 hover:border-blue-500/40",
-    iconColor: "text-blue-400",
+    icon: Globe,
+    label: "Proxy & VPN",
+    desc: "Residential, mobile, IPv6, RDP & more",
+    count: "400+ products",
+    href: "/marketplace?category=proxy_networking",
+    color: "from-slate-500/20 to-gray-500/20",
+    border: "border-slate-500/20 hover:border-slate-500/40",
+    iconColor: "text-slate-400",
+  },
+  {
+    icon: ShieldCheck,
+    label: "Verification",
+    desc: "Phone numbers, PVA accounts & more",
+    count: "600+ products",
+    href: "/marketplace?category=verification_services",
+    color: "from-green-500/20 to-emerald-500/20",
+    border: "border-green-500/20 hover:border-green-500/40",
+    iconColor: "text-green-400",
   },
   {
     icon: Phone,
@@ -328,7 +371,7 @@ export default function Home() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-violet-500/30 text-sm text-violet-300 mb-8 animate-fade-in">
             <Sparkles className="w-4 h-4" />
-            <span>The #1 Digital Products Marketplace</span>
+            <span>10 Categories · 10,000+ Products · Instant Delivery</span>
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
 
@@ -337,11 +380,11 @@ export default function Home() {
             className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-slide-up"
             style={{ animationDelay: "0.1s" }}
           >
-            <span className="text-foreground">Buy Digital Accounts,</span>
+            <span className="text-foreground">AI Tools, Subscriptions,</span>
             <br />
-            <span className="gradient-text">Growth Services &</span>
+            <span className="gradient-text">Gaming & Digital</span>
             <br />
-            <span className="text-foreground">Verification Numbers</span>
+            <span className="text-foreground">Accounts — Delivered</span>
             <br />
             <span className="gradient-text-purple">Instantly</span>
           </h1>
@@ -350,8 +393,8 @@ export default function Home() {
             className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed animate-slide-up"
             style={{ animationDelay: "0.2s" }}
           >
-            Fully automated delivery in seconds. Bank-grade security. Verified sellers only.
-            The premium marketplace combining Sellix, SMM Panel, and SMS Activate — in one place.
+            10 service categories. 10,000+ products. Fully automated delivery in seconds.
+            AI tools, gaming currency, proxies, subscriptions, social media accounts, and more — all in one place.
           </p>
 
           {/* Trust micro-badges */}
