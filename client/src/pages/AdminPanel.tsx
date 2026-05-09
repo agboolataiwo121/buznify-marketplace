@@ -112,6 +112,7 @@ export default function AdminPanel() {
     originalPrice: "",
     stock: "1",
     imageUrl: "",
+    iconKey: "",
     deliveryType: "instant" as "instant" | "manual",
     deliveryData: "",
     featured: false,
@@ -122,6 +123,9 @@ export default function AdminPanel() {
   const [notifForm, setNotifForm] = useState({ title: "", message: "", type: "info" as "info" | "success" | "warning" });
   // ── Platform autocomplete ─────────────────────────────────────────────────
   const [showPlatformSuggestions, setShowPlatformSuggestions] = useState(false);
+  // ── Icon picker ───────────────────────────────────────────────────────────
+  const [iconPickerTab, setIconPickerTab] = useState<"icon" | "url">("icon");
+  const [iconPickerSearch, setIconPickerSearch] = useState("");
   const KNOWN_PLATFORMS = [
     "Instagram","TikTok","Twitter","Facebook","WhatsApp","Telegram","Snapchat","LinkedIn","Pinterest","Reddit","Discord","Threads",
     "Netflix","Spotify","Disney+","YouTube","Hulu","Amazon Prime","Apple TV+","HBO Max","Twitch","SoundCloud",
@@ -315,7 +319,7 @@ export default function AdminPanel() {
 
   const resetProductForm = () => setProductForm({
     title: "", description: "", category: "social_media_accounts", subcategoryId: null, platform: "",
-    price: "", originalPrice: "", stock: "1", imageUrl: "", deliveryType: "instant",
+    price: "", originalPrice: "", stock: "1", imageUrl: "", iconKey: "", deliveryType: "instant",
     deliveryData: "", featured: false, status: "active",
   });
 
@@ -331,6 +335,7 @@ export default function AdminPanel() {
       originalPrice: p.originalPrice ?? "",
       stock: String(p.stock),
       imageUrl: p.imageUrl ?? "",
+      iconKey: (p as any).iconKey ?? "",
       deliveryType: p.deliveryType as "instant" | "manual",
       deliveryData: p.deliveryData ? JSON.stringify(p.deliveryData, null, 2) : "",
       featured: p.featured,
@@ -355,6 +360,7 @@ export default function AdminPanel() {
       originalPrice: productForm.originalPrice || undefined,
       stock: parseInt(productForm.stock) || 0,
       imageUrl: productForm.imageUrl || undefined,
+      iconKey: productForm.iconKey || undefined,
       deliveryType: productForm.deliveryType,
       deliveryData: parsedDeliveryData,
       featured: productForm.featured,
@@ -782,7 +788,11 @@ export default function AdminPanel() {
                     <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {p.imageUrl
                         ? <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover rounded-lg" />
-                        : <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                        : (p as any).iconKey
+                          ? <ServiceIcon name={(p as any).iconKey} size={22} />
+                          : p.platform
+                            ? <ServiceIcon name={p.platform} size={22} />
+                            : <ImageIcon className="w-4 h-4 text-muted-foreground" />
                       }
                     </div>
                     {/* Info */}
@@ -975,11 +985,97 @@ export default function AdminPanel() {
                       rows={3}
                       className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
                   </div>
-                  {/* Image URL */}
+                  {/* Product Icon / Image */}
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">Image URL</label>
-                    <Input value={productForm.imageUrl} onChange={e => setProductForm(f => ({ ...f, imageUrl: e.target.value }))}
-                      placeholder="https://..." className="bg-white/5 border-white/10 text-sm" />
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-muted-foreground">Product Icon / Image</label>
+                      <div className="flex rounded-lg overflow-hidden border border-white/10 text-[11px]">
+                        <button type="button" onClick={() => setIconPickerTab("icon")}
+                          className={`px-3 py-1 transition-colors ${iconPickerTab === "icon" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                          Brand Icon
+                        </button>
+                        <button type="button" onClick={() => setIconPickerTab("url")}
+                          className={`px-3 py-1 transition-colors ${iconPickerTab === "url" ? "bg-violet-600 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+                          Image URL
+                        </button>
+                      </div>
+                    </div>
+                    {iconPickerTab === "url" ? (
+                      <div className="flex items-center gap-2">
+                        {productForm.imageUrl && (
+                          <img src={productForm.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover border border-white/10 flex-shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        )}
+                        <Input value={productForm.imageUrl} onChange={e => setProductForm(f => ({ ...f, imageUrl: e.target.value }))}
+                          placeholder="https://..." className="bg-white/5 border-white/10 text-sm flex-1" />
+                      </div>
+                    ) : (
+                      <div>
+                        {/* Selected icon preview */}
+                        <div className="flex items-center gap-3 mb-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                            <ServiceIcon name={productForm.iconKey || productForm.platform} size={24} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white/70 font-medium">{productForm.iconKey ? productForm.iconKey : (productForm.platform ? `Auto: ${productForm.platform}` : "No icon selected")}</p>
+                            <p className="text-[10px] text-white/30">Click an icon below to assign it to this product</p>
+                          </div>
+                          {productForm.iconKey && (
+                            <button type="button" onClick={() => setProductForm(f => ({ ...f, iconKey: "" }))}
+                              className="text-white/30 hover:text-white/70 transition-colors flex-shrink-0">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        {/* Search */}
+                        <div className="relative mb-2">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+                          <Input value={iconPickerSearch} onChange={e => setIconPickerSearch(e.target.value)}
+                            placeholder="Search icons..." className="bg-white/5 border-white/10 text-xs pl-8 h-8" />
+                        </div>
+                        {/* Icon grid */}
+                        {(() => {
+                          const ALL_ICON_KEYS = [
+                            ["whatsapp","WhatsApp"],["telegram","Telegram"],["signal","Signal"],["discord","Discord"],["snapchat","Snapchat"],
+                            ["instagram","Instagram"],["twitter","Twitter"],["tiktok","TikTok"],["facebook","Facebook"],["youtube","YouTube"],
+                            ["linkedin","LinkedIn"],["pinterest","Pinterest"],["reddit","Reddit"],["threads","Threads"],["twitch","Twitch"],
+                            ["netflix","Netflix"],["spotify","Spotify"],["hulu","Hulu"],["disneyplus","Disney+"],["prime","Prime"],
+                            ["steam","Steam"],["epicgames","Epic Games"],["roblox","Roblox"],["minecraft","Minecraft"],["fortnite","Fortnite"],
+                            ["valorant","Valorant"],["csgo","CS:GO"],["pubg","PUBG"],["playstation","PlayStation"],["xbox","Xbox"],
+                            ["leagueoflegends","League"],["soundcloud","SoundCloud"],
+                            ["chatgpt","ChatGPT"],["claude","Claude"],["openai","OpenAI"],["midjourney","Midjourney"],["perplexity","Perplexity"],
+                            ["elevenlabs","ElevenLabs"],["runway","Runway"],["canva","Canva"],["grammarly","Grammarly"],["notion","Notion"],
+                            ["adobe","Adobe"],["microsoft","Microsoft"],["capcut","CapCut"],["zoom","Zoom"],["slack","Slack"],
+                            ["google","Google"],["gmail","Gmail"],["outlook","Outlook"],["apple","Apple"],
+                            ["nordvpn","NordVPN"],["mullvad","Mullvad"],["gologin","GoLogin"],
+                            ["paypal","PayPal"],["revolut","Revolut"],["binance","Binance"],["coinbase","Coinbase"],["bybit","Bybit"],
+                            ["amazon","Amazon"],["ebay","eBay"],["aliexpress","AliExpress"],
+                            ["uber","Uber"],["lyft","Lyft"],["airbnb","Airbnb"],["doordash","DoorDash"],
+                            ["tinder","Tinder"],["bumble","Bumble"],["hinge","Hinge"],
+                          ];
+                          const q = iconPickerSearch.toLowerCase();
+                          const filtered = q ? ALL_ICON_KEYS.filter(([k, label]) => k.includes(q) || label.toLowerCase().includes(q)) : ALL_ICON_KEYS;
+                          return (
+                            <div className="grid grid-cols-6 gap-1.5 max-h-52 overflow-y-auto pr-1">
+                              {filtered.map(([key, label]) => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  title={label}
+                                  onClick={() => { setProductForm(f => ({ ...f, iconKey: key })); setIconPickerSearch(""); }}
+                                  className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${productForm.iconKey === key ? "border-violet-500 bg-violet-500/20" : "border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10"}`}
+                                >
+                                  <ServiceIcon name={key} size={20} />
+                                  <span className="text-[9px] text-white/40 truncate w-full text-center leading-tight">{label}</span>
+                                </button>
+                              ))}
+                              {filtered.length === 0 && (
+                                <div className="col-span-6 text-center py-4 text-xs text-white/30">No icons match "{iconPickerSearch}"</div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                   {/* Delivery Type + Status */}
                   <div className="grid grid-cols-2 gap-3">

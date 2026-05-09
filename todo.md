@@ -556,3 +556,4 @@
 - [x] Add platform autocomplete dropdown in Admin product form platform field
 - [x] Add ServiceIcon to Admin Products table rows next to platform name
 - [x] Add ServiceIcon to Admin Orders tab rows next to product platform
+- [x] Add icon picker option to Admin product form (visual grid of all ServiceIcons + image URL tab)
