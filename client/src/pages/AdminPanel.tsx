@@ -59,6 +59,13 @@ import {
 } from "recharts";
 import IconPicker, { ICON_MAP } from "@/components/IconPicker";
 import ServiceIcon from "@/components/ServiceIcon";
+import {
+  Select as RadixSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories" | "transactions" | "security_logs" | "alerts";
 
@@ -910,29 +917,35 @@ export default function AdminPanel() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block">Category *</label>
-                      <select value={productForm.category}
-                        onChange={e => setProductForm(f => ({ ...f, category: e.target.value as typeof f.category, subcategoryId: null }))}
-                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
-                        {allDbCategories && allDbCategories.length > 0
-                          ? allDbCategories.map(c => (
-                              <option key={c.slug} value={c.slug}>{c.label}</option>
-                            ))
-                          : (
-                              <>
-                                <option value="social_media_accounts">Social Media Accounts</option>
-                                <option value="streaming_accounts">Streaming Accounts</option>
-                                <option value="gaming_accounts">Gaming Accounts</option>
-                                <option value="virtual_numbers">Virtual Numbers</option>
-                                <option value="growth_services">Growth Services</option>
-                                <option value="ai_tools">AI Tools</option>
-                                <option value="digital_subscriptions">Digital Subscriptions</option>
-                                <option value="gaming_currency">Gaming Currency</option>
-                                <option value="proxy_networking">Proxy &amp; Networking</option>
-                                <option value="verification_services">Verification Services</option>
-                              </>
-                            )
-                        }
-                      </select>
+                      <RadixSelect
+                        value={productForm.category}
+                        onValueChange={val => setProductForm(f => ({ ...f, category: val as typeof f.category, subcategoryId: null }))}
+                      >
+                        <SelectTrigger className="w-full bg-white/5 border-white/10 text-sm h-9">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          {allDbCategories && allDbCategories.length > 0
+                            ? allDbCategories.map(c => (
+                                <SelectItem key={c.slug} value={c.slug}>{c.label}</SelectItem>
+                              ))
+                            : (
+                                <>
+                                  <SelectItem value="social_media_accounts">Social Media Accounts</SelectItem>
+                                  <SelectItem value="streaming_accounts">Streaming Accounts</SelectItem>
+                                  <SelectItem value="gaming_accounts">Gaming Accounts</SelectItem>
+                                  <SelectItem value="virtual_numbers">Virtual Numbers</SelectItem>
+                                  <SelectItem value="growth_services">Growth Services</SelectItem>
+                                  <SelectItem value="ai_tools">AI Tools</SelectItem>
+                                  <SelectItem value="digital_subscriptions">Digital Subscriptions</SelectItem>
+                                  <SelectItem value="gaming_currency">Gaming Currency</SelectItem>
+                                  <SelectItem value="proxy_networking">Proxy &amp; Networking</SelectItem>
+                                  <SelectItem value="verification_services">Verification Services</SelectItem>
+                                </>
+                              )
+                          }
+                        </SelectContent>
+                      </RadixSelect>
                     </div>
                     <div className="relative">
                       <label className="text-xs text-muted-foreground mb-1.5 block">Platform</label>
