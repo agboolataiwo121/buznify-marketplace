@@ -806,6 +806,8 @@ export const appRouter = router({
           const newStock = remainingPool !== null
             ? remainingPool.length  // pool mode: stock = remaining accounts
             : product.stock - input.quantity; // legacy mode: decrement normally
+          // Auto-deactivate if pool is now empty
+          const autoDeactivate = remainingPool !== null && remainingPool.length === 0;
           await db
             .update(products)
             .set({
@@ -813,8 +815,19 @@ export const appRouter = router({
               totalSold: (product.totalSold ?? 0) + input.quantity,
               // Update pool: remove delivered account
               ...(remainingPool !== null ? { deliveryData: remainingPool } : {}),
+              // Deactivate listing when pool is exhausted
+              ...(autoDeactivate ? { status: "inactive" } : {}),
             })
             .where(eq(products.id, product.id));
+          // Notify owner when pool runs out
+          if (autoDeactivate) {
+            import("./_core/notification").then(({ notifyOwner }) => {
+              notifyOwner({
+                title: `Product "${product.title}" is out of stock`,
+                content: `The account pool for "${product.title}" (ID: ${product.id}) has been exhausted. The listing has been automatically deactivated. Please refill the pool to reactivate it.`,
+              }).catch(() => {});
+            }).catch(() => {});
+          }
         }
 
         // Create notification

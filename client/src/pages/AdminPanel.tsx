@@ -1026,6 +1026,26 @@ export default function AdminPanel() {
                           </Button>
                         </>
                       )}
+                      {/* Refill Pool quick button — only for pool products */}
+                      {Array.isArray(p.deliveryData) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Refill account pool"
+                          className="h-7 px-2 gap-1 text-[11px] hover:text-cyan-400 hover:bg-cyan-500/10"
+                          onClick={() => {
+                            openEditProduct(p);
+                            // After modal opens, switch to pool mode and open bulk import
+                            setTimeout(() => {
+                              setCredMode("pool");
+                              setBulkImportOpen(true);
+                            }, 50);
+                          }}
+                        >
+                          <Upload className="w-3 h-3" />
+                          <span className="hidden sm:inline">Refill</span>
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:text-violet-400"
                         onClick={() => openEditProduct(p)}>
                         <Edit2 className="w-3.5 h-3.5" />
@@ -1609,9 +1629,38 @@ export default function AdminPanel() {
                           );
                         })}
                         {accountPool.length > 0 && (
-                          <p className="text-[10px] text-white/20 text-right">
-                            {accountPool.length} account{accountPool.length !== 1 ? "s" : ""} · each buyer gets 1 unique account · stock = {accountPool.length}
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-white/20">
+                              {accountPool.length} account{accountPool.length !== 1 ? "s" : ""} · each buyer gets 1 unique account · stock = {accountPool.length}
+                            </p>
+                            <button
+                              type="button"
+                              title="Export pool as CSV"
+                              onClick={() => {
+                                if (accountPool.length === 0) return;
+                                // Collect all unique field labels across all accounts
+                                const allLabels = Array.from(new Set(accountPool.flatMap(a => a.fields.map(f => f.label))));
+                                const header = allLabels.join(",");
+                                const rows = accountPool.map(acct => {
+                                  const map: Record<string, string> = {};
+                                  acct.fields.forEach(f => { map[f.label] = f.value; });
+                                  return allLabels.map(l => `"${(map[l] ?? "").replace(/"/g, '""')}"`).join(",");
+                                });
+                                const csv = [header, ...rows].join("\n");
+                                const blob = new Blob([csv], { type: "text/csv" });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `account-pool-${Date.now()}.csv`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                toast.success(`Exported ${accountPool.length} accounts as CSV`);
+                              }}
+                              className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-colors"
+                            >
+                              <Download className="w-2.5 h-2.5" /> Export CSV
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}

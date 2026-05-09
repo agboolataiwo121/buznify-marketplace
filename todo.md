@@ -589,3 +589,8 @@
 - [x] Preview parsed accounts before confirming import
 - [x] Append imported accounts to existing pool (don't replace)
 - [x] Show import summary toast (X accounts added)
+
+## Pool Management Improvements
+- [x] Auto-deactivate product (set status=inactive) when account pool hits 0 after an order
+- [x] Export pool as CSV button in Account Pool tab (downloads current pool as .csv)
+- [x] Quick "Refill Pool" button on product table row (opens edit modal pre-scrolled to Account Pool tab with Bulk Import open)
