@@ -90,6 +90,7 @@ export default function AdminPanel() {
     title: "",
     description: "",
     category: "social_media_accounts" as "social_media_accounts" | "streaming_accounts" | "gaming_accounts" | "virtual_numbers" | "growth_services",
+    subcategoryId: null as number | null,
     platform: "",
     price: "",
     originalPrice: "",
@@ -204,7 +205,7 @@ export default function AdminPanel() {
   };
 
   const resetProductForm = () => setProductForm({
-    title: "", description: "", category: "social_media_accounts", platform: "",
+    title: "", description: "", category: "social_media_accounts", subcategoryId: null, platform: "",
     price: "", originalPrice: "", stock: "1", imageUrl: "", deliveryType: "instant",
     deliveryData: "", featured: false, status: "active",
   });
@@ -215,6 +216,7 @@ export default function AdminPanel() {
       title: p.title,
       description: p.description ?? "",
       category: p.category as any,
+      subcategoryId: (p as any).subcategoryId ?? null,
       platform: p.platform ?? "",
       price: p.price,
       originalPrice: p.originalPrice ?? "",
@@ -238,6 +240,7 @@ export default function AdminPanel() {
       title: productForm.title,
       description: productForm.description || undefined,
       category: productForm.category,
+      subcategoryId: productForm.subcategoryId ?? undefined,
       platform: productForm.platform || undefined,
       price: productForm.price,
       originalPrice: productForm.originalPrice || undefined,
@@ -746,7 +749,7 @@ export default function AdminPanel() {
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block">Category *</label>
                       <select value={productForm.category}
-                        onChange={e => setProductForm(f => ({ ...f, category: e.target.value as typeof f.category }))}
+                        onChange={e => setProductForm(f => ({ ...f, category: e.target.value as typeof f.category, subcategoryId: null }))}
                         className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
                         {allDbCategories && allDbCategories.length > 0
                           ? allDbCategories.map(c => (
@@ -775,6 +778,26 @@ export default function AdminPanel() {
                         placeholder="e.g. Instagram, Netflix" className="bg-white/5 border-white/10 text-sm" />
                     </div>
                   </div>
+                  {/* Subcategory */}
+                  {(() => {
+                    const parentCat = allDbCategories?.find((c: any) => c.slug === productForm.category);
+                    const subs = (parentCat as any)?.children ?? [];
+                    if (!parentCat || subs.length === 0) return null;
+                    return (
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1.5 block">Subcategory <span className="opacity-60">(optional)</span></label>
+                        <select
+                          value={productForm.subcategoryId ?? ""}
+                          onChange={e => setProductForm(f => ({ ...f, subcategoryId: e.target.value ? Number(e.target.value) : null }))}
+                          className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                          <option value="">— No subcategory —</option>
+                          {subs.map((s: any) => (
+                            <option key={s.id} value={s.id}>{s.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
                   {/* Price + Original Price + Stock */}
                   <div className="grid grid-cols-3 gap-3">
                     <div>

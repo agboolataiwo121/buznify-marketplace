@@ -381,3 +381,12 @@
 - [x] Admin product create/edit form: subcategory dropdown (filtered by selected category)
 - [x] Marketplace: show subcategory pills when a parent category is selected
 - [x] Marketplace: filter products by subcategoryId when a subcategory pill is active
+
+## Admin Product Form — Subcategory Dropdown
+- [x] Add subcategoryId field to productForm state in AdminPanel.tsx
+- [x] Add subcategoryId field to productEditForm state in AdminPanel.tsx
+- [x] Add subcategory dropdown to product create form (filtered by selected category)
+- [x] Add subcategory dropdown to product edit form (filtered by selected category)
+- [x] Wire subcategoryId through createProduct and updateProduct mutations
+- [x] Clear subcategoryId when category changes in both forms
+- [x] Show "No subcategories" placeholder when selected category has no children
