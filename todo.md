@@ -683,3 +683,10 @@
 
 ## Growth Page Dropdown Fix
 - [x] Replace native select dropdowns with custom dark-themed dropdowns (Deployment Category + Select Service stay dark when open)
+
+## Growth Services Profit Markup
+- [x] Add growth_markup setting to site_settings table (default 30)
+- [x] Add admin.getGrowthMarkup and admin.setGrowthMarkup tRPC procedures
+- [x] Apply markup in growth.listLive so ratePerThousand shown to users is cost * (1 + markup/100)
+- [x] Store original API cost (apiCost) and marked-up price (totalAmount) separately in growth_orders
+- [x] Add Markup % control in Admin Panel Settings tab

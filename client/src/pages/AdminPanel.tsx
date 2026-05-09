@@ -220,6 +220,13 @@ export default function AdminPanel() {
   );
   const { data: serviceCategories, refetch: refetchCategories } = trpc.admin.getServiceCategories.useQuery(undefined, { enabled: tab === "services" });
   const { data: dbCategories, refetch: refetchDbCategories } = trpc.admin.listCategories.useQuery(undefined, { enabled: tab === "categories" });
+  const { data: currentMarkup, refetch: refetchMarkup } = trpc.admin.getGrowthMarkup.useQuery(undefined, { enabled: tab === "services" });
+  const [markupInput, setMarkupInput] = useState<string>("30");
+  useEffect(() => { if (currentMarkup !== undefined) setMarkupInput(String(currentMarkup)); }, [currentMarkup]);
+  const setMarkupMutation = trpc.admin.setGrowthMarkup.useMutation({
+    onSuccess: () => { refetchMarkup(); toast.success("Growth markup updated!"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   // ── Admin Transactions ──────────────────────────────────────────────────
   const [txSearch, setTxSearch] = useState("");
@@ -2652,6 +2659,43 @@ export default function AdminPanel() {
       {/* ── Service Category Controls Tab ─────────────────────────────────── */}
       {tab === "services" && (
         <div className="space-y-4">
+          {/* Growth Services Markup */}
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Growth Services Profit Markup</h3>
+                <p className="text-xs text-muted-foreground">Set a global markup % applied on top of API costs. Users see marked-up prices; your profit = markup amount.</p>
+              </div>
+            </div>
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Markup Percentage (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  step={1}
+                  value={markupInput}
+                  onChange={e => setMarkupInput(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500"
+                  placeholder="30"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Current: <span className="text-violet-400 font-semibold">{currentMarkup ?? 30}%</span> markup on all growth service prices</p>
+              </div>
+              <button
+                onClick={() => setMarkupMutation.mutate({ markup: parseFloat(markupInput) || 30 })}
+                disabled={setMarkupMutation.isPending}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium bg-violet-500 text-white hover:bg-violet-600 transition-all disabled:opacity-50"
+              >
+                {setMarkupMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Save Markup
+              </button>
+            </div>
+          </div>
+
           <div className="glass-card rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">

@@ -1158,17 +1158,33 @@ export const appRouter = router({
           panel: z.enum(["smmkings", "smmkings2", "peakerr", "all"]).default("all"),
         })
       )
-      .query(async ({ input }) => {
+       .query(async ({ input }) => {
         const services = input.panel === "all"
           ? await smmGetAllServices()
           : await smmGetServices(input.panel as SmmPanel);
+
+        // Fetch markup from DB (default 30%)
+        let markupPct = 30;
+        try {
+          const db = await getDb();
+          if (db) {
+            const rows = await db
+              .select()
+              .from(siteSettings)
+              .where(eq(siteSettings.key, "growth_markup"))
+              .limit(1);
+            if (rows.length > 0) markupPct = parseFloat(rows[0].value);
+          }
+        } catch { /* use default */ }
+        const markupMultiplier = 1 + markupPct / 100;
 
         return services
           .map((s) => ({
             ...s,
             platform: detectPlatform(s.name, s.category),
             serviceType: s.type.toLowerCase(),
-            ratePerThousand: parseFloat(s.rate),
+            apiRatePerThousand: parseFloat(s.rate),
+            ratePerThousand: parseFloat((parseFloat(s.rate) * markupMultiplier).toFixed(6)),
             minQty: parseInt(s.min, 10),
             maxQty: parseInt(s.max, 10),
           }))
@@ -1178,7 +1194,6 @@ export const appRouter = router({
             return true;
           });
       }),
-
     /** Place a real order on SMMKings or Peakerr, deduct wallet, store in DB */
     placeOrder: protectedProcedure
       .input(
@@ -2512,6 +2527,40 @@ export const appRouter = router({
           failureReason: input.reason,
         });
         return { success: true };
+      }),
+
+    /** Get the current global growth services markup percentage */
+    getGrowthMarkup: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return 30;
+      const rows = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "growth_markup"))
+        .limit(1);
+      return rows.length > 0 ? parseFloat(rows[0].value) : 30;
+    }),
+
+    /** Set the global growth services markup percentage */
+    setGrowthMarkup: adminProcedure
+      .input(z.object({ markup: z.number().min(0).max(500) }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const existing = await db
+          .select()
+          .from(siteSettings)
+          .where(eq(siteSettings.key, "growth_markup"))
+          .limit(1);
+        if (existing.length > 0) {
+          await db
+            .update(siteSettings)
+            .set({ value: input.markup.toString() })
+            .where(eq(siteSettings.key, "growth_markup"));
+        } else {
+          await db.insert(siteSettings).values({ key: "growth_markup", value: input.markup.toString() });
+        }
+        return { success: true, markup: input.markup };
       }),
   }),
   // ── AI Chat ──────────────────────────────────────────────────────────────
