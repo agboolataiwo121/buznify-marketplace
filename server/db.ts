@@ -1251,3 +1251,42 @@ export async function getAllWithdrawals(limit = 50, offset = 0) {
   if (!db) return [];
   return db.select().from(withdrawals).orderBy(desc(withdrawals.createdAt)).limit(limit).offset(offset);
 }
+
+export async function getWithdrawalById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(withdrawals).where(eq(withdrawals.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getAllWithdrawalsWithUsers(limit = 100, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: withdrawals.id,
+      userId: withdrawals.userId,
+      bankAccountId: withdrawals.bankAccountId,
+      amountUsd: withdrawals.amountUsd,
+      amountNaira: withdrawals.amountNaira,
+      transferReference: withdrawals.transferReference,
+      transferCode: withdrawals.transferCode,
+      status: withdrawals.status,
+      failureReason: withdrawals.failureReason,
+      createdAt: withdrawals.createdAt,
+      updatedAt: withdrawals.updatedAt,
+      userName: users.name,
+      userEmail: users.email,
+      bankName: bankAccounts.bankName,
+      accountNumber: bankAccounts.accountNumber,
+      accountName: bankAccounts.accountName,
+      recipientCode: bankAccounts.recipientCode,
+    })
+    .from(withdrawals)
+    .leftJoin(users, eq(withdrawals.userId, users.id))
+    .leftJoin(bankAccounts, eq(withdrawals.bankAccountId, bankAccounts.id))
+    .orderBy(desc(withdrawals.createdAt))
+    .limit(limit)
+    .offset(offset);
+  return rows;
+}

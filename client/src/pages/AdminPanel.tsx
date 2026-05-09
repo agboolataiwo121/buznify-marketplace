@@ -53,6 +53,8 @@ import {
   UserX,
   Upload,
   FileText,
+  ArrowDownToLine,
+  Banknote,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -69,7 +71,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories" | "transactions" | "security_logs" | "alerts";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "withdrawals" | "notifications" | "services" | "ai_insights" | "categories" | "transactions" | "security_logs" | "alerts";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -209,6 +211,13 @@ export default function AdminPanel() {
   const { data: coupons } = trpc.coupons.list.useQuery(undefined, { enabled: tab === "coupons" });
   const { data: allRefunds } = trpc.refunds.adminList.useQuery(undefined, { enabled: tab === "refunds" });
   const { data: allPayouts } = trpc.payouts.adminList.useQuery(undefined, { enabled: tab === "payouts" });
+  const [withdrawalStatusFilter, setWithdrawalStatusFilter] = useState<"all" | "pending" | "processing" | "success" | "failed" | "reversed">("all");
+  const [rejectModalId, setRejectModalId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const { data: allWithdrawals, refetch: refetchWithdrawals } = trpc.admin.getWithdrawals.useQuery(
+    { status: withdrawalStatusFilter, limit: 100 },
+    { enabled: tab === "withdrawals" }
+  );
   const { data: serviceCategories, refetch: refetchCategories } = trpc.admin.getServiceCategories.useQuery(undefined, { enabled: tab === "services" });
   const { data: dbCategories, refetch: refetchDbCategories } = trpc.admin.listCategories.useQuery(undefined, { enabled: tab === "categories" });
 
@@ -304,6 +313,22 @@ export default function AdminPanel() {
   });
   const updatePayoutMutation = trpc.payouts.adminProcess.useMutation({
     onSuccess: () => { toast.success("Payout status updated"); utils.payouts.adminList.invalidate(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const approveWithdrawalMutation = trpc.admin.approveWithdrawal.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Transfer initiated — status: ${data.status}`);
+      refetchWithdrawals();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const rejectWithdrawalMutation = trpc.admin.rejectWithdrawal.useMutation({
+    onSuccess: () => {
+      toast.success("Withdrawal rejected and balance refunded");
+      setRejectModalId(null);
+      setRejectReason("");
+      refetchWithdrawals();
+    },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -594,6 +619,7 @@ export default function AdminPanel() {
     { value: "fraud", label: "Fraud Detection", icon: AlertTriangle },
     { value: "refunds", label: "Refunds", icon: RotateCcw },
     { value: "payouts", label: "Payouts", icon: CreditCard },
+    { value: "withdrawals", label: "Withdrawals", icon: Banknote },
     { value: "notifications", label: "Push Notifications", icon: Bell },
     { value: "services", label: "Service Controls", icon: Settings },
     { value: "ai_insights", label: "AI Insights", icon: Brain },
@@ -2318,6 +2344,176 @@ export default function AdminPanel() {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Withdrawals Tab ──────────────────────────────────────────────── */}
+      {tab === "withdrawals" && (
+        <div className="space-y-4">
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                  <Banknote className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Withdrawal Requests</h3>
+                  <p className="text-xs text-muted-foreground">Manage user bank transfer withdrawals</p>
+                </div>
+              </div>
+              <div className="sm:ml-auto flex items-center gap-2">
+                {/* Status filter */}
+                <RadixSelect value={withdrawalStatusFilter} onValueChange={(v) => setWithdrawalStatusFilter(v as typeof withdrawalStatusFilter)}>
+                  <SelectTrigger className="w-36 h-8 text-xs glass border-border">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="success">Success</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="reversed">Reversed</SelectItem>
+                  </SelectContent>
+                </RadixSelect>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => refetchWithdrawals()}>
+                  <RefreshCw className="w-3 h-3 mr-1" />Refresh
+                </Button>
+              </div>
+            </div>
+
+            {!allWithdrawals || allWithdrawals.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <ArrowDownToLine className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">No withdrawals found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">User</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Bank Account</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Reference</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Date</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {(allWithdrawals as any[]).map((w: any) => {
+                      const statusColors: Record<string, string> = {
+                        pending: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                        processing: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                        success: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                        failed: "bg-red-500/20 text-red-400 border-red-500/30",
+                        reversed: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+                      };
+                      return (
+                        <tr key={w.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{w.userName ?? `User #${w.userId}`}</div>
+                            <div className="text-xs text-muted-foreground">{w.userEmail ?? ""}</div>
+                          </td>
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <div className="text-foreground">{w.bankName ?? "—"}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{w.accountNumber ?? ""}</div>
+                            <div className="text-xs text-muted-foreground">{w.accountName ?? ""}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="font-semibold text-foreground">${parseFloat(w.amountUsd).toFixed(2)}</div>
+                            <div className="text-xs text-muted-foreground">₦{parseFloat(w.amountNaira).toLocaleString()}</div>
+                          </td>
+                          <td className="px-4 py-3 hidden lg:table-cell">
+                            <div className="font-mono text-xs text-muted-foreground truncate max-w-[140px]">{w.transferReference}</div>
+                            {w.transferCode && <div className="font-mono text-xs text-cyan-400 truncate max-w-[140px]">{w.transferCode}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColors[w.status] ?? "bg-muted text-muted-foreground"}`}>
+                              {w.status}
+                            </span>
+                            {w.failureReason && <div className="text-xs text-red-400 mt-1 max-w-[120px] truncate" title={w.failureReason}>{w.failureReason}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">
+                            {new Date(w.createdAt).toLocaleDateString()}<br/>
+                            <span className="text-muted-foreground/60">{new Date(w.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {(w.status === "pending" || w.status === "failed") && (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                                  onClick={() => approveWithdrawalMutation.mutate({ id: w.id })}
+                                  disabled={approveWithdrawalMutation.isPending}
+                                >
+                                  <CheckCircle className="w-3 h-3 mr-1" />Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                  onClick={() => { setRejectModalId(w.id); setRejectReason(""); }}
+                                  disabled={rejectWithdrawalMutation.isPending}
+                                >
+                                  <XCircle className="w-3 h-3 mr-1" />Reject
+                                </Button>
+                              </div>
+                            )}
+                            {w.status === "processing" && (
+                              <span className="text-xs text-blue-400 flex items-center gap-1 justify-end">
+                                <Activity className="w-3 h-3" />Processing
+                              </span>
+                            )}
+                            {w.status === "success" && (
+                              <span className="text-xs text-emerald-400 flex items-center gap-1 justify-end">
+                                <CheckCircle className="w-3 h-3" />Completed
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Reject Withdrawal Modal */}
+          {rejectModalId !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="glass-card rounded-2xl p-6 w-full max-w-md border border-red-500/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <XCircle className="w-5 h-5 text-red-400" />
+                  <h3 className="font-semibold text-foreground">Reject Withdrawal</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  The user's wallet balance will be refunded automatically. Please provide a reason for the rejection.
+                </p>
+                <textarea
+                  className="w-full bg-muted/30 border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  rows={3}
+                  placeholder="Reason for rejection (e.g. invalid bank details, suspicious activity)..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                />
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white border-0"
+                    onClick={() => rejectWithdrawalMutation.mutate({ id: rejectModalId, reason: rejectReason })}
+                    disabled={!rejectReason.trim() || rejectWithdrawalMutation.isPending}
+                  >
+                    {rejectWithdrawalMutation.isPending ? "Rejecting..." : "Confirm Rejection"}
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => { setRejectModalId(null); setRejectReason(""); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

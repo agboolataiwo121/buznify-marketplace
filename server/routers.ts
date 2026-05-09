@@ -170,6 +170,8 @@ import {
   updateWithdrawalStatus,
   getWithdrawalsByUser,
   getAllWithdrawals,
+  getAllWithdrawalsWithUsers,
+  getWithdrawalById,
 } from "./db";
 import { recordAuthError, recordAvailabilityError, recordSuccess, getErrorState } from "./alertTracker";
 
@@ -2433,6 +2435,82 @@ export const appRouter = router({
       }
       return { seeded: defaults.length };
     }),
+
+    // ── Admin Withdrawal Management ──────────────────────────────────────────
+    getWithdrawals: adminProcedure
+      .input(z.object({
+        status: z.enum(["all", "pending", "processing", "success", "failed", "reversed"]).default("all"),
+        limit: z.number().min(1).max(200).default(100),
+      }).optional())
+      .query(async ({ input }) => {
+        const rows = await getAllWithdrawalsWithUsers(input?.limit ?? 100);
+        if (!input?.status || input.status === "all") return rows;
+        return rows.filter((r) => r.status === input.status);
+      }),
+
+    approveWithdrawal: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const withdrawal = await getWithdrawalById(input.id);
+        if (!withdrawal) throw new TRPCError({ code: "NOT_FOUND", message: "Withdrawal not found" });
+        if (withdrawal.status !== "pending") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Cannot approve a withdrawal with status '${withdrawal.status}'` });
+        }
+        // Get bank account for recipientCode
+        const bankAccount = await getBankAccountById(withdrawal.bankAccountId);
+        if (!bankAccount) throw new TRPCError({ code: "NOT_FOUND", message: "Bank account not found" });
+        // Mark as processing
+        await updateWithdrawalStatus(withdrawal.transferReference, "processing");
+        // Initiate Paystack transfer
+        try {
+          const transfer = await initiateTransfer({
+            amountNaira: parseFloat(withdrawal.amountNaira),
+            recipientCode: bankAccount.recipientCode,
+            reference: withdrawal.transferReference,
+            reason: `Buznify wallet withdrawal — $${withdrawal.amountUsd}`,
+          });
+          await updateWithdrawalStatus(withdrawal.transferReference, transfer.status === "success" ? "success" : "processing", {
+            transferCode: transfer.transfer_code,
+          });
+          return { success: true, status: transfer.status, transferCode: transfer.transfer_code };
+        } catch (err: unknown) {
+          // Revert to pending on failure so admin can retry
+          await updateWithdrawalStatus(withdrawal.transferReference, "pending");
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Transfer failed" });
+        }
+      }),
+
+    rejectWithdrawal: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().min(1).max(500) }))
+      .mutation(async ({ input }) => {
+        const withdrawal = await getWithdrawalById(input.id);
+        if (!withdrawal) throw new TRPCError({ code: "NOT_FOUND", message: "Withdrawal not found" });
+        if (withdrawal.status === "success") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot reject a completed withdrawal" });
+        }
+        // Refund the user's wallet balance
+        const user = await getUserById(withdrawal.userId);
+        if (user) {
+          const currentBalance = parseFloat(user.balance ?? "0");
+          const refundAmount = parseFloat(withdrawal.amountUsd);
+          const newBalance = (currentBalance + refundAmount).toFixed(2);
+          await updateUserBalance(withdrawal.userId, newBalance);
+          await createWalletTransaction({
+            userId: withdrawal.userId,
+            type: "admin_credit",
+            amount: refundAmount.toFixed(2),
+            balanceBefore: currentBalance.toFixed(2),
+            balanceAfter: newBalance,
+            description: `Withdrawal rejected: ${input.reason}`,
+            status: "completed",
+          });
+        }
+        // Mark withdrawal as failed with reason
+        await updateWithdrawalStatus(withdrawal.transferReference, "failed", {
+          failureReason: input.reason,
+        });
+        return { success: true };
+      }),
   }),
   // ── AI Chat ──────────────────────────────────────────────────────────────
   ai: router({
