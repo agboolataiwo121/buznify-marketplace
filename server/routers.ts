@@ -1315,7 +1315,7 @@ export const appRouter = router({
           if (msg.includes("no free phones")) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "No numbers available for this service/country. Try another country." });
           }
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to purchase number at this time. Please try again or select a different country." });
         }
 
         const price = order.price;
@@ -1466,7 +1466,7 @@ export const appRouter = router({
           if (msg.includes("order has sms")) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot cancel: SMS already received." });
           }
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to cancel number at this time. Please try again." });
         }
       }),
 
