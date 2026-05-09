@@ -13,6 +13,7 @@ import {
   Copy, ChevronDown, ChevronUp, Ban,
   Loader2, DollarSign, CheckSquare, XCircle,
 } from "lucide-react";
+import ServiceIcon from "@/components/ServiceIcon";
 
 function countryFlag(iso: string): string {
   if (!iso || iso.length < 2) return "\u{1F310}";
@@ -119,7 +120,9 @@ function ActiveNumberCard({ number, onRefreshList }: { number: NumberRow; onRefr
   return (
     <div className="glass rounded-2xl p-5 border border-white/5">
       <div className="flex items-start justify-between mb-4">
-        <div>
+        <div className="flex items-start gap-3">
+          {number.service && <ServiceIcon name={number.service} size={18} />}
+          <div>
           <div className="flex items-center gap-2 mb-1">
             {isActive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
             <StatusBadge status={number.status} />
@@ -136,6 +139,7 @@ function ActiveNumberCard({ number, onRefreshList }: { number: NumberRow; onRefr
           <p className="text-sm text-muted-foreground mt-0.5">
             {countryFlag(number.countryCode)} {number.countryName} &middot; {number.service ?? "Any Service"} &middot; ${number.price}
           </p>
+          </div>
         </div>
         <div className="text-right flex flex-col items-end gap-2">
           {number.expiresAt && isActive && (
@@ -458,9 +462,7 @@ export default function VirtualNumbers() {
                     return (
                       <div key={product.name} className="glass rounded-2xl p-4 border border-white/5 hover:border-violet-500/30 transition-all group">
                         <div className="flex items-start justify-between mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                            <Phone className="w-5 h-5 text-violet-400" />
-                          </div>
+                          <ServiceIcon name={product.name} size={20} />
                           <div className="text-right">
                             <div className="flex items-center gap-1 text-emerald-400 font-bold text-lg">
                               <DollarSign className="w-4 h-4" />

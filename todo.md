@@ -548,3 +548,4 @@
 - [x] Add Support page at /support with FAQ accordion and contact form
 - [x] Add live chat widget (Tawk.to embed) to all pages
 - [x] Wire contact form to send email to admin via notifyOwner
+- [x] Add service icons to all services in Virtual Numbers page (brand icon map with SVG logos + category fallback)
