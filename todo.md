@@ -551,3 +551,4 @@
 - [x] Add service icons to all services in Virtual Numbers page (brand icon map with SVG logos + category fallback)
 - [x] Add service icons to all services in Social Growth Services page (replace emoji with brand SVG icons)
 - [x] Add hover tooltip to Growth Services service cards (refill policy, delivery time, success rate, min/max, panel info)
+- [x] Add service icons to all products in Digital Marketplace page (replace first-letter placeholder with brand SVG icons)

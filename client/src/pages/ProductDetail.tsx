@@ -3,6 +3,7 @@ import { Link, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import ServiceIcon from "@/components/ServiceIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { CountdownTimer, PeopleViewing, StockUrgency, AbandonedCartBanner } from "@/components/ConversionWidgets";
@@ -199,13 +200,16 @@ export default function ProductDetail() {
             {/* Product header */}
             <div className="glass-card rounded-2xl p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
+                <div className="flex items-start gap-4">
+                  <ServiceIcon name={product.platform ?? ""} size={44} />
+                  <div>
                   {product.featured && (
                     <span className="text-xs badge-purple px-2 py-0.5 rounded-full font-medium mb-2 inline-block">
                       Featured
                     </span>
                   )}
                   <h1 className="text-2xl font-bold text-foreground">{product.title}</h1>
+                  </div>
                 </div>
                 {discount && (
                   <span className="text-sm badge-success px-2 py-1 rounded-full font-medium flex-shrink-0">
@@ -226,7 +230,7 @@ export default function ProductDetail() {
                   <span className="text-sm text-muted-foreground">({product.reviewCount} reviews)</span>
                 </div>
                 <span className="text-sm text-muted-foreground">{product.totalSold} sold</span>
-                <span className="text-sm text-muted-foreground">Platform: <span className="text-foreground">{product.platform}</span></span>
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">Platform: <ServiceIcon name={product.platform ?? ""} size={14} /><span className="text-foreground">{product.platform}</span></span>
               </div>
 
               <p className="text-muted-foreground leading-relaxed">{product.description}</p>

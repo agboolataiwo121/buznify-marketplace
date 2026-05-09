@@ -26,6 +26,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { ICON_MAP } from "@/components/IconPicker";
+import ServiceIcon from "@/components/ServiceIcon";
 
 const CATEGORIES = [
   { value: "", label: "All Products", icon: Package },
@@ -136,8 +137,8 @@ function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
               -{discount}%
             </span>
           )}
-          <div className="text-4xl font-bold text-white/10 select-none">
-            {product.platform?.charAt(0)}
+          <div className="flex items-center justify-center">
+            <ServiceIcon name={product.platform ?? ""} size={52} />
           </div>
           <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-yellow-400" />
@@ -147,7 +148,7 @@ function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
 
         <div className="p-4 flex-1 flex flex-col">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">{product.platform}</span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><ServiceIcon name={product.platform ?? ""} size={12} />{product.platform}</span>
             {(product as any).condition && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${CONDITION_COLORS[(product as any).condition as AccountCondition] ?? 'badge-info'}`}>
                 {(product as any).condition === "Verified" && <BadgeCheck className="w-3 h-3" />}
