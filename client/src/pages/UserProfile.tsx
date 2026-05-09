@@ -25,7 +25,9 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Download,
 } from "lucide-react";
+import { generateReceiptPdf } from "@/lib/receiptGenerator";
 
 const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending: { label: "Pending", color: "text-yellow-400", icon: Clock },
@@ -44,6 +46,7 @@ export default function UserProfile() {
   const [nameValue, setNameValue] = useState("");
   const [uploading, setUploading] = useState(false);
   const [historyLimit, setHistoryLimit] = useState(10);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(null);
   // Change password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -87,6 +90,20 @@ export default function UserProfile() {
     { label: "One uppercase letter", ok: /[A-Z]/.test(newPassword) },
     { label: "One number", ok: /[0-9]/.test(newPassword) },
   ];
+
+  const utils = trpc.useUtils();
+
+  const handleDownloadReceipt = async (orderId: number) => {
+    setDownloadingReceiptId(orderId);
+    try {
+      const receipt = await utils.profile.getOrderReceipt.fetch({ orderId });
+      generateReceiptPdf(receipt);
+    } catch {
+      toast.error("Failed to generate receipt. Please try again.");
+    } finally {
+      setDownloadingReceiptId(null);
+    }
+  };
 
   const { data: purchaseHistory, isLoading: historyLoading } = trpc.profile.purchaseHistory.useQuery(
     { limit: historyLimit },
@@ -393,6 +410,17 @@ export default function UserProfile() {
                               <StatusIcon className="w-3 h-3" />
                               {statusCfg.label}
                             </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); void handleDownloadReceipt(order.id); }}
+                              disabled={downloadingReceiptId === order.id}
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-violet-400 transition-colors mt-1 disabled:opacity-50"
+                              title="Download Receipt"
+                            >
+                              {downloadingReceiptId === order.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <Download className="w-3 h-3" />}
+                              Receipt
+                            </button>
                           </div>
                         </div>
                       );

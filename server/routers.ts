@@ -1901,6 +1901,41 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
         await updateUserProfile(ctx.user.id, { passwordHash: newHash });
         return { success: true };
       }),
+    getOrderReceipt: protectedProcedure
+      .input(z.object({ orderId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const order = await getOrderById(input.orderId);
+        if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        // Ensure the order belongs to the requesting user
+        if (order.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+        }
+        const product = await getProductById(order.productId);
+        const user = await getUserById(ctx.user.id);
+        return {
+          orderId: order.id,
+          orderDate: order.createdAt,
+          deliveredAt: order.deliveredAt,
+          status: order.status,
+          quantity: order.quantity,
+          unitPrice: order.unitPrice,
+          totalAmount: order.totalAmount,
+          discountAmount: order.discountAmount ?? "0.00",
+          notes: order.notes,
+          product: product
+            ? {
+                id: product.id,
+                title: product.title,
+                category: product.category,
+                platform: product.platform,
+              }
+            : null,
+          buyer: {
+            name: user?.name ?? "Customer",
+            email: user?.email ?? "",
+          },
+        };
+      }),
   }),
   // ── Scheduled endpoint ────────────────────────────────────────────────────
   scheduled: router({
