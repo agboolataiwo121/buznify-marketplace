@@ -4,33 +4,45 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Mail, Zap, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, Zap, ArrowLeft, CheckCircle, RefreshCw } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const forgotMutation = trpc.auth.forgotPassword.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       setSubmitted(true);
-      // In dev mode, the token is returned directly
-      if (data.resetToken) {
-        setResetToken(data.resetToken);
-      }
     },
     onError: (err) => {
-      toast.error(err.message);
+      if (err.message.toLowerCase().includes("too many") || err.message.toLowerCase().includes("rate")) {
+        toast.error("Too many requests. Please wait a few minutes before trying again.");
+      } else {
+        toast.error(err.message);
+      }
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      toast.error("Please enter your email");
+      toast.error("Please enter your email address");
       return;
     }
-    forgotMutation.mutate({ email });
+    forgotMutation.mutate({ email, origin: window.location.origin });
+  };
+
+  const handleResend = () => {
+    if (resendCooldown > 0 || forgotMutation.isPending) return;
+    forgotMutation.mutate({ email, origin: window.location.origin });
+    setResendCooldown(60);
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   return (
@@ -59,28 +71,33 @@ export default function ForgotPassword() {
 
         <div className="glass-card rounded-2xl p-8 border border-white/10">
           {submitted ? (
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto">
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                If an account exists for <span className="text-foreground font-medium">{email}</span>, a reset link has been sent.
-              </p>
-              {/* Dev mode: show token directly */}
-              {resetToken && (
-                <div className="glass rounded-xl p-4 mb-4 text-left">
-                  <p className="text-xs text-amber-400 font-medium mb-1">Dev Mode — Reset Token:</p>
-                  <p className="text-xs font-mono text-foreground break-all">{resetToken}</p>
-                  <Link
-                    href={`/reset-password?token=${resetToken}`}
-                    className="text-xs text-violet-400 hover:text-violet-300 mt-2 block"
-                  >
-                    Click here to reset password →
-                  </Link>
-                </div>
-              )}
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  If an account exists for{" "}
+                  <span className="text-foreground font-medium">{email}</span>, a secure reset
+                  link has been sent. The link expires in <strong>1 hour</strong>.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">Don't see it? Check your spam folder.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendCooldown > 0 || forgotMutation.isPending}
+                className="inline-flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : forgotMutation.isPending
+                  ? "Sending..."
+                  : "Resend reset email"}
+              </button>
               <Link href="/login">
-                <Button variant="outline" className="border-white/10 hover:bg-white/5 gap-2">
+                <Button variant="outline" className="border-white/10 hover:bg-white/5 gap-2 w-full">
                   <ArrowLeft className="w-4 h-4" />
                   Back to Login
                 </Button>

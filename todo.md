@@ -502,3 +502,12 @@
 - [x] Confirm 2FA setup flow works end-to-end in Dashboard → Security
 - [x] Confirm 2FA login step works in Login.tsx
 - [x] Add 2FA status indicator in Admin → Users table
+
+## Forgot Password Flow Hardening
+- [x] Replace Math.random() token with crypto.randomBytes(32) hex token
+- [x] Remove resetToken from forgotPassword API response (prevent token leakage)
+- [x] Add origin parameter to forgotPassword input so email link uses correct domain
+- [x] Add security event logging on password reset request and completion
+- [x] Add password strength indicator on ResetPassword page
+- [x] Handle missing/invalid token gracefully on ResetPassword page with clear error UI
+- [x] Add "resend reset email" option on ForgotPassword success screen

@@ -287,19 +287,26 @@ export const appRouter = router({
 
     /** Request password reset — returns token (in production, email it) */
     forgotPassword: publicProcedure
-      .input(z.object({ email: z.string().email() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({
+        email: z.string().email(),
+        origin: z.string().url().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
         const user = await getUserByEmail(input.email);
         // Always return success to prevent user enumeration
         if (!user || !user.passwordHash) return { success: true };
-        const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        // Use crypto.randomBytes for a cryptographically secure token
+        const { randomBytes } = await import("crypto");
+        const token = randomBytes(32).toString("hex");
         const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
         await updateUserResetToken(user.id, token, expiry);
-        // Send password reset email
-        const origin = process.env.APP_ORIGIN || "https://buznify-mktp-kunzevat.manus.space";
+        // Use origin from frontend so the link works on any domain
+        const origin = input.origin || process.env.APP_ORIGIN || "https://buznify-mktp-kunzevat.manus.space";
         sendPasswordResetEmail(user.email!, { resetToken: token, origin }).catch(() => {});
-        // Also return token in response for dev mode convenience
-        return { success: true, resetToken: token };
+        // Log the reset request for security audit
+        logSecurityEvent({ userId: user.id, action: "password_reset_request", ipAddress: ctx.req.ip ?? "unknown" }).catch(() => {});
+        // Never return the token — user must use the emailed link
+        return { success: true };
       }),
 
     /** Verify email address using the token sent by email */
@@ -427,17 +434,19 @@ export const appRouter = router({
           newPassword: z.string().min(8).max(128),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const user = await getUserByResetToken(input.token);
         if (!user) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired reset token" });
         }
         if (user.resetTokenExpiry && user.resetTokenExpiry < new Date()) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Reset token has expired" });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Reset token has expired. Please request a new reset link." });
         }
         const passwordHash = await bcrypt.hash(input.newPassword, 12);
         await updateUserPasswordHash(user.id, passwordHash);
         await updateUserResetToken(user.id, null, null);
+        // Log the successful password reset
+        logSecurityEvent({ userId: user.id, action: "password_reset_complete", ipAddress: ctx.req.ip ?? "unknown" }).catch(() => {});
         return { success: true };
       }),
   }),
