@@ -636,7 +636,7 @@ export default function GrowthServices() {
                     onClick={() => setSelectedPanel(p)}
                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${selectedPanel === p ? "bg-violet-600 text-white" : "text-white/50 hover:text-white/80"}`}
                   >
-                    {p === "all" ? "All Panels" : PANEL_LABELS[p]}
+                    {p === "all" ? "All Servers" : PANEL_LABELS[p]}
                   </button>
                 ))}
               </div>
