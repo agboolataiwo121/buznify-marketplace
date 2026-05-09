@@ -67,8 +67,8 @@ const SERVICE_TYPES = [
 ];
 
 const PANEL_LABELS: Record<string, string> = {
-  smmkings: "SMMKings",
-  peakerr: "Peakerr",
+  smmkings: "Server 1",
+  peakerr: "Server 2",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -474,8 +474,8 @@ function MassOrderTab({ services, userBalance, user }: { services: LiveService[]
                 <span className="text-xs text-white/40 w-5">#{i+1}</span>
                 <select value={row.panel} onChange={e => updateRow(i, { panel: e.target.value as "smmkings" | "peakerr", serviceId: 0, serviceName: "", totalPrice: 0 })}
                   className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
-                  <option value="smmkings">SMMKings</option>
-                  <option value="peakerr">Peakerr</option>
+                  <option value="smmkings">Server 1</option>
+                  <option value="peakerr">Server 2</option>
                 </select>
                 <select value={row.serviceId} onChange={e => {
                   const id = parseInt(e.target.value);
@@ -587,7 +587,7 @@ export default function GrowthServices() {
                 <TrendingUp className="w-6 h-6 text-violet-400" />Social Growth Services
               </h1>
               <p className="text-white/50 text-sm mt-1">
-                Real services from SMMKings &amp; Peakerr · Instant delivery · Refill guarantee
+                Real services from Server 1 &amp; Server 2 · Instant delivery · Refill guarantee
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -676,14 +676,14 @@ export default function GrowthServices() {
             {!isLoading && !error && (
               <p className="text-xs text-white/40">
                 {filtered.length.toLocaleString()} service{filtered.length !== 1 ? "s" : ""} found
-                {services && ` · ${services.length.toLocaleString()} total from both panels`}
+                {services && ` · ${services.length.toLocaleString()} total from both servers`}
               </p>
             )}
 
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-                <p className="text-white/50 text-sm">Loading live services from SMMKings &amp; Peakerr...</p>
+                <p className="text-white/50 text-sm">Loading live services from Server 1 &amp; Server 2...</p>
               </div>
             )}
 
