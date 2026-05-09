@@ -129,7 +129,7 @@ export async function getAllUsers(limit = 50, offset = 0) {
   return db.select().from(users).limit(limit).offset(offset).orderBy(desc(users.createdAt));
 }
 
-export async function updateUserRole(userId: number, role: "user" | "admin" | "vendor") {
+export async function updateUserRole(userId: number, role: "user" | "admin") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ role }).where(eq(users.id, userId));

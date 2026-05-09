@@ -50,6 +50,13 @@
       "when": 1778284107030,
       "tag": "0006_spooky_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1778285246452,
+      "tag": "0007_low_thor",
+      "breakpoints": true
     }
   ]
 }

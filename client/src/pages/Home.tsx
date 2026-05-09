@@ -162,7 +162,7 @@ const whyChoose = [
   },
   {
     icon: BarChart3,
-    title: "Vendor Ecosystem",
+    title: "Global Reach",
     desc: "Sell your own digital products on Buznify. Set your price, upload stock, and earn passively 24/7.",
     color: "text-indigo-400",
     bg: "from-indigo-500/10 to-blue-500/10",
@@ -219,7 +219,7 @@ const reviews = [
 const trustBadges = [
   { icon: Shield, label: "SSL Secured" },
   { icon: Lock, label: "Encrypted Payments" },
-  { icon: CheckCircle, label: "Verified Vendors" },
+  { icon: CheckCircle, label: "Verified Products" },
   { icon: Headphones, label: "24/7 Support" },
   { icon: Award, label: "Money-Back Guarantee" },
   { icon: Zap, label: "Instant Delivery" },
@@ -241,7 +241,7 @@ const faqs = [
   },
   {
     q: "Are the accounts and services genuine?",
-    a: "Yes. Every product listed on Buznify goes through a manual verification process before it's approved. We only work with trusted vendors who meet our quality standards. All accounts are tagged with condition labels (Fresh, Aged, Verified, PVA) so you know exactly what you're getting.",
+    a: "Yes. Every product listed on Buznify goes through a manual verification process before it's approved. All accounts are tagged with condition labels (Fresh, Aged, Verified, PVA) so you know exactly what you're getting.",
   },
   {
     q: "What payment methods do you accept?",
@@ -261,7 +261,7 @@ const faqs = [
   },
   {
     q: "Can I sell my own digital products on Buznify?",
-    a: "Yes! Apply to become a vendor from your dashboard. Once approved, you can list digital accounts, services, or any digital product, set your own prices, and earn passively. Buznify handles payments, delivery, and customer support.",
+    a: "Yes! Buznify offers a wide range of digital products and services. Browse our marketplace for social media accounts, or use our Growth Services and Virtual Numbers sections for instant delivery.",
   },
   {
     q: "Is there a referral program?",

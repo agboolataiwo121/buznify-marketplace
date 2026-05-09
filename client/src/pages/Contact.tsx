@@ -169,7 +169,6 @@ export default function Contact() {
                   { label: "Order not delivered?", href: "/support" },
                   { label: "Refund request", href: "/refund" },
                   { label: "Account issue", href: "/support" },
-                  { label: "Become a vendor", href: "/vendor-program" },
                 ].map(({ label, href }) => (
                   <Link key={label} href={href} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors group">
                     <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />

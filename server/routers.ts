@@ -62,16 +62,16 @@ import {
   getRefundRequestsByUser,
   getAllRefundRequests,
   updateRefundStatus,
-  createVendorPayout,
-  getVendorPayouts,
-  getAllVendorPayouts,
   updatePayoutStatus,
-  getVendorApiKeys,
-  createVendorApiKey,
-  revokeVendorApiKey,
   updateVirtualNumber,
   getVirtualNumberById,
   getVirtualNumberByApiOrderId,
+  getVendorApiKeys,
+  createVendorApiKey,
+  revokeVendorApiKey,
+  getVendorPayouts,
+  createVendorPayout,
+  getAllVendorPayouts,
 } from "./db";
 import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable } from "../drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
@@ -121,14 +121,6 @@ import bcrypt from "bcryptjs";
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
-  return next({ ctx });
-});
-
-// ─── Vendor guard ─────────────────────────────────────────────────────────────
-const vendorProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "vendor" && ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Vendor access required" });
   }
   return next({ ctx });
 });
@@ -280,7 +272,7 @@ export const appRouter = router({
         return product;
       }),
 
-    create: vendorProcedure
+    create: adminProcedure
       .input(
         z.object({
           category: z.enum([
@@ -310,7 +302,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    update: vendorProcedure
+    update: adminProcedure
       .input(
         z.object({
           id: z.number(),
@@ -333,7 +325,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: vendorProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const product = await getProductById(input.id);
@@ -345,7 +337,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    vendorProducts: vendorProcedure.query(async ({ ctx }) => {
+    vendorProducts: adminProcedure.query(async ({ ctx }) => {
       return getProducts({ vendorId: ctx.user.id, status: undefined });
     }),
   }),
@@ -1324,7 +1316,7 @@ export const appRouter = router({
     getUsers: adminProcedure.query(async () => getAllUsers(100)),
 
     updateUserRole: adminProcedure
-      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "vendor"]) }))
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin"]) }))
       .mutation(async ({ input }) => {
         await updateUserRole(input.userId, input.role);
         return { success: true };
@@ -1373,41 +1365,6 @@ export const appRouter = router({
         });
          return { success: true };
       }),
-    approveVendor: adminProcedure
-      .input(z.object({ userId: z.number() }))
-      .mutation(async ({ input }) => {
-        await updateUserRole(input.userId, "vendor");
-        await createNotification({
-          userId: input.userId,
-          type: "system",
-          title: "Vendor Application Approved",
-          message: "Congratulations! Your vendor application has been approved. You can now list products on Buznify.",
-        });
-        return { success: true };
-      }),
-    rejectVendor: adminProcedure
-      .input(z.object({ userId: z.number(), reason: z.string().optional() }))
-      .mutation(async ({ input }) => {
-        await createNotification({
-          userId: input.userId,
-          type: "system",
-          title: "Vendor Application Update",
-          message: input.reason
-            ? `Your vendor application was not approved: ${input.reason}`
-            : "Your vendor application was not approved at this time. Please contact support for more information.",
-        });
-        return { success: true };
-      }),
-    getPendingVendors: adminProcedure.query(async () => {
-      const db = await getDb();
-      if (!db) return [];
-      const pendingUsers = await db
-        .select()
-        .from(users)
-        .where(eq(users.role, "user"))
-        .limit(50);
-      return pendingUsers;
-    }),
   }),
   // ── AI Chat ──────────────────────────────────────────────────────────────
   ai: router({
@@ -1671,74 +1628,6 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
       }),
   }),
 
-  // ── Vendor Payouts ────────────────────────────────────────────────────────
-  payouts: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return getVendorPayouts(ctx.user.id);
-    }),
-    request: protectedProcedure
-      .input(z.object({
-        amount: z.string(),
-        method: z.enum(["bank", "crypto", "paypal"]),
-        destination: z.string().min(5),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const userBalance = parseFloat(ctx.user.balance ?? "0");
-        if (userBalance < parseFloat(input.amount)) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
-        }
-        const payout = await createVendorPayout({
-          vendorId: ctx.user.id,
-          amount: input.amount,
-          method: input.method,
-          destination: input.destination,
-          status: "pending",
-        });
-        return { success: true, payout };
-      }),
-    adminList: adminProcedure.query(async () => {
-      return getAllVendorPayouts(200);
-    }),
-    adminProcess: adminProcedure
-      .input(z.object({
-        id: z.number(),
-        status: z.enum(["processing", "paid", "rejected"]),
-        notes: z.string().optional(),
-      }))
-      .mutation(async ({ input }) => {
-        await updatePayoutStatus(input.id, input.status, input.notes);
-        return { success: true };
-      }),
-  }),
-
-  // ── Vendor API Keys ───────────────────────────────────────────────────────
-  apiKeys: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return getVendorApiKeys(ctx.user.id);
-    }),
-    create: protectedProcedure
-      .input(z.object({ label: z.string().min(1).max(100) }))
-      .mutation(async ({ ctx, input }) => {
-        const { nanoid } = await import("nanoid");
-        const rawKey = `buz_${nanoid(32)}`;
-        // Store hash of key for security
-        const keyHash = Buffer.from(rawKey).toString("base64");
-        await createVendorApiKey({
-          vendorId: ctx.user.id,
-          keyHash,
-          label: input.label,
-          isActive: true,
-        });
-        return { success: true, key: rawKey }; // Only returned once
-      }),
-    revoke: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        await revokeVendorApiKey(input.id);
-        return { success: true };
-      }),
-  }),
-
   // ── Payments (Paystack) ──────────────────────────────────────────────────
   payment: router({
     /**
@@ -1867,6 +1756,81 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
     }),
   }),
 
+  // ── API Keys (any authenticated user) ────────────────────────────────────
+  apiKeys: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return getVendorApiKeys(ctx.user.id);
+    }),
+    create: protectedProcedure
+      .input(z.object({ label: z.string().min(1).max(100) }))
+      .mutation(async ({ ctx, input }) => {
+        const { nanoid } = await import("nanoid");
+        const rawKey = `buz_${nanoid(32)}`;
+        const keyHash = Buffer.from(rawKey).toString("base64");
+        await createVendorApiKey({
+          vendorId: ctx.user.id,
+          keyHash,
+          label: input.label,
+          isActive: true,
+        });
+        return { success: true, key: rawKey };
+      }),
+    revoke: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await revokeVendorApiKey(input.id);
+        return { success: true };
+      }),
+  }),
+  // ── Payouts (any authenticated user) ─────────────────────────────────────
+  payouts: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return getVendorPayouts(ctx.user.id);
+    }),
+    request: protectedProcedure
+      .input(z.object({
+        amount: z.string(),
+        method: z.string(),
+        destination: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const balance = parseFloat(user.balance ?? "0");
+        const amount = parseFloat(input.amount);
+        if (amount <= 0 || amount > balance) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+        }
+        await createVendorPayout({
+          vendorId: ctx.user.id,
+          amount: input.amount,
+          method: input.method as any,
+          destination: input.destination,
+          status: "pending",
+        });
+        const newBal = (balance - amount).toFixed(6);
+        await updateUserBalance(ctx.user.id, newBal);
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "withdrawal",
+          amount: input.amount,
+          balanceBefore: balance.toFixed(6),
+          balanceAfter: newBal,
+          description: `Payout request via ${input.method}`,
+          status: "pending",
+        });
+        return { success: true };
+      }),
+    adminList: adminProcedure.query(async () => {
+      return getAllVendorPayouts(200);
+    }),
+    adminProcess: adminProcedure
+      .input(z.object({ id: z.number(), status: z.enum(["processing", "paid", "rejected"]), notes: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        await updatePayoutStatus(input.id, input.status, input.notes);
+        return { success: true };
+      }),
+  }),
   // ── Scheduled endpoint ────────────────────────────────────────────────────
   scheduled: router({
     updateContent: publicProcedure

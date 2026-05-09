@@ -155,16 +155,6 @@ export default function Navbar() {
                         <ShoppingCart className="w-4 h-4" />Orders
                       </Link>
                     </DropdownMenuItem>
-                    {user.role === "vendor" && (
-                      <>
-                        <DropdownMenuSeparator className="bg-white/5" />
-                        <DropdownMenuItem asChild>
-                          <Link href="/vendor" className="flex items-center gap-2 cursor-pointer">
-                            <Users className="w-4 h-4" />Vendor Dashboard
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
                     {user.role === "admin" && (
                       <>
                         <DropdownMenuSeparator className="bg-white/5" />

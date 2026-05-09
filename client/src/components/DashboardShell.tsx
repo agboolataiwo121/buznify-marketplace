@@ -112,23 +112,6 @@ export default function DashboardShell({ children, title, subtitle }: Props) {
                 );
               })}
 
-              {/* Vendor/Admin links */}
-              {user?.role === "vendor" && (
-                <>
-                  <div className="border-t border-white/5 my-2" />
-                  <Link
-                    href="/vendor"
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      location === "/vendor"
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                    }`}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Vendor Dashboard
-                  </Link>
-                </>
-              )}
               {user?.role === "admin" && (
                 <>
                   <div className="border-t border-white/5 my-2" />

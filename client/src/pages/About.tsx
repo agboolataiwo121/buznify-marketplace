@@ -13,15 +13,15 @@ const TEAM = [
 const MILESTONES = [
   { year: "2022", event: "Buznify founded with a vision to unify digital account trading, SMM panels, and SMS verification." },
   { year: "2023", event: "Launched beta with 500 products across 3 categories. Reached 10,000 users in 60 days." },
-  { year: "2024", event: "Introduced automated delivery engine, vendor marketplace, and virtual numbers. Crossed $1M GMV." },
+  { year: "2024", event: "Introduced automated delivery engine, growth services, and virtual numbers. Crossed $1M GMV." },
   { year: "2025", event: "Expanded to 50+ countries, 4,800+ services, and 127,000+ completed orders." },
 ];
 
 const VALUES = [
   { icon: Zap, title: "Speed First", desc: "Every second counts. Our automation delivers products in under 3 seconds on average.", color: "text-yellow-400", bg: "from-yellow-500/10 to-orange-500/10" },
-  { icon: Shield, title: "Trust by Design", desc: "Escrow protection, verified vendors, and anti-fraud systems built into every transaction.", color: "text-emerald-400", bg: "from-emerald-500/10 to-teal-500/10" },
+  { icon: Shield, title: "Trust by Design", desc: "Escrow protection, verified products, and anti-fraud systems built into every transaction.", color: "text-emerald-400", bg: "from-emerald-500/10 to-teal-500/10" },
   { icon: Globe, title: "Global Access", desc: "Serving buyers and sellers across 50+ countries with 24/7 automated infrastructure.", color: "text-blue-400", bg: "from-blue-500/10 to-cyan-500/10" },
-  { icon: Users, title: "Community Driven", desc: "Built with feedback from thousands of real users, vendors, and power buyers.", color: "text-violet-400", bg: "from-violet-500/10 to-purple-500/10" },
+  { icon: Users, title: "Community Driven", desc: "Built with feedback from thousands of real users and power buyers.", color: "text-violet-400", bg: "from-violet-500/10 to-purple-500/10" },
 ];
 
 export default function About() {
@@ -76,7 +76,7 @@ export default function About() {
               We started Buznify because the digital products market was fragmented, untrustworthy, and slow. Buyers were getting scammed. Sellers had no professional platform. Verification services were scattered across dozens of shady websites.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              We built Buznify to change that — a single, premium platform where every transaction is automated, every vendor is verified, and every buyer is protected. Think of it as the Stripe + Shopify + Twilio of digital accounts.
+              We built Buznify to change that — a single, premium platform where every transaction is automated, every product is verified, and every buyer is protected. Think of it as the Stripe + Shopify + Twilio of digital accounts.
             </p>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default function About() {
           <div className="glass-card rounded-2xl p-10 border border-violet-500/20">
             <TrendingUp className="w-10 h-10 text-violet-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-3">Ready to Join Buznify?</h2>
-            <p className="text-muted-foreground mb-6">Browse thousands of digital products or list your own as a verified vendor.</p>
+            <p className="text-muted-foreground mb-6">Browse thousands of digital products with instant automated delivery.</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/marketplace">
                 <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold text-sm transition-all">

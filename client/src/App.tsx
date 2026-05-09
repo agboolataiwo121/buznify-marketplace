@@ -15,14 +15,12 @@ import DashboardOrders from "./pages/DashboardOrders";
 import DashboardReferrals from "./pages/DashboardReferrals";
 import DashboardNotifications from "./pages/DashboardNotifications";
 import DashboardSmsInbox from "./pages/DashboardSmsInbox";
-import VendorDashboard from "./pages/VendorDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import Support from "./pages/Support";
 import TicketDetail from "./pages/TicketDetail";
 import TermsOfService from "./pages/TermsOfService";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
-import VendorProgram from "./pages/VendorProgram";
 import ApiDocs from "./pages/ApiDocs";
 import Changelog from "./pages/Changelog";
 import Status from "./pages/Status";
@@ -58,7 +56,6 @@ function Router() {
       <Route path="/dashboard/referrals" component={DashboardReferrals} />
       <Route path="/dashboard/notifications" component={DashboardNotifications} />
       <Route path="/dashboard/sms-inbox" component={DashboardSmsInbox} />
-      <Route path="/vendor" component={VendorDashboard} />
       <Route path="/admin" component={AdminPanel} />
       <Route path="/support" component={Support} />
       <Route path="/support/:id" component={TicketDetail} />
@@ -68,7 +65,6 @@ function Router() {
       <Route path="/security" component={Security} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />
-      <Route path="/vendor-program" component={VendorProgram} />
       <Route path="/api-docs" component={ApiDocs} />
       <Route path="/changelog" component={Changelog} />
       <Route path="/status" component={Status} />
