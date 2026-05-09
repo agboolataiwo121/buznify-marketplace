@@ -365,19 +365,19 @@
 - [x] Update AdminPanel Categories tab list to show selected icon preview next to each category
 
 ## Product Subcategory Support
-- [ ] Add `parentId` (int, nullable, FK → product_categories.id) to productCategories schema
-- [ ] Push schema migration with pnpm db:push
-- [ ] Update listCategories procedure to return nested tree (parent with children array)
-- [ ] Update createCategory procedure to accept optional parentId
-- [ ] Update updateCategory procedure to accept optional parentId
-- [ ] Add getSubcategories procedure (by parentId)
-- [ ] Update products table: add subcategoryId column (nullable FK → product_categories.id)
-- [ ] Push products schema migration
-- [ ] Update products.list procedure to filter by subcategoryId
-- [ ] Update product create/update procedures to accept subcategoryId
-- [ ] Admin Categories tab: show tree view with parent → children indentation
-- [ ] Admin Categories tab: Add Subcategory button per parent row
-- [ ] Admin Categories tab: subcategory creation form with parent selector
-- [ ] Admin product create/edit form: subcategory dropdown (filtered by selected category)
-- [ ] Marketplace: show subcategory pills when a parent category is selected
-- [ ] Marketplace: filter products by subcategoryId when a subcategory pill is active
+- [x] Add `parentId` (int, nullable, FK → product_categories.id) to productCategories schema
+- [x] Push schema migration with pnpm db:push
+- [x] Update listCategories procedure to return nested tree (parent with children array)
+- [x] Update createCategory procedure to accept optional parentId
+- [x] Update updateCategory procedure to accept optional parentId
+- [x] Add getSubcategories procedure (by parentId)
+- [x] Update products table: add subcategoryId column (nullable FK → product_categories.id)
+- [x] Push products schema migration
+- [x] Update products.list procedure to filter by subcategoryId
+- [x] Update product create/update procedures to accept subcategoryId
+- [x] Admin Categories tab: show tree view with parent → children indentation
+- [x] Admin Categories tab: Add Subcategory button per parent row
+- [x] Admin Categories tab: subcategory creation form with parent selector
+- [x] Admin product create/edit form: subcategory dropdown (filtered by selected category)
+- [x] Marketplace: show subcategory pills when a parent category is selected
+- [x] Marketplace: filter products by subcategoryId when a subcategory pill is active
