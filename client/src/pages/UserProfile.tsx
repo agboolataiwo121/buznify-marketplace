@@ -26,6 +26,7 @@ import {
   Eye,
   EyeOff,
   Download,
+  RotateCcw,
 } from "lucide-react";
 import { generateReceiptPdf } from "@/lib/receiptGenerator";
 
@@ -47,6 +48,7 @@ export default function UserProfile() {
   const [uploading, setUploading] = useState(false);
   const [historyLimit, setHistoryLimit] = useState(10);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(null);
+  const [buyingAgainId, setBuyingAgainId] = useState<number | null>(null);
   // Change password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -83,6 +85,23 @@ export default function UserProfile() {
       return;
     }
     changePasswordMutation.mutate({ currentPassword, newPassword, confirmPassword });
+  };
+
+  const buyAgainMutation = trpc.orders.create.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success("Order placed! Check your purchase history for delivery details.");
+      setBuyingAgainId(null);
+      void utils.profile.purchaseHistory.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to place order. Please try again.");
+      setBuyingAgainId(null);
+    },
+  });
+
+  const handleBuyAgain = (order: { id: number; productId: number }) => {
+    setBuyingAgainId(order.id);
+    buyAgainMutation.mutate({ productId: order.productId, quantity: 1 });
   };
 
   const pwRules = [
@@ -410,17 +429,32 @@ export default function UserProfile() {
                               <StatusIcon className="w-3 h-3" />
                               {statusCfg.label}
                             </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); void handleDownloadReceipt(order.id); }}
-                              disabled={downloadingReceiptId === order.id}
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-violet-400 transition-colors mt-1 disabled:opacity-50"
-                              title="Download Receipt"
-                            >
-                              {downloadingReceiptId === order.id
-                                ? <Loader2 className="w-3 h-3 animate-spin" />
-                                : <Download className="w-3 h-3" />}
-                              Receipt
-                            </button>
+                            <div className="flex items-center gap-2 mt-1">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); void handleDownloadReceipt(order.id); }}
+                                disabled={downloadingReceiptId === order.id}
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-violet-400 transition-colors disabled:opacity-50"
+                                title="Download Receipt"
+                              >
+                                {downloadingReceiptId === order.id
+                                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                                  : <Download className="w-3 h-3" />}
+                                Receipt
+                              </button>
+                              {order.productId != null && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleBuyAgain({ id: order.id, productId: order.productId }); }}
+                                  disabled={buyingAgainId === order.id}
+                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-emerald-400 transition-colors disabled:opacity-50"
+                                  title="Buy Again"
+                                >
+                                  {buyingAgainId === order.id
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <RotateCcw className="w-3 h-3" />}
+                                  Buy Again
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
