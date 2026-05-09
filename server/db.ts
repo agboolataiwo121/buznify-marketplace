@@ -23,6 +23,7 @@ import {
   walletTransactions,
   wishlists,
   payments,
+  siteAlerts,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1054,4 +1055,44 @@ export async function setFraudFlag(userId: number, flagged: boolean): Promise<vo
     fraudFlagged: flagged,
     fraudFlaggedAt: flagged ? new Date() : null,
   }).where(eq(users.id, userId));
+}
+
+// ─── Site Alerts ──────────────────────────────────────────────────────────────
+export async function getActiveSiteAlerts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(siteAlerts)
+    .where(eq(siteAlerts.isActive, true))
+    .orderBy(desc(siteAlerts.createdAt));
+}
+
+export async function getAllSiteAlerts(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const [rows, countResult] = await Promise.all([
+    db.select().from(siteAlerts).orderBy(desc(siteAlerts.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql`count(*)` }).from(siteAlerts),
+  ]);
+  return { rows, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function createSiteAlert(data: typeof siteAlerts.$inferInsert) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(siteAlerts).values(data);
+  return result;
+}
+
+export async function dismissSiteAlert(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(siteAlerts).set({ isActive: false, dismissedAt: new Date() }).where(eq(siteAlerts.id, id));
+}
+
+export async function updateSiteAlert(id: number, data: Partial<typeof siteAlerts.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(siteAlerts).set(data).where(eq(siteAlerts.id, id));
 }

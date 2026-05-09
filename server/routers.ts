@@ -144,7 +144,13 @@ import {
   markEmailVerified,
   getSecurityLogs,
   setFraudFlag,
+  getActiveSiteAlerts,
+  getAllSiteAlerts,
+  createSiteAlert,
+  dismissSiteAlert,
+  updateSiteAlert,
 } from "./db";
+import { recordAuthError, recordAvailabilityError, recordSuccess, getErrorState } from "./alertTracker";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1307,13 +1313,21 @@ export const appRouter = router({
         let order;
         try {
           order = await fivesimBuyNumber(input.country, input.operator, input.product, input.maxPrice);
+          // Record success to reset error counters
+          recordSuccess("virtual_numbers");
         } catch (err: any) {
           const msg = err?.message ?? "Failed to purchase number";
           if (msg.includes("not enough user balance")) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "5sim account balance is insufficient. Please contact support." });
           }
           if (msg.includes("no free phones")) {
+            // Track availability errors for auto-alert
+            recordAvailabilityError("virtual_numbers").catch(() => {});
             throw new TRPCError({ code: "BAD_REQUEST", message: "No numbers available for this service/country. Try another country." });
+          }
+          // Track auth errors (401/403) for auto-alert
+          if (msg.includes("401") || msg.includes("403") || msg.includes("Unauthorized") || msg.includes("Forbidden")) {
+            recordAuthError("virtual_numbers").catch(() => {});
           }
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to purchase number at this time. Please try again or select a different country." });
         }
@@ -1727,9 +1741,82 @@ export const appRouter = router({
       await markAllNotificationsRead(ctx.user.id);
       return { success: true };
     }),
+  }),  // ── Site Alerts ─────────────────────────────────────────────────────────────────────
+  alerts: router({
+    /** Public: get all currently active site alerts */
+    getActive: publicProcedure.query(async () => {
+      return getActiveSiteAlerts();
+    }),
+
+    /** Admin: get all alerts (including dismissed) */
+    getAll: adminProcedure
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .query(async ({ input }) => {
+        return getAllSiteAlerts(input.limit, input.offset);
+      }),
+
+    /** Admin: create a manual alert */
+    create: adminProcedure
+      .input(z.object({
+        type: z.enum(["info", "warning", "error", "success"]).default("warning"),
+        severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+        title: z.string().min(3).max(255),
+        message: z.string().min(5),
+        affectedService: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await createSiteAlert({
+          ...input,
+          isActive: true,
+          autoTriggered: false,
+          createdByAdminId: ctx.user.id,
+        });
+        await logSecurityEvent({
+          userId: ctx.user.id,
+          action: "alert_created",
+          metadata: { title: input.title, type: input.type },
+          ipAddress: ctx.req.ip ?? "unknown",
+        });
+        return { success: true };
+      }),
+
+    /** Admin: dismiss (deactivate) an alert */
+    dismiss: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await dismissSiteAlert(input.id);
+        await logSecurityEvent({
+          userId: ctx.user.id,
+          action: "alert_dismissed",
+          metadata: { alertId: input.id },
+          ipAddress: ctx.req.ip ?? "unknown",
+        });
+        return { success: true };
+      }),
+
+    /** Admin: update an existing alert */
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().min(3).max(255).optional(),
+        message: z.string().min(5).optional(),
+        type: z.enum(["info", "warning", "error", "success"]).optional(),
+        severity: z.enum(["low", "medium", "high", "critical"]).optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateSiteAlert(id, data);
+        return { success: true };
+      }),
+
+    /** Admin: get current 5sim error tracker state */
+    getErrorState: adminProcedure.query(() => {
+      return getErrorState("virtual_numbers");
+    }),
   }),
 
-  // ── Admin ─────────────────────────────────────────────────────────────────
+  // ── Admin ─────────────────────────────────────────────────────────────────────
   admin: router({
     getStats: adminProcedure.query(async () => {
       const db = await getDb();

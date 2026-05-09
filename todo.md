@@ -511,3 +511,15 @@
 - [x] Add password strength indicator on ResetPassword page
 - [x] Handle missing/invalid token gracefully on ResetPassword page with clear error UI
 - [x] Add "resend reset email" option on ForgotPassword success screen
+
+## Site-Wide Admin Alert Banner
+- [ ] Add site_alerts table to schema (id, type, severity, title, message, isActive, autoTriggered, dismissedAt, createdAt)
+- [ ] Push schema migration with pnpm db:push
+- [ ] Add in-memory 5sim error tracker (consecutive 401/503 counts with threshold logic)
+- [ ] Auto-create alert when 5sim errors exceed threshold (3 consecutive auth errors or 5 availability errors)
+- [ ] Log raw 5sim errors to security_logs alongside alert creation
+- [ ] Add DB helpers: createSiteAlert, getActiveSiteAlerts, dismissSiteAlert, getAllSiteAlerts
+- [ ] Add tRPC procedures: alerts.getActive (public), alerts.getAll (admin), alerts.create (admin), alerts.dismiss (admin)
+- [ ] Build SiteAlertBanner component (shown at top of all pages, dismissible per-session)
+- [ ] Wire SiteAlertBanner into App.tsx layout
+- [ ] Add Alerts tab to Admin Panel with create/dismiss/history table UI

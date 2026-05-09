@@ -191,7 +191,9 @@ export type SecurityAction =
   | "api_key_created"
   | "api_key_revoked"
   | "suspicious_deposit"
-  | "admin_action";
+  | "admin_action"
+  | "alert_created"
+  | "alert_dismissed";
 
 export interface SecurityLogEntry {
   userId?: number;

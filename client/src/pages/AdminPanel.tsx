@@ -59,7 +59,7 @@ import {
 } from "recharts";
 import IconPicker, { ICON_MAP } from "@/components/IconPicker";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories" | "transactions" | "security_logs";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights" | "categories" | "transactions" | "security_logs" | "alerts";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -170,6 +170,28 @@ export default function AdminPanel() {
     { page: secPage, pageSize: SEC_PAGE_SIZE, search: secSearch || undefined, action: secAction !== "all" ? secAction : undefined },
     { enabled: tab === "security_logs" }
   );
+  // Alerts state
+  const [alertPage, setAlertPage] = useState(1);
+  const ALERT_PAGE_SIZE = 20;
+  const [alertForm, setAlertForm] = useState({ type: "warning" as "info"|"warning"|"error"|"success", severity: "medium" as "low"|"medium"|"high"|"critical", title: "", message: "", affectedService: "" });
+  const [showAlertForm, setShowAlertForm] = useState(false);
+  const { data: allAlertsData, isLoading: allAlertsLoading, refetch: refetchAlerts } = trpc.alerts.getAll.useQuery(
+    { limit: ALERT_PAGE_SIZE, offset: (alertPage - 1) * ALERT_PAGE_SIZE },
+    { enabled: tab === "alerts" }
+  );
+  const { data: errorState } = trpc.alerts.getErrorState.useQuery(undefined, { enabled: tab === "alerts", refetchInterval: 30_000 });
+  const createAlertMutation = trpc.alerts.create.useMutation({
+    onSuccess: () => { toast.success("Alert published!"); setAlertForm({ type: "warning", severity: "medium", title: "", message: "", affectedService: "" }); setShowAlertForm(false); refetchAlerts(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const dismissAlertMutation = trpc.alerts.dismiss.useMutation({
+    onSuccess: () => { toast.success("Alert dismissed"); refetchAlerts(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateAlertMutation = trpc.alerts.update.useMutation({
+    onSuccess: () => { toast.success("Alert updated"); refetchAlerts(); },
+    onError: (err: any) => toast.error(err.message),
+  });
   const txTypeConfig: Record<string, { icon: React.ElementType; color: string; label: string; sign: string }> = {
     deposit: { icon: ArrowDownLeft, color: "text-emerald-400", label: "Deposit", sign: "+" },
     purchase: { icon: ArrowUpRight, color: "text-red-400", label: "Purchase", sign: "-" },
@@ -440,6 +462,7 @@ export default function AdminPanel() {
     { value: "categories", label: "Categories", icon: Tag },
     { value: "transactions", label: "Transactions", icon: DollarCircle },
     { value: "security_logs", label: "Security Logs", icon: ShieldAlert },
+    { value: "alerts", label: "Site Alerts", icon: Bell },
   ];
 
   return (
@@ -2223,6 +2246,137 @@ export default function AdminPanel() {
               )}
             </>
           )}
+        </div>
+      )}
+      {tab === "alerts" && (
+        <div className="space-y-6">
+          {errorState && (
+            <div className="glass rounded-2xl p-4 border border-white/5">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-violet-400" /> 5sim API Error Tracker
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white/5 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Auth Errors (1h)</p>
+                  <p className={`text-xl font-bold mt-1 ${errorState.consecutiveAuthErrors >= 5 ? "text-red-400" : "text-foreground"}`}>{errorState.consecutiveAuthErrors}</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Avail Errors (1h)</p>
+                  <p className={`text-xl font-bold mt-1 ${errorState.consecutiveAvailabilityErrors >= 10 ? "text-amber-400" : "text-foreground"}`}>{errorState.consecutiveAvailabilityErrors}</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">API Status</p>
+                  <p className={`text-sm font-semibold mt-1 ${errorState.consecutiveAuthErrors >= 5 ? "text-red-400" : errorState.consecutiveAvailabilityErrors >= 10 ? "text-amber-400" : "text-emerald-400"}`}>
+                    {errorState.consecutiveAuthErrors >= 5 ? "Auth Failure" : errorState.consecutiveAvailabilityErrors >= 10 ? "Low Availability" : "Healthy"}
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Auto-Alert</p>
+                  <p className="text-sm font-semibold mt-1 text-foreground">{errorState.consecutiveAuthErrors >= 5 || errorState.consecutiveAvailabilityErrors >= 10 ? "Triggered" : "Not triggered"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="glass rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5">
+              <h3 className="text-sm font-semibold text-foreground">Site Alerts</h3>
+              <Button size="sm" onClick={() => setShowAlertForm(!showAlertForm)} className="bg-violet-600 hover:bg-violet-500 text-white h-8 gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> New Alert
+              </Button>
+            </div>
+            {showAlertForm && (
+              <div className="p-4 border-b border-white/5 bg-white/2 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+                    <select value={alertForm.type} onChange={e => setAlertForm(f => ({ ...f, type: e.target.value as any }))} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:border-violet-500/50">
+                      <option value="info">Info</option>
+                      <option value="warning">Warning</option>
+                      <option value="error">Error</option>
+                      <option value="success">Success</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Severity</label>
+                    <select value={alertForm.severity} onChange={e => setAlertForm(f => ({ ...f, severity: e.target.value as any }))} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:border-violet-500/50">
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Title</label>
+                  <input value={alertForm.title} onChange={e => setAlertForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Virtual Numbers Temporarily Unavailable" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-violet-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Message</label>
+                  <textarea value={alertForm.message} onChange={e => setAlertForm(f => ({ ...f, message: e.target.value }))} rows={2} placeholder="Describe the issue and expected resolution time" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-violet-500/50 resize-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Affected Service (optional)</label>
+                  <input value={alertForm.affectedService} onChange={e => setAlertForm(f => ({ ...f, affectedService: e.target.value }))} placeholder="e.g. virtual_numbers, growth_services" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-violet-500/50" />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => createAlertMutation.mutate({ ...alertForm, affectedService: alertForm.affectedService || undefined })} disabled={!alertForm.title || !alertForm.message || createAlertMutation.isPending} className="bg-violet-600 hover:bg-violet-500 text-white h-8">
+                    {createAlertMutation.isPending ? "Publishing..." : "Publish Alert"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAlertForm(false)} className="h-8 border-white/10 hover:bg-white/5">Cancel</Button>
+                </div>
+              </div>
+            )}
+            {allAlertsLoading ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">Loading alerts...</div>
+            ) : !allAlertsData?.rows?.length ? (
+              <div className="p-8 text-center">
+                <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground">No alerts yet. Create one above or wait for auto-triggered alerts from the 5sim error tracker.</p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-white/5">
+                  {allAlertsData.rows.map((alert: any) => (
+                    <div key={alert.id} className={`flex items-start gap-3 p-4 ${!alert.isActive ? "opacity-50" : ""}`}>
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${alert.type === "error" ? "bg-red-400" : alert.type === "warning" ? "bg-amber-400" : alert.type === "success" ? "bg-emerald-400" : "bg-blue-400"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-foreground">{alert.title}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${alert.type === "error" ? "bg-red-500/20 text-red-300" : alert.type === "warning" ? "bg-amber-500/20 text-amber-300" : alert.type === "success" ? "bg-emerald-500/20 text-emerald-300" : "bg-blue-500/20 text-blue-300"}`}>{alert.type}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground">{alert.severity}</span>
+                          {alert.autoTriggered && <span className="text-xs px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300">auto</span>}
+                          {!alert.isActive && <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/5 text-muted-foreground">dismissed</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{alert.message}</p>
+                        {alert.affectedService && <p className="text-xs text-muted-foreground/60 mt-0.5">Service: {alert.affectedService}</p>}
+                        <p className="text-xs text-muted-foreground/50 mt-1">{new Date(alert.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {alert.isActive ? (
+                          <Button size="sm" variant="outline" onClick={() => dismissAlertMutation.mutate({ id: alert.id })} disabled={dismissAlertMutation.isPending} className="h-7 px-2 text-xs border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30">
+                            Dismiss
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => updateAlertMutation.mutate({ id: alert.id, isActive: true })} disabled={updateAlertMutation.isPending} className="h-7 px-2 text-xs border-white/10 hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/30">
+                            Re-activate
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {allAlertsData.total > ALERT_PAGE_SIZE && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
+                    <span className="text-xs text-muted-foreground">{allAlertsData.total} alerts total</span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" onClick={() => setAlertPage(p => Math.max(1, p - 1))} disabled={alertPage === 1} className="h-7 w-7 p-0 border-white/10 hover:bg-white/5 disabled:opacity-30"><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => setAlertPage(p => Math.min(Math.ceil(allAlertsData.total / ALERT_PAGE_SIZE), p + 1))} disabled={alertPage >= Math.ceil(allAlertsData.total / ALERT_PAGE_SIZE)} className="h-7 w-7 p-0 border-white/10 hover:bg-white/5 disabled:opacity-30"><ChevronRight className="w-3.5 h-3.5" /></Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </DashboardShell>

@@ -99,6 +99,13 @@
       "when": 1778297183179,
       "tag": "0013_confused_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1778300205190,
+      "tag": "0014_oval_spencer_smythe",
+      "breakpoints": true
     }
   ]
 }

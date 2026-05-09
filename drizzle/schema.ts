@@ -429,3 +429,20 @@ export const securityLogs = mysqlTable("security_logs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type SecurityLog = typeof securityLogs.$inferSelect;
+
+// ─── Site Alerts ──────────────────────────────────────────────────────────────
+export const siteAlerts = mysqlTable("site_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  type: varchar("type", { length: 64 }).notNull().default("info"), // info | warning | error | success
+  severity: varchar("severity", { length: 32 }).notNull().default("medium"), // low | medium | high | critical
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  affectedService: varchar("affectedService", { length: 64 }), // e.g. "virtual_numbers", "growth_services"
+  isActive: boolean("isActive").default(true).notNull(),
+  autoTriggered: boolean("autoTriggered").default(false).notNull(),
+  createdByAdminId: int("createdByAdminId"),
+  dismissedAt: timestamp("dismissedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SiteAlert = typeof siteAlerts.$inferSelect;

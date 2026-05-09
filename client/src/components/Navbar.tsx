@@ -32,6 +32,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import SiteAlertBanner from "@/components/SiteAlertBanner";
 
 const navLinks = [
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
@@ -278,6 +279,10 @@ export default function Navbar() {
         </div>
       </nav>
       <MobileBottomNav />
+      {/* Site-wide alert banner — shown just below the fixed navbar */}
+      <div className="fixed top-16 left-0 right-0 z-40">
+        <SiteAlertBanner />
+      </div>
     </>
   );
 }
