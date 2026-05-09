@@ -322,3 +322,20 @@
 - [x] Add bulk action toolbar (appears when ≥1 product selected)
 - [x] Add bulk edit modal with field selectors
 - [x] Add bulk delete with confirmation
+
+## Service Expansion — More Marketplace Categories
+- [ ] Add new categories: software_licenses, gift_cards, email_accounts, vpn_proxies, seo_tools, freelance_services, crypto_tools, educational_accounts
+- [ ] Expand DEMO_PRODUCTS in Marketplace.tsx with 40+ new products across all categories
+- [ ] Expand DEMO_PRODUCTS in ProductDetail.tsx with matching product detail data
+- [ ] Update CATEGORIES array in Marketplace.tsx to include new category tabs
+- [ ] Update seed data in routers.ts to include new categories and products
+- [ ] Add category icons for new categories
+
+## Service Expansion — 5 New Categories
+- [x] Add new category enum values to schema: ai_tools, digital_subscriptions, gaming_currency, proxy_networking, verification_services
+- [x] Push schema migration with pnpm db:push
+- [x] Update category enum in routers.ts procedures
+- [x] Add 50+ seed products across new categories in db.ts
+- [x] Update CATEGORIES array in Marketplace.tsx with new tabs and icons
+- [x] Expand DEMO_PRODUCTS in Marketplace.tsx with new products
+- [x] Update ProductDetail.tsx DEMO_PRODUCTS with new product details

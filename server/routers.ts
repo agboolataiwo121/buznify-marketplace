@@ -282,6 +282,11 @@ export const appRouter = router({
             "gaming_accounts",
             "virtual_numbers",
             "growth_services",
+            "ai_tools",
+            "digital_subscriptions",
+            "gaming_currency",
+            "proxy_networking",
+            "verification_services",
           ]),
           title: z.string().min(3).max(255),
           description: z.string().optional(),
@@ -325,6 +330,11 @@ export const appRouter = router({
             "gaming_accounts",
             "virtual_numbers",
             "growth_services",
+            "ai_tools",
+            "digital_subscriptions",
+            "gaming_currency",
+            "proxy_networking",
+            "verification_services",
           ]).optional(),
         })
       )
@@ -359,7 +369,7 @@ export const appRouter = router({
         ids: z.array(z.number()).min(1),
         updates: z.object({
           status: z.enum(["active", "inactive", "pending", "rejected"]).optional(),
-          category: z.enum(["social_media_accounts", "streaming_accounts", "gaming_accounts", "virtual_numbers", "growth_services"]).optional(),
+          category: z.enum(["social_media_accounts", "streaming_accounts", "gaming_accounts", "virtual_numbers", "growth_services", "ai_tools", "digital_subscriptions", "gaming_currency", "proxy_networking", "verification_services"]).optional(),
           priceAdjustment: z.object({
             type: z.enum(["set", "increase_pct", "decrease_pct", "increase_fixed", "decrease_fixed"]),
             value: z.number().min(0),
