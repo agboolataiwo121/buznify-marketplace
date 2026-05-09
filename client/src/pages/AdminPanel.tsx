@@ -525,7 +525,7 @@ export default function AdminPanel() {
   return (
     <DashboardShell title="Admin Panel" subtitle="Platform management and analytics.">
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="scroll-x-hidden flex gap-2 mb-6 pb-1">
         {TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}

@@ -44,6 +44,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import AISupportChat from "./components/AISupportChat";
 import { ExitIntentOffer } from "./components/ConversionWidgets";
 import LiveChatWidget from "./components/LiveChatWidget";
+import MobileBottomNav from "./components/MobileBottomNav";
 
 function Router() {
   return (
@@ -102,6 +103,7 @@ function App() {
           <AISupportChat />
           <ExitIntentOffer couponCode="STAY10" discount="10%" />
           <LiveChatWidget />
+          <MobileBottomNav />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

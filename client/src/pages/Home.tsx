@@ -329,7 +329,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-mobile-nav md:pb-0">
       <Navbar />
       <LiveOrderPopup />
 
@@ -371,15 +371,14 @@ export default function Home() {
 
         <div className="container relative z-10 text-center py-24">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-violet-500/30 text-sm text-violet-300 mb-8 animate-fade-in">
-            <Sparkles className="w-4 h-4" />
-            <span>10 Categories · 10,000+ Products · Instant Delivery</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-violet-500/30 text-xs sm:text-sm text-violet-300 mb-6 sm:mb-8 animate-fade-in">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+            <span className="text-center">10 Categories · 10,000+ Products · Instant Delivery</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
           </div>
-
           {/* Headline */}
           <h1
-            className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-slide-up"
+            className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-5 sm:mb-6 animate-slide-up"
             style={{ animationDelay: "0.1s" }}
           >
             <span className="text-foreground">AI Tools, Subscriptions,</span>
@@ -422,7 +421,7 @@ export default function Home() {
 
           {/* CTAs */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up"
+            className="flex flex-col xs:flex-row items-center justify-center gap-3 sm:gap-4 animate-slide-up w-full px-2 sm:px-0"
             style={{ animationDelay: "0.3s" }}
           >
             {isAuthenticated ? (

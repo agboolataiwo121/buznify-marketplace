@@ -331,7 +331,7 @@ export default function VirtualNumbers() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-mobile-nav md:pb-0">
       <Navbar />
       <div className="container pt-24 pb-16">
         <div className="text-center mb-10">
@@ -339,7 +339,7 @@ export default function VirtualNumbers() {
             <Phone className="w-3 h-3" />
             Virtual Number Marketplace &mdash; Powered by 5sim
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
+          <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-3">
             Get a Virtual Number for{" "}
             <span className="gradient-text">Any Service</span>
           </h1>
@@ -374,11 +374,11 @@ export default function VirtualNumbers() {
 
         {activeTab === "browse" && (
           <div>
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="flex flex-col gap-3 mb-6">
               <div className="relative">
                 <button
                   onClick={() => setShowCountryPicker(!showCountryPicker)}
-                  className="glass border border-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-medium hover:border-violet-500/40 transition-all min-w-[200px]"
+                  className="glass border border-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-medium hover:border-violet-500/40 transition-all w-full sm:min-w-[200px] sm:w-auto"
                 >
                   <span className="text-lg">{selectedCountry ? countryFlag(selectedCountry.iso.toUpperCase().slice(0, 2)) : "\u{1F310}"}</span>
                   <span className="text-foreground capitalize">{selectedCountry?.name ?? "Select Country"}</span>

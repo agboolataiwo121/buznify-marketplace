@@ -296,7 +296,7 @@ export default function Marketplace() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-mobile-nav md:pb-0">
       <Navbar />
       <div className="container pt-24 pb-16">
         {/* Header */}
@@ -390,7 +390,7 @@ export default function Marketplace() {
         </div>
 
         {/* Category tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="scroll-x-hidden flex gap-2 mb-8 pb-1">
           {dynamicCategories.map(({ value, label, icon: Icon }) => (
             <button
               key={value}

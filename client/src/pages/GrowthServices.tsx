@@ -721,7 +721,7 @@ export default function GrowthServices() {
   const visiblePlatforms = showAllPlatforms ? PLATFORMS : PLATFORMS.slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-[#060910] text-white">
+    <div className="min-h-screen bg-[#060910] text-white pb-mobile-nav md:pb-0">
       <div className="border-b border-white/5 bg-gradient-to-r from-violet-950/30 to-[#060910]">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -786,7 +786,7 @@ export default function GrowthServices() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2">
+              <div className="scroll-x-hidden flex gap-2 pb-1">
                 {visiblePlatforms.map((p) => (
                   <button
                     key={p.key}

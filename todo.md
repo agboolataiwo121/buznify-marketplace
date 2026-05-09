@@ -561,3 +561,4 @@
 - [x] Update DashboardOrders delivery display to render structured credentials as labeled rows with copy buttons
 - [x] Add structured credential fields builder to Admin product form
 - [x] Update DashboardOrders delivery display to render structured credentials as labeled rows with copy buttons
+- [x] Mobile experience improvements — bottom nav bar (MobileBottomNav), dashboard sidebar drawer (Sheet), scrollable tab bars, responsive layouts across all pages
