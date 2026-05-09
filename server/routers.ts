@@ -126,6 +126,25 @@ import {
   sendPasswordResetEmail,
 } from "./email";
 import { updateUserTwoFactor } from "./db";
+import {
+  sanitizeHtml,
+  verifyCaptcha,
+  recordFailedLogin,
+  isLockedOut,
+  clearLoginAttempts,
+  checkDepositVelocity,
+  logSecurityEvent,
+  encryptValue,
+  decryptValue,
+} from "./security";
+import { sendEmailVerificationEmail } from "./email";
+import {
+  setEmailVerifyToken,
+  getUserByEmailVerifyToken,
+  markEmailVerified,
+  getSecurityLogs,
+  setFraudFlag,
+} from "./db";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -155,11 +174,18 @@ export const appRouter = router({
           name: z.string().min(2).max(64),
           email: z.string().email(),
           password: z.string().min(8).max(128),
+          captchaToken: z.string().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
         const { sdk } = await import("./_core/sdk");
         const { ONE_YEAR_MS } = await import("@shared/const");
+        const ip = ctx.req.ip ?? ctx.req.socket?.remoteAddress ?? "unknown";
+        // CAPTCHA verification
+        const captchaOk = await verifyCaptcha(input.captchaToken, ip);
+        if (!captchaOk) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "CAPTCHA verification failed. Please try again." });
+        }
         // Check if email already taken
         const existing = await getUserByEmail(input.email);
         if (existing) {
@@ -192,6 +218,16 @@ export const appRouter = router({
         if (user.email) {
           sendWelcomeEmail(user.email, user.name ?? "there").catch(() => {});
         }
+        // Send email verification link
+        if (user.email && !user.emailVerified) {
+          const crypto = await import("crypto");
+          const verifyToken = crypto.randomBytes(32).toString("hex");
+          const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          await setEmailVerifyToken(user.id, verifyToken, expiry);
+          const origin = (ctx.req.headers.origin as string) || "https://buznify-mktp-kunzevat.manus.space";
+          sendEmailVerificationEmail(user.email, { verifyToken, origin, name: user.name ?? undefined }).catch(() => {});
+        }
+        await logSecurityEvent({ userId: user.id, action: "register", metadata: { email: input.email }, ipAddress: ctx.req.ip ?? "unknown" });
         return { success: true, user: { id: user.id, name: user.name, email: user.email } };
       }),
 
@@ -201,30 +237,51 @@ export const appRouter = router({
         z.object({
           email: z.string().email(),
           password: z.string().min(1),
+          captchaToken: z.string().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
         const { sdk } = await import("./_core/sdk");
         const { ONE_YEAR_MS } = await import("@shared/const");
+        const ip = ctx.req.ip ?? ctx.req.socket?.remoteAddress ?? "unknown";
+        // CAPTCHA verification
+        const captchaOk = await verifyCaptcha(input.captchaToken, ip);
+        if (!captchaOk) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "CAPTCHA verification failed. Please try again." });
+        }
+        // Account lockout check
+        const lockStatus = isLockedOut(input.email);
+        if (lockStatus.locked) {
+          const minutesLeft = lockStatus.lockedUntil ? Math.ceil((lockStatus.lockedUntil - Date.now()) / 60000) : 30;
+          await logSecurityEvent({ action: "login_locked", metadata: { email: input.email }, ipAddress: ip });
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: `Account temporarily locked. Try again in ${minutesLeft} minute(s).` });
+        }
         const user = await getUserByEmail(input.email);
         if (!user || !user.passwordHash) {
+          recordFailedLogin(input.email);
+          await logSecurityEvent({ action: "login_failed", metadata: { email: input.email, reason: "user_not_found" }, ipAddress: ip });
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
         }
         const valid = await bcrypt.compare(input.password, user.passwordHash);
         if (!valid) {
+          const lockResult = recordFailedLogin(input.email);
+          await logSecurityEvent({ userId: user.id, action: "login_failed", metadata: { attempts: lockResult.attempts }, ipAddress: ip });
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
         }
         if (!user.isActive) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Account is suspended" });
         }
+        clearLoginAttempts(input.email);
         // If 2FA is enabled, do not issue session yet — return requires2FA flag
         if (user.twoFactorEnabled && user.twoFactorSecret) {
+          await logSecurityEvent({ userId: user.id, action: "2fa_login", metadata: { step: "password_ok" }, ipAddress: ip });
           return { success: true, requires2FA: true, email: user.email, user: null };
         }
         // Issue session cookie
         const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "" });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        await logSecurityEvent({ userId: user.id, action: "login_success", ipAddress: ip });
         return { success: true, requires2FA: false, email: user.email, user: { id: user.id, name: user.name, email: user.email } };
       }),
 
@@ -245,6 +302,39 @@ export const appRouter = router({
         return { success: true, resetToken: token };
       }),
 
+    /** Verify email address using the token sent by email */
+    verifyEmail: publicProcedure
+      .input(z.object({ token: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserByEmailVerifyToken(input.token);
+        if (!user) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired verification link." });
+        }
+        if (user.emailVerifyExpiry && new Date() > user.emailVerifyExpiry) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Verification link has expired. Please request a new one." });
+        }
+        await markEmailVerified(user.id);
+        await logSecurityEvent({ userId: user.id, action: "email_verified", ipAddress: ctx.req.ip ?? "unknown" });
+        return { success: true };
+      }),
+    /** Resend email verification link */
+    resendVerification: protectedProcedure.mutation(async ({ ctx }) => {
+      const user = await getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      if (user.emailVerified) {
+        return { success: true, message: "Email already verified." };
+      }
+      if (!user.email) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No email address on file." });
+      }
+      const crypto = await import("crypto");
+      const verifyToken = crypto.randomBytes(32).toString("hex");
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await setEmailVerifyToken(user.id, verifyToken, expiry);
+      const origin = (ctx.req.headers.origin as string) || "https://buznify-mktp-kunzevat.manus.space";
+      sendEmailVerificationEmail(user.email, { verifyToken, origin, name: user.name ?? undefined }).catch(() => {});
+      return { success: true, message: "Verification email sent." };
+    }),
     /** Setup TOTP 2FA — generates a secret and returns a QR code data URL */
     setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
       const { generateSecret, generateURI } = await import("otplib");
@@ -1714,8 +1804,9 @@ export const appRouter = router({
 
     updateUserRole: adminProcedure
       .input(z.object({ userId: z.number(), role: z.enum(["user", "admin"]) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await updateUserRole(input.userId, input.role);
+        await logSecurityEvent({ userId: input.userId, adminId: ctx.user.id, action: "role_changed", metadata: { newRole: input.role } });
         return { success: true };
       }),
 
@@ -1804,6 +1895,24 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    /** Admin: paginated security event log */
+    getSecurityLogs: adminProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        action: z.string().optional(),
+        search: z.string().optional(),
+        page: z.number().min(1).default(1),
+        pageSize: z.number().min(5).max(100).default(25),
+      }))
+      .query(async ({ input }) => {
+        return getSecurityLogs({
+          userId: input.userId,
+          action: input.action,
+          search: input.search,
+          page: input.page,
+          pageSize: input.pageSize,
+        });
+      }),
     getAiAnalyticsSummary: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return { summary: "No data available." };

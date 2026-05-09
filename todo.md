@@ -443,3 +443,62 @@
 - [x] Register /admin/transactions route in App.tsx
 - [x] Add Transactions nav item in AdminPanel sidebar
 - [x] Write vitest test for adminTransactions procedure
+
+## Security Hardening
+### Rate Limiting
+- [x] Install express-rate-limit
+- [x] Apply global rate limiter (100 req/15min per IP) to all /api routes
+- [x] Apply strict rate limiter (5 req/15min) to auth endpoints (login, register, forgotPassword)
+- [x] Apply strict rate limiter (10 req/min) to payment initiation endpoint
+
+### CAPTCHA
+- [x] Add hCaptcha (or Cloudflare Turnstile) server-side verification helper
+- [x] Add CAPTCHA token input to login and register tRPC procedures
+- [x] Add CAPTCHA widget to Login.tsx and Register.tsx frontend forms
+- [x] Skip CAPTCHA verification in test/dev environment
+
+### Email Verification
+- [x] Add emailVerified and emailVerifyToken columns to users table, push migration
+- [x] Generate and store email verification token on registration
+- [x] Send verification email with token link on register
+- [x] Add auth.verifyEmail tRPC procedure to consume token and mark verified
+- [x] Add auth.resendVerification tRPC procedure (rate-limited)
+- [x] Show email verification banner in dashboard if unverified
+- [x] Block sensitive actions (withdrawal, order) for unverified users
+
+### JWT Auth Hardening
+- [x] Audit existing JWT cookie flags (httpOnly, secure, sameSite)
+- [x] Ensure JWT secret is at least 256-bit and loaded from env
+- [x] Add jti (JWT ID) claim and token blacklist table for logout invalidation
+- [x] Set secure: true and sameSite: strict on session cookies in production
+
+### Encrypted API Keys
+- [x] Encrypt stored vendor API key hashes using AES-256-GCM with APP_SECRET
+- [x] Migrate existing key storage to use encrypted format
+- [x] Decrypt only at point of use in server procedures
+- [x] Add API_ENCRYPTION_KEY to secrets
+
+### Input Sanitization
+- [x] Install DOMPurify (server-side via isomorphic-dompurify) or use zod .trim().escape()
+- [x] Add global Zod refinement to strip HTML/script tags from all string inputs
+- [x] Sanitize free-text fields: product description, support ticket body, announcement content
+- [x] Add SQL injection protection note (Drizzle ORM already uses parameterized queries)
+
+### Anti-Fraud Protection
+- [x] Track failed login attempts per IP and per email; lock account after 10 failures in 1h
+- [x] Detect rapid wallet deposits from same IP (>3 deposits in 5min) and flag for review
+- [x] Detect impossible velocity: orders placed faster than delivery time
+- [x] Add fraudFlags column to users table and flaggedAt timestamp
+- [x] Expose flagged users in Admin → Fraud Detection tab
+
+### Admin Security Logs
+- [x] Create security_logs table: id, userId, adminId, action, metadata, ipAddress, createdAt
+- [x] Push schema migration
+- [x] Log all admin actions: role change, manual credit, product delete, user ban, refund approval
+- [x] Add security.getLogs adminProcedure with pagination and filter by action/user
+- [x] Add Security Logs tab in Admin Panel with table view
+
+### 2FA (already implemented — verify and surface)
+- [x] Confirm 2FA setup flow works end-to-end in Dashboard → Security
+- [x] Confirm 2FA login step works in Login.tsx
+- [x] Add 2FA status indicator in Admin → Users table

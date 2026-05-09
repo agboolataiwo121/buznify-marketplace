@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { Eye, EyeOff, Mail, Lock, User, Zap, CheckCircle } from "lucide-react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+
+const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || "1x00000000000000000000AA";
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -20,6 +23,8 @@ export default function Register() {
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: () => {
@@ -28,6 +33,8 @@ export default function Register() {
     },
     onError: (err) => {
       toast.error(err.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     },
   });
 
@@ -45,7 +52,7 @@ export default function Register() {
       toast.error("Password must be at least 8 characters");
       return;
     }
-    registerMutation.mutate({ name, email, password });
+    registerMutation.mutate({ name, email, password, captchaToken: captchaToken ?? undefined });
   };
 
   const passwordStrength = PASSWORD_RULES.filter((r) => r.test(password)).length;
@@ -211,6 +218,18 @@ export default function Register() {
               {confirm && confirm !== password && (
                 <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
               )}
+            </div>
+
+            {/* Turnstile CAPTCHA */}
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+                options={{ theme: "dark", size: "normal" }}
+              />
             </div>
 
             <Button

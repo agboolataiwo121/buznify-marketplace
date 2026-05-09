@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { Eye, EyeOff, Mail, Lock, Zap, Smartphone, ArrowLeft } from "lucide-react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+
+const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || "1x00000000000000000000AA";
 
 // ─── 2FA Verification Step ────────────────────────────────────────────────────
 function TwoFAStep({ email, onBack }: { email: string; onBack: () => void }) {
-  const [, navigate] = useLocation();
   const [token, setToken] = useState("");
 
   const complete2FAMutation = trpc.auth.complete2FALogin.useMutation({
@@ -62,12 +64,13 @@ function TwoFAStep({ email, onBack }: { email: string; onBack: () => void }) {
 
 // ─── Main Login Page ──────────────────────────────────────────────────────────
 export default function Login() {
-  const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [twoFAEmail, setTwoFAEmail] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
@@ -81,6 +84,8 @@ export default function Login() {
     },
     onError: (err) => {
       toast.error(err.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     },
   });
 
@@ -90,7 +95,7 @@ export default function Login() {
       toast.error("Please fill in all fields");
       return;
     }
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate({ email, password, captchaToken: captchaToken ?? undefined });
   };
 
   return (
@@ -187,6 +192,18 @@ export default function Login() {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                </div>
+
+                {/* Turnstile CAPTCHA */}
+                <div className="flex justify-center">
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken(null)}
+                    onError={() => setCaptchaToken(null)}
+                    options={{ theme: "dark", size: "normal" }}
+                  />
                 </div>
 
                 <Button

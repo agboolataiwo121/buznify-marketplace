@@ -231,3 +231,20 @@ export function send2FABackupEmail(
   `;
   return sendEmail(to, "Your Buznify Login Code", layout("Login Verification", body));
 }
+
+/** Send email address verification link */
+export async function sendEmailVerificationEmail(
+  to: string,
+  opts: { verifyToken: string; origin: string; name?: string }
+): Promise<void> {
+  const verifyUrl = `${opts.origin}/verify-email?token=${opts.verifyToken}`;
+  const body = `
+    <h1 style="color:#a78bfa;margin:0 0 8px">Verify your email</h1>
+    <p style="color:#94a3b8;margin:0 0 24px">Hi ${opts.name ?? "there"}, please confirm your email address to unlock all features.</p>
+    <a href="${verifyUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Verify Email Address</a>
+    <p style="color:#64748b;font-size:13px;margin:24px 0 0">This link expires in 24 hours. If you did not create an account, you can safely ignore this email.</p>
+    <p style="color:#64748b;font-size:12px;margin:8px 0 0">Or copy this link: <span style="color:#a78bfa">${verifyUrl}</span></p>
+  `;
+  const html = layout("Verify your email", body);
+  await sendEmail(to, "Verify your Buznify email address", html);
+}

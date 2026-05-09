@@ -34,6 +34,14 @@ export const users = mysqlTable("users", {
   // Two-Factor Authentication
   twoFactorSecret: varchar("twoFactorSecret", { length: 64 }),
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
+  // Email Verification
+  emailVerifyToken: varchar("emailVerifyToken", { length: 128 }),
+  emailVerifyExpiry: timestamp("emailVerifyExpiry"),
+  // Security
+  fraudFlagged: boolean("fraudFlagged").default(false).notNull(),
+  fraudFlaggedAt: timestamp("fraudFlaggedAt"),
+  loginAttempts: int("loginAttempts").default(0).notNull(),
+  lockedUntil: timestamp("lockedUntil"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -409,3 +417,15 @@ export const productCategories = mysqlTable("product_categories", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type ProductCategory = typeof productCategories.$inferSelect;
+
+// ─── Security Logs ────────────────────────────────────────────────────────────
+export const securityLogs = mysqlTable("security_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  adminId: int("adminId"),
+  action: varchar("action", { length: 64 }).notNull(),
+  metadata: text("metadata"),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type SecurityLog = typeof securityLogs.$inferSelect;

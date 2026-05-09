@@ -18,7 +18,9 @@ import {
   updateUserBalance,
   createWalletTransaction,
   updateUserProfile,
+  setFraudFlag,
 } from "../db";
+import { checkDepositVelocity, logSecurityEvent } from "../security";
 import { storagePut } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -84,9 +86,25 @@ async function startServer() {
 
             const user = await getUserById(payment.userId);
             if (user) {
+              // Anti-fraud: velocity check — flag if >3 deposits in 5 minutes
+              const velocityExceeded = checkDepositVelocity(`user_${payment.userId}`);
+              if (velocityExceeded) {
+                await setFraudFlag(payment.userId, true);
+                await logSecurityEvent({
+                  userId: payment.userId,
+                  action: "suspicious_deposit",
+                  metadata: { reference, amountUsd, channel: data.channel },
+                });
+                console.warn(`[Fraud] User ${payment.userId} flagged for rapid deposits`);
+              }
               const balanceBefore = parseFloat(user.balance ?? "0");
               const balanceAfter = balanceBefore + amountUsd;
               await updateUserBalance(payment.userId, balanceAfter.toFixed(6));
+              await logSecurityEvent({
+                userId: payment.userId,
+                action: "admin_action",
+                metadata: { type: "deposit_credited", reference, amountUsd, channel: data.channel },
+              });
               await createWalletTransaction({
                 userId: payment.userId,
                 type: "deposit",

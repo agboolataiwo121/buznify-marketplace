@@ -2,6 +2,7 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
+  securityLogs,
   coupons,
   growthOrders,
   growthServices,
@@ -970,4 +971,87 @@ export async function getAdminTransactions(opts: {
   const rows = where ? await rowsQuery.where(where) : await rowsQuery;
 
   return { rows, total, page, pageSize };
+}
+
+// ─── Email Verification ───────────────────────────────────────────────────────
+
+export async function setEmailVerifyToken(
+  userId: number,
+  token: string,
+  expiry: Date
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailVerifyToken: token, emailVerifyExpiry: expiry }).where(eq(users.id, userId));
+}
+
+export async function getUserByEmailVerifyToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(users).where(eq(users.emailVerifyToken, token)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markEmailVerified(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailVerified: true, emailVerifyToken: null, emailVerifyExpiry: null }).where(eq(users.id, userId));
+}
+
+// ─── Security Logs ────────────────────────────────────────────────────────────
+
+export async function getSecurityLogs(opts: {
+  userId?: number;
+  action?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0, page: 1, pageSize: 20 };
+  const { page = 1, pageSize = 20 } = opts;
+  const offset = (page - 1) * pageSize;
+
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (opts.userId) conditions.push(eq(securityLogs.userId, opts.userId));
+  if (opts.action) conditions.push(eq(securityLogs.action, opts.action));
+  if (opts.search) {
+    const term = `%${opts.search}%`;
+    conditions.push(or(like(users.email, term), like(securityLogs.ipAddress, term)) as ReturnType<typeof eq>);
+  }
+  const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+
+  const countQ = db.select({ count: sql<number>`count(*)` }).from(securityLogs).leftJoin(users, eq(securityLogs.userId, users.id));
+  const [countRow] = where ? await countQ.where(where) : await countQ;
+  const total = Number(countRow?.count ?? 0);
+
+  const rowsQ = db.select({
+    id: securityLogs.id,
+    userId: securityLogs.userId,
+    adminId: securityLogs.adminId,
+    action: securityLogs.action,
+    metadata: securityLogs.metadata,
+    ipAddress: securityLogs.ipAddress,
+    createdAt: securityLogs.createdAt,
+    userEmail: users.email,
+    userName: users.name,
+  }).from(securityLogs)
+    .leftJoin(users, eq(securityLogs.userId, users.id))
+    .orderBy(desc(securityLogs.createdAt))
+    .limit(pageSize)
+    .offset(offset);
+
+  const rows = where ? await rowsQ.where(where) : await rowsQ;
+  return { rows, total, page, pageSize };
+}
+
+// ─── Fraud Flagging ───────────────────────────────────────────────────────────
+
+export async function setFraudFlag(userId: number, flagged: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({
+    fraudFlagged: flagged,
+    fraudFlaggedAt: flagged ? new Date() : null,
+  }).where(eq(users.id, userId));
 }

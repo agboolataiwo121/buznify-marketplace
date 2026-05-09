@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -257,6 +258,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
+        <EmailVerificationBanner />
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
     </>
