@@ -693,3 +693,9 @@
 
 ## Profit Preview Calculator
 - [x] Add live profit preview calculator to the Growth Services Markup card in Admin Panel (shows example API cost → user price → your profit for common price points)
+
+## Virtual Number Profit Markup
+- [x] Add virtual_number_markup setting to site_settings table (default 30)
+- [x] Add admin.getVirtualNumberMarkup and admin.setVirtualNumberMarkup tRPC procedures
+- [x] Apply markup in virtualNumbers.getProducts so prices shown to users = API cost * (1 + markup/100)
+- [x] Add Virtual Number Markup card with live preview calculator to Admin Panel Service Controls tab

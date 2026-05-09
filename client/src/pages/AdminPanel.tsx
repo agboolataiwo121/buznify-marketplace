@@ -227,6 +227,13 @@ export default function AdminPanel() {
     onSuccess: () => { refetchMarkup(); toast.success("Growth markup updated!"); },
     onError: (e) => toast.error(e.message),
   });
+  const { data: currentVnMarkup, refetch: refetchVnMarkup } = trpc.admin.getVirtualNumberMarkup.useQuery(undefined, { enabled: tab === "services" });
+  const [vnMarkupInput, setVnMarkupInput] = useState<string>("30");
+  useEffect(() => { if (currentVnMarkup !== undefined) setVnMarkupInput(String(currentVnMarkup)); }, [currentVnMarkup]);
+  const setVnMarkupMutation = trpc.admin.setVirtualNumberMarkup.useMutation({
+    onSuccess: () => { refetchVnMarkup(); toast.success("Virtual Number markup updated!"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   // ── Admin Transactions ──────────────────────────────────────────────────
   const [txSearch, setTxSearch] = useState("");
@@ -2730,6 +2737,81 @@ export default function AdminPanel() {
                     </table>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">Example: 1,000 orders of a $1.00/1K service → you collect <span className="text-white font-medium">${(1.00 * mult * 1000 / 1000).toFixed(2)}</span>, pay API <span className="text-white font-medium">$1.00</span>, keep <span className="text-emerald-400 font-semibold">${((1.00 * mult - 1.00) * 1000 / 1000).toFixed(2)} profit</span> per 1K delivered.</p>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Virtual Number Markup */}
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Virtual Numbers Profit Markup</h3>
+                <p className="text-xs text-muted-foreground">Set a global markup % applied on top of 5sim API costs. Users see marked-up prices; your profit = markup amount.</p>
+              </div>
+            </div>
+            <div className="flex items-end gap-4 mb-6">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Markup Percentage (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  step={1}
+                  value={vnMarkupInput}
+                  onChange={e => setVnMarkupInput(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500"
+                  placeholder="30"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Current saved: <span className="text-cyan-400 font-semibold">{currentVnMarkup ?? 30}%</span> — preview below updates live as you type</p>
+              </div>
+              <button
+                onClick={() => setVnMarkupMutation.mutate({ markup: parseFloat(vnMarkupInput) || 30 })}
+                disabled={setVnMarkupMutation.isPending}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium bg-cyan-500 text-white hover:bg-cyan-600 transition-all disabled:opacity-50"
+              >
+                {setVnMarkupMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Save Markup
+              </button>
+            </div>
+            {/* Live Profit Preview */}
+            {(() => {
+              const pct = parseFloat(vnMarkupInput) || 0;
+              const mult = 1 + pct / 100;
+              const examples = [0.05, 0.10, 0.20, 0.50, 1.00, 2.00];
+              return (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Live Profit Preview — at {pct}% markup</p>
+                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/5">
+                          <th className="text-left px-4 py-2.5 text-xs text-muted-foreground font-medium">API Cost / Number</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-muted-foreground font-medium">User Pays</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-muted-foreground font-medium">Your Profit</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-muted-foreground font-medium">Margin</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {examples.map((cost, i) => {
+                          const userPrice = cost * mult;
+                          const profit = userPrice - cost;
+                          return (
+                            <tr key={cost} className={`border-b border-white/5 ${i % 2 === 0 ? "" : "bg-white/[0.02]"}`}>
+                              <td className="px-4 py-2.5 text-white/70">${cost.toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-right text-white font-medium">${userPrice.toFixed(4)}</td>
+                              <td className="px-4 py-2.5 text-right text-emerald-400 font-semibold">+${profit.toFixed(4)}</td>
+                              <td className="px-4 py-2.5 text-right text-cyan-400">{pct.toFixed(1)}%</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">Example: 100 number purchases at $0.20/number → you collect <span className="text-white font-medium">${(0.20 * mult * 100).toFixed(2)}</span>, pay 5sim <span className="text-white font-medium">$20.00</span>, keep <span className="text-emerald-400 font-semibold">${((0.20 * mult - 0.20) * 100).toFixed(2)} profit</span>.</p>
                 </div>
               );
             })()}

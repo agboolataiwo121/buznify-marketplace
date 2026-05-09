@@ -1476,7 +1476,30 @@ export const appRouter = router({
       .input(z.object({ country: z.string().default("russia"), operator: z.string().default("any") }))
       .query(async ({ input }) => {
         try {
-          return await fivesimGetProducts(input.country, input.operator);
+          const raw = await fivesimGetProducts(input.country, input.operator);
+          // Apply virtual number markup from DB (default 30%)
+          let markupPct = 30;
+          try {
+            const db = await getDb();
+            if (db) {
+              const rows = await db
+                .select()
+                .from(siteSettings)
+                .where(eq(siteSettings.key, "virtual_number_markup"))
+                .limit(1);
+              if (rows.length > 0) markupPct = parseFloat(rows[0].value);
+            }
+          } catch { /* use default */ }
+          const mult = 1 + markupPct / 100;
+          // Apply markup to each product's Price field
+          const result: Record<string, typeof raw[string]> = {};
+          for (const [key, product] of Object.entries(raw)) {
+            result[key] = {
+              ...product,
+              Price: parseFloat((product.Price * mult).toFixed(4)),
+            };
+          }
+          return result;
         } catch (e) {
           console.error("[5sim] getProducts error:", e);
           return {};
@@ -2559,6 +2582,40 @@ export const appRouter = router({
             .where(eq(siteSettings.key, "growth_markup"));
         } else {
           await db.insert(siteSettings).values({ key: "growth_markup", value: input.markup.toString() });
+        }
+        return { success: true, markup: input.markup };
+      }),
+
+    /** Get the global virtual number markup percentage */
+    getVirtualNumberMarkup: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return 30;
+      const rows = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "virtual_number_markup"))
+        .limit(1);
+      return rows.length > 0 ? parseFloat(rows[0].value) : 30;
+    }),
+
+    /** Set the global virtual number markup percentage */
+    setVirtualNumberMarkup: adminProcedure
+      .input(z.object({ markup: z.number().min(0).max(500) }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const existing = await db
+          .select()
+          .from(siteSettings)
+          .where(eq(siteSettings.key, "virtual_number_markup"))
+          .limit(1);
+        if (existing.length > 0) {
+          await db
+            .update(siteSettings)
+            .set({ value: input.markup.toString() })
+            .where(eq(siteSettings.key, "virtual_number_markup"));
+        } else {
+          await db.insert(siteSettings).values({ key: "virtual_number_markup", value: input.markup.toString() });
         }
         return { success: true, markup: input.markup };
       }),
