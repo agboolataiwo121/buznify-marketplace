@@ -38,6 +38,7 @@ import {
   getUserById,
   getVirtualNumbers,
   getWalletTransactions,
+  getTransactionHistory,
   incrementCouponUsage,
   markAllNotificationsRead,
   markNotificationRead,
@@ -775,6 +776,22 @@ export const appRouter = router({
     getTransactions: protectedProcedure.query(async ({ ctx }) => {
       return getWalletTransactions(ctx.user.id);
     }),
+    /** Paginated, filterable transaction history with Paystack payment metadata */
+    getHistory: protectedProcedure
+      .input(
+        z.object({
+          type: z.enum(["all", "deposit", "withdrawal", "purchase", "refund", "referral_reward", "admin_credit"]).default("all"),
+          page: z.number().min(1).default(1),
+          pageSize: z.number().min(5).max(50).default(10),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        return getTransactionHistory(ctx.user.id, {
+          type: input.type,
+          page: input.page,
+          pageSize: input.pageSize,
+        });
+      }),
 
     withdraw: protectedProcedure
       .input(z.object({ amount: z.number().min(1).max(10000) }))

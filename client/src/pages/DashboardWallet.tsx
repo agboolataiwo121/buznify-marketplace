@@ -21,7 +21,14 @@ import {
   RefreshCw,
   CheckCircle,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard as PaystackIcon,
+  Landmark,
+  Smartphone,
+  Copy,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 // Paystack Popup JS
 import PaystackPop from "@paystack/inline-js";
 
@@ -137,7 +144,13 @@ export default function DashboardWallet() {
     toast.success("Transactions exported!");
   };
 
-  const [txFilter, setTxFilter] = useState<string>("all");
+  const [txFilter, setTxFilter] = useState<"all" | "deposit" | "withdrawal" | "purchase" | "refund" | "referral_reward" | "admin_credit">("all");
+  const [txPage, setTxPage] = useState(1);
+  const TX_PAGE_SIZE = 10;
+  const { data: txHistory, isLoading: txLoading } = trpc.wallet.getHistory.useQuery(
+    { type: txFilter, page: txPage, pageSize: TX_PAGE_SIZE },
+{}
+  );
   const txTypeConfig: Record<string, { icon: React.ElementType; color: string; label: string; sign: string }> = {
     deposit: { icon: ArrowDownLeft, color: "text-emerald-400", label: "Deposit", sign: "+" },
     purchase: { icon: ArrowUpRight, color: "text-red-400", label: "Purchase", sign: "-" },
@@ -460,73 +473,240 @@ export default function DashboardWallet() {
         </div>
       </div>
 
-      {/* Transaction history */}
-      <div className="glass-card rounded-2xl p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <h2 className="text-base font-semibold text-foreground">Transaction History</h2>
+      {/* ─── Transaction History Table ─────────────────────────────────────── */}
+      <div className="glass-card rounded-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 border-b border-white/5">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Transaction History</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {txHistory ? `${txHistory.total} transaction${txHistory.total !== 1 ? "s" : ""}` : "Loading…"}
+            </p>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {["all", "deposit", "purchase", "refund", "withdrawal", "admin_credit"].map((f) => (
+            {(["all", "deposit", "purchase", "refund", "withdrawal", "admin_credit"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => setTxFilter(f)}
+                onClick={() => { setTxFilter(f); setTxPage(1); }}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                   txFilter === f
                     ? "bg-violet-500/30 text-violet-300 border border-violet-500/40"
                     : "bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/10"
                 }`}
               >
-                {f === "all" ? "All" : f === "admin_credit" ? "Admin Credit" : f.charAt(0).toUpperCase() + f.slice(1)}
+                {(f as string) === "all" ? "All" : (f as string) === "admin_credit" ? "Admin Credit" : (f as string) === "referral_reward" ? "Referral" : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCSV}
-              className="h-7 gap-1.5 text-xs border-white/10 hover:bg-white/5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              CSV
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-7 gap-1.5 text-xs border-white/10 hover:bg-white/5">
+              <Download className="w-3.5 h-3.5" /> CSV
             </Button>
           </div>
         </div>
-        {!transactions ? (
-          <div className="text-center py-8">
-            <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No transactions yet</p>
+
+        {/* Table */}
+        {txLoading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Loading transactions…</div>
+        ) : !txHistory || txHistory.rows.length === 0 ? (
+          <div className="p-10 text-center">
+            <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+            <p className="text-sm text-muted-foreground">No {txFilter === "all" ? "" : txFilter + " "}transactions found.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredTransactions.length === 0 ? (
-              <div className="text-center py-6 text-sm text-muted-foreground">No {txFilter === "all" ? "" : txFilter} transactions found.</div>
-            ) : (
-              filteredTransactions.map((tx) => {
-                const config = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
-                const Icon = config.icon;
-                const isCredit = config.sign === "+";
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5 text-xs text-muted-foreground">
+                    <th className="text-left px-5 py-3 font-medium">Date & Time</th>
+                    <th className="text-left px-5 py-3 font-medium">Description</th>
+                    <th className="text-left px-5 py-3 font-medium">Type</th>
+                    <th className="text-left px-5 py-3 font-medium">Reference</th>
+                    <th className="text-left px-5 py-3 font-medium">Method</th>
+                    <th className="text-right px-5 py-3 font-medium">Amount</th>
+                    <th className="text-right px-5 py-3 font-medium">Balance After</th>
+                    <th className="text-center px-5 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {txHistory.rows.map((tx) => {
+                    const cfg = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
+                    const Icon = cfg.icon;
+                    const isCredit = cfg.sign === "+";
+                    const isPaystack = !!tx.paymentReference;
+                    const channelIcon = tx.paymentChannel === "card" ? <CreditCard className="w-3 h-3" /> : tx.paymentChannel === "bank" ? <Landmark className="w-3 h-3" /> : tx.paymentChannel === "mobile_money" ? <Smartphone className="w-3 h-3" /> : null;
+                    return (
+                      <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(tx.createdAt).toLocaleDateString()}<br />
+                          <span className="opacity-70">{new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCredit ? "bg-emerald-500/15" : "bg-red-500/15"}`}>
+                              <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
+                            </div>
+                            <span className="text-foreground font-medium truncate max-w-[180px]">{tx.description ?? cfg.label}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <Badge className={`text-[10px] font-semibold capitalize ${isCredit ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20"}`}>
+                            {cfg.label}
+                          </Badge>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {tx.referenceId ? (
+                            <div className="flex items-center gap-1.5">
+                              <code className="text-[10px] text-violet-300 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded truncate max-w-[120px]">{tx.referenceId}</code>
+                              <button onClick={() => { navigator.clipboard.writeText(tx.referenceId!); toast.success("Copied!"); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-white transition-all">
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : <span className="text-muted-foreground text-xs">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {isPaystack ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#00C3F7]/10 text-[#00C3F7] border border-[#00C3F7]/20 font-medium">
+                                <Zap className="w-2.5 h-2.5" /> Paystack
+                              </span>
+                              {channelIcon && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-0.5 capitalize">{channelIcon}{tx.paymentChannel}</span>
+                              )}
+                            </div>
+                          ) : tx.type === "purchase" ? (
+                            <span className="text-xs text-muted-foreground">Wallet</span>
+                          ) : tx.type === "referral_reward" ? (
+                            <span className="text-xs text-muted-foreground">Referral</span>
+                          ) : tx.type === "admin_credit" ? (
+                            <span className="text-xs text-muted-foreground">Admin</span>
+                          ) : <span className="text-muted-foreground text-xs">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <span className={`font-bold ${isCredit ? "text-emerald-400" : "text-red-400"}`}>
+                            {cfg.sign}${parseFloat(tx.amount).toFixed(2)}
+                          </span>
+                          {isPaystack && tx.paymentAmountNaira && (
+                            <p className="text-[10px] text-muted-foreground">₦{parseFloat(tx.paymentAmountNaira).toLocaleString()}</p>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-right text-xs text-muted-foreground font-mono">
+                          ${parseFloat(tx.balanceAfter).toFixed(2)}
+                        </td>
+                        <td className="px-5 py-3.5 text-center">
+                          {tx.status === "completed" ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-medium">
+                              <CheckCircle className="w-2.5 h-2.5" /> Done
+                            </span>
+                          ) : tx.status === "pending" ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 font-medium">
+                              <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Pending
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 font-medium">
+                              Failed
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card list */}
+            <div className="md:hidden divide-y divide-white/[0.04]">
+              {txHistory.rows.map((tx) => {
+                const cfg = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
+                const Icon = cfg.icon;
+                const isCredit = cfg.sign === "+";
+                const isPaystack = !!tx.paymentReference;
                 return (
-                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCredit ? "bg-emerald-500/20" : "bg-red-500/20"}`}>
-                        <Icon className={`w-4 h-4 ${config.color}`} />
+                  <div key={tx.id} className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isCredit ? "bg-emerald-500/15" : "bg-red-500/15"}`}>
+                        <Icon className={`w-4 h-4 ${cfg.color}`} />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{tx.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(tx.createdAt).toLocaleString()} · Balance: ${tx.balanceAfter}
-                        </p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{tx.description ?? cfg.label}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-xs text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString()}</span>
+                          {isPaystack && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#00C3F7]/10 text-[#00C3F7] border border-[#00C3F7]/20 font-medium">
+                              <Zap className="w-2 h-2" /> Paystack
+                            </span>
+                          )}
+                          {tx.status === "completed" ? (
+                            <span className="text-[10px] text-emerald-400">✓ Done</span>
+                          ) : tx.status === "pending" ? (
+                            <span className="text-[10px] text-yellow-400">⏳ Pending</span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`text-sm font-bold ${isCredit ? "text-emerald-400" : "text-red-400"}`}>
-                        {config.sign}${tx.amount}
-                      </span>
-                      <p className="text-xs text-muted-foreground capitalize">{config.label}</p>
+                    <div className="text-right shrink-0 ml-3">
+                      <p className={`text-sm font-bold ${isCredit ? "text-emerald-400" : "text-red-400"}`}>
+                        {cfg.sign}${parseFloat(tx.amount).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">${parseFloat(tx.balanceAfter).toFixed(2)}</p>
                     </div>
                   </div>
                 );
-              })
+              })}
+            </div>
+
+            {/* Pagination */}
+            {txHistory.total > TX_PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3.5 border-t border-white/5">
+                <p className="text-xs text-muted-foreground">
+                  Showing {((txPage - 1) * TX_PAGE_SIZE) + 1}–{Math.min(txPage * TX_PAGE_SIZE, txHistory.total)} of {txHistory.total}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTxPage(p => Math.max(1, p - 1))}
+                    disabled={txPage === 1}
+                    className="h-7 w-7 p-0 border-white/10 hover:bg-white/5 disabled:opacity-30"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  {Array.from({ length: Math.min(5, Math.ceil(txHistory.total / TX_PAGE_SIZE)) }, (_, i) => {
+                    const totalPages = Math.ceil(txHistory.total / TX_PAGE_SIZE);
+                    let p = i + 1;
+                    if (totalPages > 5) {
+                      if (txPage <= 3) p = i + 1;
+                      else if (txPage >= totalPages - 2) p = totalPages - 4 + i;
+                      else p = txPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setTxPage(p)}
+                        className={`h-7 w-7 rounded-lg text-xs font-medium transition-colors ${
+                          txPage === p
+                            ? "bg-violet-500/30 text-violet-300 border border-violet-500/40"
+                            : "text-muted-foreground hover:bg-white/5"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTxPage(p => Math.min(Math.ceil(txHistory.total / TX_PAGE_SIZE), p + 1))}
+                    disabled={txPage >= Math.ceil(txHistory.total / TX_PAGE_SIZE)}
+                    className="h-7 w-7 p-0 border-white/10 hover:bg-white/5 disabled:opacity-30"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </DashboardShell>

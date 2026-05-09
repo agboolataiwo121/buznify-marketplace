@@ -820,3 +820,67 @@ export async function updateUserTwoFactor(
   if (Object.keys(updates).length === 0) return;
   await db.update(users).set(updates).where(eq(users.id, userId));
 }
+
+/**
+ * Paginated, filterable transaction history.
+ * Each row includes the wallet_transaction plus an optional linked Paystack payment
+ * (joined via referenceId = payments.reference) so the UI can show Paystack-specific
+ * metadata (channel, paidAt, currency, gatewayResponse) for webhook-credited deposits.
+ */
+export async function getTransactionHistory(
+  userId: number,
+  opts: {
+    type?: "deposit" | "withdrawal" | "purchase" | "refund" | "referral_reward" | "admin_credit" | "all";
+    page?: number;
+    pageSize?: number;
+  } = {}
+) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0, page: 1, pageSize: 10 };
+  const { type = "all", page = 1, pageSize = 10 } = opts;
+  const offset = (page - 1) * pageSize;
+
+  const conditions: ReturnType<typeof eq>[] = [eq(walletTransactions.userId, userId)];
+  if (type && type !== "all") {
+    conditions.push(eq(walletTransactions.type, type as typeof walletTransactions.$inferSelect["type"]));
+  }
+  const where = conditions.length === 1 ? conditions[0] : and(...conditions);
+
+  // Count total matching rows
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(walletTransactions)
+    .where(where);
+  const total = Number(countRow?.count ?? 0);
+
+  // Fetch page with left-join to payments table
+  const rows = await db
+    .select({
+      // wallet_transaction fields
+      id: walletTransactions.id,
+      type: walletTransactions.type,
+      amount: walletTransactions.amount,
+      balanceBefore: walletTransactions.balanceBefore,
+      balanceAfter: walletTransactions.balanceAfter,
+      description: walletTransactions.description,
+      referenceId: walletTransactions.referenceId,
+      status: walletTransactions.status,
+      createdAt: walletTransactions.createdAt,
+      // payments fields (null when not a Paystack deposit)
+      paymentReference: payments.reference,
+      paymentChannel: payments.channel,
+      paymentCurrency: payments.currency,
+      paymentAmountNaira: payments.amountNaira,
+      paymentStatus: payments.status,
+      paymentGatewayResponse: payments.gatewayResponse,
+      paymentPaidAt: payments.paidAt,
+    })
+    .from(walletTransactions)
+    .leftJoin(payments, eq(walletTransactions.referenceId, payments.reference))
+    .where(where)
+    .orderBy(desc(walletTransactions.createdAt))
+    .limit(pageSize)
+    .offset(offset);
+
+  return { rows, total, page, pageSize };
+}

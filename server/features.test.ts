@@ -141,3 +141,37 @@ describe("updateUserTwoFactor DB helper", () => {
     expect(typeof db.updateUserTwoFactor).toBe("function");
   });
 });
+
+// ─── Transaction History Procedure Tests ─────────────────────────────────────
+describe("getTransactionHistory DB helper", () => {
+  it("should be exported from db.ts", async () => {
+    const db = await import("./db");
+    expect(typeof db.getTransactionHistory).toBe("function");
+  });
+
+  it("should return an object with rows, total, page, pageSize", async () => {
+    const { getTransactionHistory } = await import("./db");
+    // With no DB connection (test env), should return default empty result
+    const result = await getTransactionHistory(999, { type: "all", page: 1, pageSize: 10 });
+    expect(result).toHaveProperty("rows");
+    expect(result).toHaveProperty("total");
+    expect(result).toHaveProperty("page");
+    expect(result).toHaveProperty("pageSize");
+    expect(Array.isArray(result.rows)).toBe(true);
+    expect(typeof result.total).toBe("number");
+  });
+
+  it("should accept type filter parameter", async () => {
+    const { getTransactionHistory } = await import("./db");
+    const result = await getTransactionHistory(999, { type: "deposit", page: 1, pageSize: 10 });
+    expect(result).toHaveProperty("rows");
+    expect(result.rows).toHaveLength(0); // no DB in test env
+  });
+
+  it("should accept pagination parameters", async () => {
+    const { getTransactionHistory } = await import("./db");
+    const result = await getTransactionHistory(999, { type: "all", page: 2, pageSize: 5 });
+    expect(result.page).toBe(2);
+    expect(result.pageSize).toBe(5);
+  });
+});

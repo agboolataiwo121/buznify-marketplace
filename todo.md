@@ -420,3 +420,13 @@
 - [x] Add complete2FALogin procedure: verify TOTP token, issue session
 - [x] Build 2FA Setup page in Dashboard Security settings
 - [x] Build 2FA verification step in Login page (shown after password success)
+
+## Transaction History Table — Paystack Webhook Credits
+- [x] Audit payments table and wallet_transactions table schema for Paystack fields
+- [x] Add/extend wallet.getTransactionHistory procedure: return wallet_transactions joined with payments (type=deposit, source=paystack), paginated, filterable by type
+- [x] Build TransactionHistoryTable component: columns — date, reference, type, amount, status badge, description
+- [x] Wire component into DashboardWallet.tsx replacing or augmenting the existing transaction list
+- [x] Add type filter tabs (All, Deposits, Orders, Refunds, Bonuses)
+- [x] Add pagination controls (page size 10, prev/next)
+- [x] Show Paystack reference link and payment method badge for webhook-credited deposits
+- [x] Write vitest test for the transaction history procedure
