@@ -562,3 +562,7 @@
 - [x] Add structured credential fields builder to Admin product form
 - [x] Update DashboardOrders delivery display to render structured credentials as labeled rows with copy buttons
 - [x] Mobile experience improvements — bottom nav bar (MobileBottomNav), dashboard sidebar drawer (Sheet), scrollable tab bars, responsive layouts across all pages
+- [x] Improve desktop experience — wider container on xl/2xl, card hover transitions
+- [x] Improve desktop experience — 2xl 5-column grids for Marketplace, GrowthServices, VirtualNumbers
+- [x] Improve desktop experience — DashboardShell wider sidebar on xl/2xl
+- [x] Improve desktop experience — AdminPanel vertical sidebar tab list on desktop

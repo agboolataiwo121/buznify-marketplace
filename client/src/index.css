@@ -159,6 +159,12 @@
   @media (min-width: 1024px) {
     .container { padding-left: 2rem; padding-right: 2rem; max-width: 1280px; }
   }
+  @media (min-width: 1280px) {
+    .container { padding-left: 2.5rem; padding-right: 2.5rem; max-width: 1440px; }
+  }
+  @media (min-width: 1536px) {
+    .container { padding-left: 3rem; padding-right: 3rem; max-width: 1600px; }
+  }
 
   /* ── Glassmorphism ── */
   .glass {
@@ -172,6 +178,11 @@
     backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid oklch(0.30 0.04 265 / 0.3);
     box-shadow: 0 4px 24px oklch(0 0 0 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.05);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  }
+  .glass-card:hover {
+    box-shadow: 0 8px 40px oklch(0 0 0 / 0.5), inset 0 1px 0 oklch(1 0 0 / 0.08);
+    border-color: oklch(0.40 0.06 265 / 0.45);
   }
 
   .glass-card-hover {

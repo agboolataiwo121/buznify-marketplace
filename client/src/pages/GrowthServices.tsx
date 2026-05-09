@@ -763,7 +763,7 @@ export default function GrowthServices() {
 
           <TabsContent value="browse" className="space-y-5">
             <div className="flex flex-wrap gap-3 items-center">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <div className="relative flex-1 min-w-[200px] max-w-lg">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                 <Input
                   placeholder="Search services..."
@@ -849,7 +849,7 @@ export default function GrowthServices() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {filtered.slice(0, 200).map((s) => (
                       <ServiceCard key={`${s.panel}-${s.service}`} service={s as LiveService} onBuy={handleBuy} />
                     ))}

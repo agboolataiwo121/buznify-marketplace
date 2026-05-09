@@ -531,13 +531,13 @@ export default function AdminPanel() {
 
   return (
     <DashboardShell title="Admin Panel" subtitle="Platform management and analytics.">
-      {/* Tabs */}
-      <div className="scroll-x-hidden flex gap-2 mb-6 pb-1">
+      {/* Mobile: horizontal scroll tabs */}
+      <div className="lg:hidden scroll-x-hidden flex gap-2 mb-6 pb-1">
         {TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
               tab === value
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : "glass text-muted-foreground hover:text-foreground"
@@ -550,7 +550,7 @@ export default function AdminPanel() {
         <Button
           size="sm"
           variant="outline"
-          className="border-white/10 bg-white/5 h-9 ml-auto"
+          className="border-white/10 bg-white/5 h-9 ml-auto shrink-0"
           onClick={() => seedMutation.mutate()}
           disabled={seedMutation.isPending}
         >
@@ -558,6 +558,32 @@ export default function AdminPanel() {
           Seed Demo Data
         </Button>
       </div>
+      {/* Desktop: sticky vertical sidebar */}
+      <div className="hidden lg:block">
+        <aside className="fixed top-24 w-[200px] xl:w-[220px]">
+          <div className="glass-card rounded-2xl p-2 space-y-0.5 max-h-[calc(100vh-7rem)] overflow-y-auto">
+            {TABS.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => setTab(value)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+                  tab === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+            <div className="border-t border-white/5 pt-2 mt-2">
+              <Button size="sm" variant="outline" className="w-full border-white/10 bg-white/5 h-8 text-xs" onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
+                <RefreshCw className={`w-3 h-3 mr-1.5 ${seedMutation.isPending ? "animate-spin" : ""}`} />Seed Demo Data
+              </Button>
+            </div>
+          </div>
+        </aside>
+      </div>
+      {/* Content offset for desktop sidebar */}
+      <div className="lg:pl-[216px] xl:pl-[236px]">
 
       {/* Overview */}
       {tab === "overview" && (
@@ -2679,6 +2705,7 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+      </div>{/* end content offset */}
     </DashboardShell>
   );
 }

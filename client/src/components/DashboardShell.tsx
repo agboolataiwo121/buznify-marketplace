@@ -149,7 +149,7 @@ export default function DashboardShell({ children, title, subtitle }: Props) {
     <div className="min-h-screen pb-mobile-nav md:pb-0">
       <Navbar />
       <div className="container pt-24 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] xl:grid-cols-[260px_1fr] 2xl:grid-cols-[280px_1fr] gap-6 xl:gap-8">
           {/* Desktop Sidebar */}
           <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
             <SidebarContent user={user} location={location} />
