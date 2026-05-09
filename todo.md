@@ -604,3 +604,8 @@
 - [x] Marketplace category filter pills: text squished/stacked vertically on mobile — fix to horizontal single-line pills with proper whitespace-nowrap and flex-shrink-0
 - [x] Growth Services category filter pills: same squished text issue on mobile — apply same fix
 - [x] Admin Panel mobile tab bar: same flex-shrink-0 fix applied preventively
+
+## Mobile UX Improvements
+- [x] Marketplace product grid: already grid-cols-1 on xs, grid-cols-2 on sm+ — confirmed correct
+- [x] Wallet deposit modal: improved tab bar (scrollable, min-width, whitespace-nowrap), larger tap targets on quick-amount buttons (py-3 + touch-target)
+- [x] Fixed bottom navigation bar on mobile: upgraded MobileBottomNav — shows Orders + Wallet + Account for logged-in users, hides on auth/admin pages, proper safe-area-inset padding

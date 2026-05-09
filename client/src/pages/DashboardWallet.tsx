@@ -214,12 +214,12 @@ export default function DashboardWallet() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Deposit / Withdraw / Crypto tabs */}
         <div className="glass-card rounded-2xl p-6">
-          <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-5">
+          <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-5 overflow-x-auto scrollbar-none">
             {(["deposit", "withdraw", "crypto", "payments"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all capitalize ${
+                className={`flex-1 min-w-[72px] py-2.5 rounded-lg text-xs font-medium transition-all capitalize whitespace-nowrap ${
                   activeTab === tab
                     ? "bg-violet-600 text-white"
                     : "text-muted-foreground hover:text-foreground"
@@ -241,7 +241,7 @@ export default function DashboardWallet() {
                   <button
                     key={a}
                     onClick={() => setAmount(String(a))}
-                    className={`py-2 rounded-xl text-sm font-medium transition-all border ${
+                    className={`py-3 rounded-xl text-sm font-semibold transition-all border touch-target ${
                       amount === String(a)
                         ? "bg-primary/10 border-primary/30 text-primary"
                         : "glass border-white/10 text-muted-foreground hover:text-foreground"
