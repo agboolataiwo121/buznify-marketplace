@@ -169,7 +169,7 @@ export default function DashboardApiKeys() {
               <div className="text-white text-sm font-medium">Server Documentation</div>
               <div className="text-gray-400 text-xs">Learn how to use the Buznify server to automate orders and manage services</div>
             </div>
-            <a href="/api-docs" className="ml-auto">
+            <a href="/server-docs" className="ml-auto">
               <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 text-xs">
                 View Docs
               </Button>

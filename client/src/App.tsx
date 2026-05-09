@@ -67,7 +67,7 @@ function Router() {
       <Route path="/security" component={Security} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />
-      <Route path="/api-docs" component={ApiDocs} />
+      <Route path="/server-docs" component={ApiDocs} />
       <Route path="/changelog" component={Changelog} />
       <Route path="/status" component={Status} />
       <Route path="/careers" component={Careers} />
@@ -78,7 +78,7 @@ function Router() {
       <Route path="/dashboard/profile" component={UserProfile} />
       <Route path="/dashboard/refunds" component={DashboardRefunds} />
       <Route path="/dashboard/payouts" component={DashboardPayouts} />
-      <Route path="/dashboard/api-keys" component={DashboardApiKeys} />
+      <Route path="/dashboard/server-keys" component={DashboardApiKeys} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
