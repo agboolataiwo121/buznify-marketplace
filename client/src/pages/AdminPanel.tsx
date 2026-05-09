@@ -28,6 +28,7 @@ import {
   X,
   ImageIcon,
   Star,
+  Search,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -54,6 +55,12 @@ export default function AdminPanel() {
     { id: 1, title: "Platform Maintenance", message: "Scheduled maintenance on Sunday 2AM UTC. Expect 30 min downtime.", type: "warning", time: "2 hours ago", active: true },
     { id: 2, title: "New Payment Methods Added", message: "We now accept USDT and BNB for wallet top-ups!", type: "success", time: "1 day ago", active: true },
   ]);
+  // ── Product filter/sort state ─────────────────────────────────────────────
+  const [productSearch, setProductSearch] = useState("");
+  const [productCategoryFilter, setProductCategoryFilter] = useState<"all" | "social_media_accounts" | "streaming_accounts" | "gaming_accounts" | "virtual_numbers" | "growth_services">("all");
+  const [productStatusFilter, setProductStatusFilter] = useState<"all" | "active" | "inactive" | "pending" | "rejected">("all");
+  const [productSort, setProductSort] = useState<"newest" | "oldest" | "price_high" | "price_low" | "stock_high" | "stock_low">("newest");
+
   // ── Product modal state ──────────────────────────────────────────────────
   const [productModal, setProductModal] = useState<"add" | "edit" | null>(null);
   const [editingProduct, setEditingProduct] = useState<NonNullable<typeof allProducts>[number] | null>(null);
@@ -370,19 +377,120 @@ export default function AdminPanel() {
             </Button>
           </div>
 
-          {/* Product list */}
+          {/* Filter + Sort bar */}
+          <div className="glass-card rounded-2xl p-4 space-y-3">
+            {/* Row 1: Search + Sort + Clear */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  placeholder="Search by title or platform…"
+                  className="pl-8 h-8 text-xs bg-white/5 border-white/10"
+                />
+              </div>
+              <select
+                value={productSort}
+                onChange={e => setProductSort(e.target.value as typeof productSort)}
+                className="h-8 text-xs bg-[#0f0f1a] border border-white/10 rounded-md px-2 text-foreground cursor-pointer"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="price_high">Price: High → Low</option>
+                <option value="price_low">Price: Low → High</option>
+                <option value="stock_high">Stock: High → Low</option>
+                <option value="stock_low">Stock: Low → High</option>
+              </select>
+              {(productSearch || productCategoryFilter !== "all" || productStatusFilter !== "all" || productSort !== "newest") && (
+                <button
+                  onClick={() => { setProductSearch(""); setProductCategoryFilter("all"); setProductStatusFilter("all"); setProductSort("newest"); }}
+                  className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 rounded-md flex items-center gap-1 transition-colors"
+                >
+                  <X className="w-3 h-3" /> Clear filters
+                </button>
+              )}
+            </div>
+            {/* Row 2: Category pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {(["all", "social_media_accounts", "streaming_accounts", "gaming_accounts", "virtual_numbers", "growth_services"] as const).map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setProductCategoryFilter(cat)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    productCategoryFilter === cat
+                      ? "bg-violet-600 border-violet-500 text-white"
+                      : "bg-white/5 border-white/10 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {cat === "all" ? "All Categories" : cat.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                </button>
+              ))}
+            </div>
+            {/* Row 3: Status pills */}
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-xs text-muted-foreground">Status:</span>
+              {(["all", "active", "inactive", "pending", "rejected"] as const).map(st => (
+                <button
+                  key={st}
+                  onClick={() => setProductStatusFilter(st)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    productStatusFilter === st
+                      ? st === "active" ? "bg-emerald-600 border-emerald-500 text-white"
+                        : st === "pending" ? "bg-amber-600 border-amber-500 text-white"
+                        : st === "rejected" ? "bg-red-600 border-red-500 text-white"
+                        : st === "inactive" ? "bg-white/20 border-white/20 text-white"
+                        : "bg-violet-600 border-violet-500 text-white"
+                      : "bg-white/5 border-white/10 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {st === "all" ? "All" : st.charAt(0).toUpperCase() + st.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filtered + sorted product list */}
+          {(() => {
+            const filtered = (allProducts ?? []).filter(p => {
+              const matchSearch = !productSearch ||
+                p.title.toLowerCase().includes(productSearch.toLowerCase()) ||
+                (p.platform ?? "").toLowerCase().includes(productSearch.toLowerCase());
+              const matchCat = productCategoryFilter === "all" || p.category === productCategoryFilter;
+              const matchStatus = productStatusFilter === "all" || p.status === productStatusFilter;
+              return matchSearch && matchCat && matchStatus;
+            }).sort((a, b) => {
+              if (productSort === "newest") return b.id - a.id;
+              if (productSort === "oldest") return a.id - b.id;
+              if (productSort === "price_high") return Number(b.price) - Number(a.price);
+              if (productSort === "price_low") return Number(a.price) - Number(b.price);
+              if (productSort === "stock_high") return (b.stock ?? 0) - (a.stock ?? 0);
+              if (productSort === "stock_low") return (a.stock ?? 0) - (b.stock ?? 0);
+              return 0;
+            });
+            return (
           <div className="glass-card rounded-2xl p-5">
-            {!allProducts || allProducts.length === 0 ? (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground">
+                Showing <span className="text-foreground font-medium">{filtered.length}</span> of{" "}
+                <span className="text-foreground font-medium">{allProducts?.length ?? 0}</span> products
+              </p>
+            </div>
+            {filtered.length === 0 ? (
               <div className="text-center py-10">
                 <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-                <p className="text-sm text-muted-foreground">No products yet.</p>
-                <Button size="sm" variant="outline" className="mt-3" onClick={() => { resetProductForm(); setProductModal("add"); }}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add your first product
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {!allProducts || allProducts.length === 0 ? "No products yet." : "No products match your filters."}
+                </p>
+                {(!allProducts || allProducts.length === 0) && (
+                  <Button size="sm" variant="outline" className="mt-3" onClick={() => { resetProductForm(); setProductModal("add"); }}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add your first product
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
-                {allProducts.map((p) => (
+                {filtered.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 transition-colors">
                     {/* Thumbnail */}
                     <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -439,6 +547,8 @@ export default function AdminPanel() {
               </div>
             )}
           </div>
+            );
+          })()}
 
           {/* Add / Edit Product Modal */}
           {productModal && (
@@ -546,7 +656,7 @@ export default function AdminPanel() {
                     </label>
                     <textarea value={productForm.deliveryData}
                       onChange={e => setProductForm(f => ({ ...f, deliveryData: e.target.value }))}
-                      placeholder={`{\n  "email": "user@example.com",\n  "password": "pass123"\n}`}
+                      placeholder={'{ "email": "user@example.com", "password": "pass123" }'}
                       rows={4}
                       className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
                   </div>

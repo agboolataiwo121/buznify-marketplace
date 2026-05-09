@@ -307,3 +307,11 @@
 - [ ] Build Forgot Password page
 - [ ] Build Reset Password page (token from URL)
 - [ ] Wire auth routes in App.tsx
+
+## Phase 20 — Admin Product Filtering & Sorting
+- [ ] Add search input to filter products by title/platform
+- [ ] Add category filter dropdown
+- [ ] Add status filter pill buttons (All, Active, Inactive, Pending, Rejected)
+- [ ] Add sort selector (Newest, Oldest, Price High→Low, Price Low→High, Stock, Most Sold)
+- [ ] Show filtered count / total count
+- [ ] Clear all filters button
