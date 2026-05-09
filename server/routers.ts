@@ -585,7 +585,30 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         const { id, ...data } = input;
-        await updateProduct(id, data);
+        // Track pool history when deliveryData (pool) changes
+        let poolHistoryUpdate: unknown[] | undefined;
+        if (Array.isArray(data.deliveryData)) {
+          const prevPool = Array.isArray(product.deliveryData) ? (product.deliveryData as unknown[]).length : null;
+          const newPool = (data.deliveryData as unknown[]).length;
+          const existingHistory = Array.isArray((product as any).poolHistory) ? (product as any).poolHistory as unknown[] : [];
+          if (prevPool !== null && newPool !== prevPool) {
+            const diff = newPool - prevPool;
+            existingHistory.push({
+              action: diff > 0 ? "add" : "consume",
+              count: Math.abs(diff),
+              note: diff > 0 ? `Admin added ${Math.abs(diff)} account${Math.abs(diff) !== 1 ? "s" : ""}` : `${Math.abs(diff)} account${Math.abs(diff) !== 1 ? "s" : ""} consumed`,
+              at: Date.now(),
+            });
+            poolHistoryUpdate = existingHistory;
+          } else if (prevPool === null) {
+            // First time setting pool
+            poolHistoryUpdate = [{ action: "add", count: newPool, note: `Initial pool of ${newPool} account${newPool !== 1 ? "s" : ""} created`, at: Date.now() }];
+          }
+        }
+        await updateProduct(id, {
+          ...data,
+          ...(poolHistoryUpdate !== undefined ? { poolHistory: poolHistoryUpdate } : {}),
+        });
         return { success: true };
       }),
 

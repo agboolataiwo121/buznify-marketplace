@@ -462,6 +462,15 @@ export default function AdminPanel() {
       try { parsedDeliveryData = JSON.parse(productForm.deliveryData); }
       catch { toast.error("Delivery Data must be valid JSON"); return; }
     }
+    // Auto re-activate if pool was refilled while product is inactive
+    const autoReactivate =
+      credMode === "pool" &&
+      accountPool.length > 0 &&
+      productForm.status === "inactive" &&
+      productModal === "edit";
+    if (autoReactivate) {
+      toast.success("Product automatically re-activated — pool has accounts again!");
+    }
     const payload = {
       title: productForm.title,
       description: productForm.description || undefined,
@@ -476,7 +485,7 @@ export default function AdminPanel() {
       deliveryType: productForm.deliveryType,
       deliveryData: parsedDeliveryData,
       featured: productForm.featured,
-      status: productForm.status,
+      status: autoReactivate ? "active" : productForm.status,
     };
     if (productModal === "add") {
       createProductMutation.mutate(payload);
@@ -994,10 +1003,17 @@ export default function AdminPanel() {
                         ${p.price}{p.originalPrice ? <span className="line-through ml-1 opacity-50">${p.originalPrice}</span> : null}
                         {" · "}
                         {Array.isArray(p.deliveryData) ? (
-                          <span className="inline-flex items-center gap-0.5 text-violet-400">
-                            <Package className="w-2.5 h-2.5" />
-                            {(p.deliveryData as unknown[]).length} accounts
-                          </span>
+                          <>
+                            <span className="inline-flex items-center gap-0.5 text-violet-400">
+                              <Package className="w-2.5 h-2.5" />
+                              {(p.deliveryData as unknown[]).length} accounts
+                            </span>
+                            {(p.deliveryData as unknown[]).length <= 3 && (p.deliveryData as unknown[]).length > 0 && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                <AlertTriangle className="w-2.5 h-2.5" /> Low Stock
+                              </span>
+                            )}
+                          </>
                         ) : (
                           <span>Stock: {p.stock}</span>
                         )}
@@ -1734,6 +1750,26 @@ export default function AdminPanel() {
                         className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-foreground font-mono resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500" />
                     )}
                   </div>
+                  {/* ── Pool History Log (edit mode only, pool products) ── */}
+                  {productModal === "edit" && editingProduct && Array.isArray((editingProduct as any).poolHistory) && (editingProduct as any).poolHistory.length > 0 && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">Pool History</label>
+                      <div className="rounded-xl border border-white/10 overflow-hidden">
+                        <div className="max-h-36 overflow-y-auto divide-y divide-white/5">
+                          {[...(editingProduct as any).poolHistory].reverse().map((entry: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2.5 px-3 py-2">
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${entry.action === "add" ? "bg-emerald-400" : entry.action === "consume" ? "bg-amber-400" : "bg-red-400"}`} />
+                              <span className="flex-1 text-[11px] text-white/60">{entry.note ?? entry.action}</span>
+                              <span className="text-[10px] text-white/20 flex-shrink-0">
+                                {entry.at ? new Date(entry.at).toLocaleString() : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Featured toggle */}
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" checked={productForm.featured}

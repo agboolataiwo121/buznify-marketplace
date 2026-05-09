@@ -79,6 +79,8 @@ export const products = mysqlTable("products", {
   reviewCount: int("reviewCount").default(0).notNull(),
   subcategoryId: int("subcategoryId"),  // FK → product_categories.id (optional)
   featured: boolean("featured").default(false).notNull(),
+  // Pool history: array of { action: 'add'|'consume', count: number, note?: string, at: number (unix ms) }
+  poolHistory: json("poolHistory"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

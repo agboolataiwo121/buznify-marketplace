@@ -594,3 +594,8 @@
 - [x] Auto-deactivate product (set status=inactive) when account pool hits 0 after an order
 - [x] Export pool as CSV button in Account Pool tab (downloads current pool as .csv)
 - [x] Quick "Refill Pool" button on product table row (opens edit modal pre-scrolled to Account Pool tab with Bulk Import open)
+
+## Pool QoL Improvements
+- [x] Low-stock warning badge on product table row (amber badge when pool <= 3 accounts)
+- [x] Auto re-activate product when saved with pool count > 0 while status is inactive
+- [x] Pool history log in product edit modal (timestamped entries for add/consume events stored in DB)
