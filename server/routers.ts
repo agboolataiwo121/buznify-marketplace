@@ -354,6 +354,55 @@ export const appRouter = router({
     vendorProducts: adminProcedure.query(async ({ ctx }) => {
       return getProducts({ vendorId: ctx.user.id, status: undefined });
     }),
+    bulkUpdate: adminProcedure
+      .input(z.object({
+        ids: z.array(z.number()).min(1),
+        updates: z.object({
+          status: z.enum(["active", "inactive", "pending", "rejected"]).optional(),
+          category: z.enum(["social_media_accounts", "streaming_accounts", "gaming_accounts", "virtual_numbers", "growth_services"]).optional(),
+          priceAdjustment: z.object({
+            type: z.enum(["set", "increase_pct", "decrease_pct", "increase_fixed", "decrease_fixed"]),
+            value: z.number().min(0),
+          }).optional(),
+          stock: z.number().min(0).optional(),
+          featured: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const { ids, updates } = input;
+        let updated = 0;
+        for (const id of ids) {
+          const product = await getProductById(id);
+          const patch: Record<string, unknown> = {};
+          if (updates.status !== undefined) patch.status = updates.status;
+          if (updates.category !== undefined) patch.category = updates.category;
+          if (updates.featured !== undefined) patch.featured = updates.featured;
+          if (updates.stock !== undefined) patch.stock = updates.stock;
+          if (updates.priceAdjustment) {
+            const { type, value } = updates.priceAdjustment;
+            const current = Number(product?.price ?? 0);
+            if (type === "set") patch.price = value.toString();
+            else if (type === "increase_pct") patch.price = (current * (1 + value / 100)).toFixed(2);
+            else if (type === "decrease_pct") patch.price = Math.max(0.01, current * (1 - value / 100)).toFixed(2);
+            else if (type === "increase_fixed") patch.price = (current + value).toFixed(2);
+            else if (type === "decrease_fixed") patch.price = Math.max(0.01, current - value).toFixed(2);
+          }
+          if (Object.keys(patch).length > 0) {
+            await updateProduct(id, patch as Parameters<typeof updateProduct>[1]);
+            updated++;
+          }
+        }
+        return { updated };
+      }),
+    bulkDelete: adminProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1) }))
+      .mutation(async ({ input }) => {
+        let deleted = 0;
+        for (const id of input.ids) {
+          try { await deleteProduct(id); deleted++; } catch { /* skip */ }
+        }
+        return { deleted };
+      }),
   }),
 
   // ── Orders ────────────────────────────────────────────────────────────────

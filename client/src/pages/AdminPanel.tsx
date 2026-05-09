@@ -55,6 +55,19 @@ export default function AdminPanel() {
     { id: 1, title: "Platform Maintenance", message: "Scheduled maintenance on Sunday 2AM UTC. Expect 30 min downtime.", type: "warning", time: "2 hours ago", active: true },
     { id: 2, title: "New Payment Methods Added", message: "We now accept USDT and BNB for wallet top-ups!", type: "success", time: "1 day ago", active: true },
   ]);
+  // ── Bulk selection state ─────────────────────────────────────────────────
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [bulkEditModal, setBulkEditModal] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [bulkForm, setBulkForm] = useState({
+    status: "" as "" | "active" | "inactive" | "pending" | "rejected",
+    category: "" as "" | "social_media_accounts" | "streaming_accounts" | "gaming_accounts" | "virtual_numbers" | "growth_services",
+    priceAdjType: "" as "" | "set" | "increase_pct" | "decrease_pct" | "increase_fixed" | "decrease_fixed",
+    priceAdjValue: "",
+    stock: "",
+    featured: "" as "" | "true" | "false",
+  });
+
   // ── Product filter/sort state ─────────────────────────────────────────────
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState<"all" | "social_media_accounts" | "streaming_accounts" | "gaming_accounts" | "virtual_numbers" | "growth_services">("all");
@@ -131,6 +144,40 @@ export default function AdminPanel() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const bulkUpdateMutation = trpc.products.bulkUpdate.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Updated ${data.updated} product${data.updated !== 1 ? 's' : ''}`);
+      utils.admin.getProducts.invalidate();
+      setBulkEditModal(false);
+      setSelectedProductIds(new Set());
+      setBulkForm({ status: "", category: "", priceAdjType: "", priceAdjValue: "", stock: "", featured: "" });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const bulkDeleteMutation = trpc.products.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deleted ${data.deleted} product${data.deleted !== 1 ? 's' : ''}`);
+      utils.admin.getProducts.invalidate();
+      setBulkDeleteConfirm(false);
+      setSelectedProductIds(new Set());
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleBulkUpdate = () => {
+    const ids = Array.from(selectedProductIds);
+    const updates: Parameters<typeof bulkUpdateMutation.mutate>[0]['updates'] = {};
+    if (bulkForm.status) updates.status = bulkForm.status;
+    if (bulkForm.category) updates.category = bulkForm.category;
+    if (bulkForm.featured !== "") updates.featured = bulkForm.featured === "true";
+    if (bulkForm.stock !== "") updates.stock = parseInt(bulkForm.stock) || 0;
+    if (bulkForm.priceAdjType && bulkForm.priceAdjValue) {
+      updates.priceAdjustment = { type: bulkForm.priceAdjType as any, value: parseFloat(bulkForm.priceAdjValue) || 0 };
+    }
+    if (Object.keys(updates).length === 0) { toast.error("Select at least one field to update"); return; }
+    bulkUpdateMutation.mutate({ ids, updates });
+  };
 
   const resetProductForm = () => setProductForm({
     title: "", description: "", category: "social_media_accounts", platform: "",
@@ -471,10 +518,45 @@ export default function AdminPanel() {
             return (
           <div className="glass-card rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground">
-                Showing <span className="text-foreground font-medium">{filtered.length}</span> of{" "}
-                <span className="text-foreground font-medium">{allProducts?.length ?? 0}</span> products
-              </p>
+              <div className="flex items-center gap-3">
+                {/* Select-all checkbox */}
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-violet-500 cursor-pointer"
+                  checked={filtered.length > 0 && filtered.every(p => selectedProductIds.has(p.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedProductIds(new Set(filtered.map(p => p.id)));
+                    } else {
+                      setSelectedProductIds(new Set());
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="text-foreground font-medium">{filtered.length}</span> of{" "}
+                  <span className="text-foreground font-medium">{allProducts?.length ?? 0}</span> products
+                  {selectedProductIds.size > 0 && (
+                    <span className="ml-2 text-violet-400 font-medium">· {selectedProductIds.size} selected</span>
+                  )}
+                </p>
+              </div>
+              {/* Bulk action toolbar */}
+              {selectedProductIds.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button size="sm" className="h-7 text-xs bg-violet-600 hover:bg-violet-500 border-0 gap-1"
+                    onClick={() => setBulkEditModal(true)}>
+                    <Edit2 className="w-3 h-3" /> Edit Selected
+                  </Button>
+                  <Button size="sm" className="h-7 text-xs bg-red-600 hover:bg-red-500 border-0 gap-1"
+                    onClick={() => setBulkDeleteConfirm(true)}>
+                    <Trash2 className="w-3 h-3" /> Delete Selected
+                  </Button>
+                  <button className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground border border-white/10 rounded-md transition-colors"
+                    onClick={() => setSelectedProductIds(new Set())}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
             {filtered.length === 0 ? (
               <div className="text-center py-10">
@@ -491,7 +573,24 @@ export default function AdminPanel() {
             ) : (
               <div className="space-y-2">
                 {filtered.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 transition-colors">
+                  <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                    selectedProductIds.has(p.id)
+                      ? "bg-violet-600/10 border-violet-500/30"
+                      : "bg-white/5 border-white/5 hover:bg-white/8"
+                  }`}>
+                    {/* Row checkbox */}
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-violet-500 cursor-pointer flex-shrink-0"
+                      checked={selectedProductIds.has(p.id)}
+                      onChange={(e) => {
+                        setSelectedProductIds(prev => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(p.id); else next.delete(p.id);
+                          return next;
+                        });
+                      }}
+                    />
                     {/* Thumbnail */}
                     <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {p.imageUrl
@@ -698,6 +797,126 @@ export default function AdminPanel() {
                     disabled={deleteProductMutation.isPending}
                     onClick={() => deleteProductMutation.mutate({ id: deleteConfirmId })}>
                     {deleteProductMutation.isPending ? "Deleting…" : "Delete"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Edit Modal */}
+          {bulkEditModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div className="flex items-center justify-between p-5 border-b border-white/10">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Bulk Edit Products</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{selectedProductIds.size} product{selectedProductIds.size !== 1 ? 's' : ''} selected — only filled fields will be updated</p>
+                  </div>
+                  <button onClick={() => setBulkEditModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Status */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Status <span className="opacity-60">(leave blank to keep unchanged)</span></label>
+                    <select value={bulkForm.status}
+                      onChange={e => setBulkForm(f => ({ ...f, status: e.target.value as typeof f.status }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                      <option value="">-- No change --</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="pending">Pending</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  {/* Category */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Category <span className="opacity-60">(leave blank to keep unchanged)</span></label>
+                    <select value={bulkForm.category}
+                      onChange={e => setBulkForm(f => ({ ...f, category: e.target.value as typeof f.category }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                      <option value="">-- No change --</option>
+                      <option value="social_media_accounts">Social Media Accounts</option>
+                      <option value="streaming_accounts">Streaming Accounts</option>
+                      <option value="gaming_accounts">Gaming Accounts</option>
+                      <option value="virtual_numbers">Virtual Numbers</option>
+                      <option value="growth_services">Growth Services</option>
+                    </select>
+                  </div>
+                  {/* Price Adjustment */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Price Adjustment <span className="opacity-60">(leave blank to keep unchanged)</span></label>
+                    <div className="flex gap-2">
+                      <select value={bulkForm.priceAdjType}
+                        onChange={e => setBulkForm(f => ({ ...f, priceAdjType: e.target.value as typeof f.priceAdjType }))}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                        <option value="">-- No change --</option>
+                        <option value="set">Set to exact value</option>
+                        <option value="increase_pct">Increase by %</option>
+                        <option value="decrease_pct">Decrease by %</option>
+                        <option value="increase_fixed">Increase by $</option>
+                        <option value="decrease_fixed">Decrease by $</option>
+                      </select>
+                      {bulkForm.priceAdjType && (
+                        <Input
+                          type="number" step="0.01" min="0"
+                          value={bulkForm.priceAdjValue}
+                          onChange={e => setBulkForm(f => ({ ...f, priceAdjValue: e.target.value }))}
+                          placeholder={bulkForm.priceAdjType.includes('pct') ? '10' : '2.00'}
+                          className="w-28 bg-white/5 border-white/10 text-sm"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  {/* Stock */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Set Stock <span className="opacity-60">(leave blank to keep unchanged)</span></label>
+                    <Input
+                      type="number" min="0"
+                      value={bulkForm.stock}
+                      onChange={e => setBulkForm(f => ({ ...f, stock: e.target.value }))}
+                      placeholder="e.g. 100"
+                      className="bg-white/5 border-white/10 text-sm"
+                    />
+                  </div>
+                  {/* Featured */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">Featured <span className="opacity-60">(leave blank to keep unchanged)</span></label>
+                    <select value={bulkForm.featured}
+                      onChange={e => setBulkForm(f => ({ ...f, featured: e.target.value as typeof f.featured }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
+                      <option value="">-- No change --</option>
+                      <option value="true">Featured (Yes)</option>
+                      <option value="false">Not Featured (No)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10">
+                  <Button variant="ghost" size="sm" onClick={() => setBulkEditModal(false)}>Cancel</Button>
+                  <Button size="sm" className="bg-violet-600 hover:bg-violet-500 border-0"
+                    disabled={bulkUpdateMutation.isPending}
+                    onClick={handleBulkUpdate}>
+                    {bulkUpdateMutation.isPending ? "Updating…" : `Update ${selectedProductIds.size} Product${selectedProductIds.size !== 1 ? 's' : ''}`}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Delete Confirmation Modal */}
+          {bulkDeleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-[#0f0f1a] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+                <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
+                <h3 className="text-sm font-semibold text-foreground mb-1">Delete {selectedProductIds.size} Product{selectedProductIds.size !== 1 ? 's' : ''}?</h3>
+                <p className="text-xs text-muted-foreground mb-5">This action cannot be undone. All selected products will be permanently removed.</p>
+                <div className="flex items-center justify-center gap-3">
+                  <Button variant="ghost" size="sm" onClick={() => setBulkDeleteConfirm(false)}>Cancel</Button>
+                  <Button size="sm" className="bg-red-600 hover:bg-red-500 border-0"
+                    disabled={bulkDeleteMutation.isPending}
+                    onClick={() => bulkDeleteMutation.mutate({ ids: Array.from(selectedProductIds) })}>
+                    {bulkDeleteMutation.isPending ? "Deleting…" : `Delete ${selectedProductIds.size} Product${selectedProductIds.size !== 1 ? 's' : ''}`}
                   </Button>
                 </div>
               </div>

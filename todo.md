@@ -315,3 +315,10 @@
 - [ ] Add sort selector (Newest, Oldest, Price High→Low, Price Low→High, Stock, Most Sold)
 - [ ] Show filtered count / total count
 - [ ] Clear all filters button
+
+## Phase 21 — Admin Bulk Edit
+- [x] Add bulkUpdateProducts admin procedure (status, category, price adjustment, stock)
+- [x] Add checkbox per product row and select-all checkbox
+- [x] Add bulk action toolbar (appears when ≥1 product selected)
+- [x] Add bulk edit modal with field selectors
+- [x] Add bulk delete with confirmation
