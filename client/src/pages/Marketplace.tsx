@@ -99,11 +99,15 @@ function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
                 {(product as any).condition}
               </span>
             )}
-            {product.stock <= 5 && (
+            {product.stock === 0 ? (
+              <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-full font-semibold">
+                Sold Out
+              </span>
+            ) : product.stock <= 5 ? (
               <span className="text-xs badge-warning px-1.5 py-0.5 rounded-full">
                 Only {product.stock} left
               </span>
-            )}
+            ) : null}
           </div>
 
           <h3 className="text-sm font-semibold text-foreground mb-2 line-clamp-2 flex-1">

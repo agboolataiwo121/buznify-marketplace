@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
@@ -137,6 +137,7 @@ export default function DashboardWallet() {
     toast.success("Transactions exported!");
   };
 
+  const [txFilter, setTxFilter] = useState<string>("all");
   const txTypeConfig: Record<string, { icon: React.ElementType; color: string; label: string; sign: string }> = {
     deposit: { icon: ArrowDownLeft, color: "text-emerald-400", label: "Deposit", sign: "+" },
     purchase: { icon: ArrowUpRight, color: "text-red-400", label: "Purchase", sign: "-" },
@@ -145,6 +146,11 @@ export default function DashboardWallet() {
     withdrawal: { icon: ArrowUpRight, color: "text-orange-400", label: "Withdrawal", sign: "-" },
   };
 
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
+    if (txFilter === "all") return transactions;
+    return transactions.filter(t => t.type === txFilter);
+  }, [transactions, txFilter]);
   const balance = balanceData?.balance ?? 0;
   const escrowBalance = 0;
   const bonusBalance = balance > 50 ? parseFloat((balance * 0.05).toFixed(2)) : 0;
@@ -456,26 +462,43 @@ export default function DashboardWallet() {
 
       {/* Transaction history */}
       <div className="glass-card rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-base font-semibold text-foreground">Transaction History</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="h-8 gap-1.5 text-xs border-white/10 hover:bg-white/5"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {["all", "deposit", "purchase", "refund", "withdrawal", "admin_credit"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setTxFilter(f)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  txFilter === f
+                    ? "bg-violet-500/30 text-violet-300 border border-violet-500/40"
+                    : "bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/10"
+                }`}
+              >
+                {f === "all" ? "All" : f === "admin_credit" ? "Admin Credit" : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="h-7 gap-1.5 text-xs border-white/10 hover:bg-white/5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              CSV
+            </Button>
+          </div>
         </div>
-        {!transactions || transactions.length === 0 ? (
+        {!transactions ? (
           <div className="text-center py-8">
             <Wallet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No transactions yet</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {transactions.map((tx) => {
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">No {txFilter === 'all' ? '' : txFilter} transactions found.</div>
+            ) : filteredTransactions.map((tx) => {
               const config = txTypeConfig[tx.type] ?? txTypeConfig.deposit;
               const Icon = config.icon;
               const isCredit = config.sign === "+";

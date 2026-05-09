@@ -197,11 +197,11 @@
 - [ ] Real-time order status tracking with animated progress bar
 
 ### Vendor Ecosystem
-- [ ] Vendor onboarding form with KYC fields
-- [ ] Commission system (platform % per sale shown in vendor dashboard)
-- [ ] Vendor payout request system
-- [ ] Vendor reputation score (based on ratings + fulfillment rate)
-- [ ] Vendor badges (Verified, Top Seller, New)
+- [x] Vendor onboarding form with KYC fields [REMOVED - no vendor feature]
+- [x] Commission system (platform % per sale shown in vendor dashboard) [REMOVED - no vendor feature]
+- [x] Vendor payout request system [REMOVED - no vendor feature]
+- [x] Vendor reputation score (based on ratings + fulfillment rate) [REMOVED - no vendor feature]
+- [x] Vendor badges (Verified, Top Seller, New) [REMOVED - no vendor feature]
 
 ### AI Features
 - [ ] AI product recommendations widget (based on category/history)
