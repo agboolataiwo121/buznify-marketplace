@@ -29,6 +29,7 @@ import {
   ChevronUp,
   Star,
   Package,
+  Plus,
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
@@ -163,6 +164,9 @@ function OrderModal({
   const utils = trpc.useUtils();
   const [link, setLink] = useState("");
   const [quantity, setQuantity] = useState<number>(service?.minQty ?? 100);
+  const [speedLabel, setSpeedLabel] = useState<"slow" | "medium" | "fast" | "instant">("medium");
+  const [dripFeed, setDripFeed] = useState(false);
+  const [dripInterval, setDripInterval] = useState(60);
 
   const placeOrder = trpc.growth.placeOrder.useMutation({
     onSuccess: (data) => {
@@ -238,6 +242,36 @@ function OrderModal({
               <span className={canAfford ? "text-white/60" : "text-red-400"}>${userBalance.toFixed(2)}</span>
             </div>
           </div>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm text-white/70">Delivery Speed</label>
+              <div className="flex gap-2">
+                {(["slow", "medium", "fast", "instant"] as const).map((s) => (
+                  <button key={s} onClick={() => setSpeedLabel(s)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all capitalize ${speedLabel === s ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/50 hover:border-white/30"}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white/70">Drip-Feed Delivery</p>
+                <p className="text-xs text-white/40">Spread delivery over time</p>
+              </div>
+              <button onClick={() => setDripFeed(d => !d)}
+                className={`w-10 h-5 rounded-full transition-colors relative ${dripFeed ? "bg-violet-600" : "bg-white/10"}`}>
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${dripFeed ? "left-5" : "left-0.5"}`} />
+              </button>
+            </div>
+            {dripFeed && (
+              <div className="space-y-1.5">
+                <label className="text-sm text-white/70">Interval (minutes)</label>
+                <Input type="number" value={dripInterval} onChange={e => setDripInterval(parseInt(e.target.value) || 60)}
+                  min={1} max={1440} className="bg-white/5 border-white/10 text-white h-8 text-sm" />
+              </div>
+            )}
+          </div>
           {!canAfford && (
             <p className="text-xs text-red-400 flex items-center gap-1">
               <AlertCircle className="w-3.5 h-3.5" />Insufficient balance. Please top up your wallet.
@@ -247,7 +281,7 @@ function OrderModal({
         <DialogFooter>
           <Button variant="outline" onClick={onClose} className="border-white/10 text-white/70">Cancel</Button>
           <Button
-            onClick={() => placeOrder.mutate({ panel: service.panel, serviceId: service.service, serviceName: service.name, targetUrl: link, quantity: qty, totalPrice })}
+            onClick={() => placeOrder.mutate({ panel: service.panel, serviceId: service.service, serviceName: service.name, targetUrl: link, quantity: qty, totalPrice, speedLabel, dripFeed, dripInterval: dripFeed ? dripInterval : undefined })}
             disabled={!link || !canAfford || placeOrder.isPending}
             className="bg-violet-600 hover:bg-violet-500 text-white"
           >
@@ -264,7 +298,7 @@ function OrderModal({
 }
 
 function MyOrdersTab() {
-  const { data: orders, isLoading, refetch, isFetching } = trpc.growth.myOrders.useQuery();
+  const { data: orders, isLoading, refetch, isFetching } = trpc.growth.myOrders.useQuery(undefined, { refetchInterval: 30_000 });
   const utils = trpc.useUtils();
 
   const refillMutation = trpc.growth.refillOrder.useMutation({
@@ -362,6 +396,147 @@ function MyOrdersTab() {
   );
 }
 
+function MassOrderTab({ services, userBalance, user }: { services: LiveService[]; userBalance: number; user: unknown }) {
+  const utils = trpc.useUtils();
+  type MassRow = { panel: "smmkings" | "peakerr"; serviceId: number; serviceName: string; targetUrl: string; quantity: number; totalPrice: number; speedLabel: "slow" | "medium" | "fast" | "instant"; dripFeed: boolean; dripInterval?: number };
+  const [rows, setRows] = useState<MassRow[]>([{ panel: "smmkings", serviceId: 0, serviceName: "", targetUrl: "", quantity: 100, totalPrice: 0, speedLabel: "medium", dripFeed: false }]);
+  const [results, setResults] = useState<{ serviceName: string; apiOrderId?: string; error?: string }[] | null>(null);
+
+  const massOrderMutation = trpc.growth.massOrder.useMutation({
+    onSuccess: (data) => {
+      setResults(data.results);
+      toast.success(`Mass order submitted. New balance: $${data.newBalance.toFixed(2)}`);
+      utils.growth.myOrders.invalidate();
+      utils.auth.me.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const totalCost = rows.reduce((s, r) => s + r.totalPrice, 0);
+  const canAfford = userBalance >= totalCost;
+
+  const updateRow = (i: number, patch: Partial<MassRow>) => setRows(r => r.map((row, idx) => idx === i ? { ...row, ...patch } : row));
+  const addRow = () => setRows(r => [...r, { panel: "smmkings", serviceId: 0, serviceName: "", targetUrl: "", quantity: 100, totalPrice: 0, speedLabel: "medium", dripFeed: false }]);
+  const removeRow = (i: number) => setRows(r => r.filter((_, idx) => idx !== i));
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <Star className="w-12 h-12 text-white/20" />
+        <p className="text-white/50 text-sm">Sign in to use Mass Order</p>
+        <Button onClick={() => (window.location.href = getLoginUrl("/growth-services"))} className="bg-violet-600 hover:bg-violet-500 text-white">Sign In</Button>
+      </div>
+    );
+  }
+
+  if (results) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-white">Mass Order Results</h3>
+          <Button size="sm" variant="outline" onClick={() => { setResults(null); setRows([{ panel: "smmkings", serviceId: 0, serviceName: "", targetUrl: "", quantity: 100, totalPrice: 0, speedLabel: "medium", dripFeed: false }]); }} className="border-white/10 text-white/60">New Order</Button>
+        </div>
+        {results.map((r, i) => (
+          <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${r.error ? "bg-red-500/10 border-red-500/30" : "bg-green-500/10 border-green-500/30"}`}>
+            {r.error ? <XCircle className="w-4 h-4 text-red-400 shrink-0" /> : <Zap className="w-4 h-4 text-green-400 shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white truncate">{r.serviceName}</p>
+              {r.apiOrderId && <p className="text-xs text-green-400">Order #{r.apiOrderId}</p>}
+              {r.error && <p className="text-xs text-red-400">{r.error}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-white">Mass Order</h3>
+          <p className="text-xs text-white/40">Submit up to 50 orders at once</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white/40">Balance: <span className={canAfford ? "text-violet-400" : "text-red-400"}>${userBalance.toFixed(2)}</span></span>
+          <Button size="sm" onClick={addRow} disabled={rows.length >= 50} className="bg-violet-600 hover:bg-violet-500 h-7 text-xs gap-1">
+            <Plus className="w-3 h-3" />Add Row
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {rows.map((row, i) => {
+          const svc = services.find(s => s.service === row.serviceId && s.panel === row.panel);
+          return (
+            <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/40 w-5">#{i+1}</span>
+                <select value={row.panel} onChange={e => updateRow(i, { panel: e.target.value as "smmkings" | "peakerr", serviceId: 0, serviceName: "", totalPrice: 0 })}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
+                  <option value="smmkings">SMMKings</option>
+                  <option value="peakerr">Peakerr</option>
+                </select>
+                <select value={row.serviceId} onChange={e => {
+                  const id = parseInt(e.target.value);
+                  const s = services.find(sv => sv.service === id && sv.panel === row.panel);
+                  const qty = row.quantity;
+                  const price = s ? (qty / 1000) * s.ratePerThousand : 0;
+                  updateRow(i, { serviceId: id, serviceName: s?.name ?? "", totalPrice: price });
+                }} className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white min-w-0">
+                  <option value={0}>-- Select Service --</option>
+                  {services.filter(s => s.panel === row.panel).slice(0, 200).map(s => (
+                    <option key={s.service} value={s.service}>{s.name.slice(0, 60)}</option>
+                  ))}
+                </select>
+                <button onClick={() => removeRow(i)} className="text-white/30 hover:text-red-400 transition-colors">
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 pl-7">
+                <Input value={row.targetUrl} onChange={e => updateRow(i, { targetUrl: e.target.value })}
+                  placeholder="Target URL" className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 h-7 text-xs" />
+                <Input type="number" value={row.quantity} onChange={e => {
+                  const qty = parseInt(e.target.value) || 100;
+                  const price = svc ? (qty / 1000) * svc.ratePerThousand : 0;
+                  updateRow(i, { quantity: qty, totalPrice: price });
+                }} min={svc?.minQty ?? 10} max={svc?.maxQty ?? 100000}
+                  className="w-24 bg-white/5 border-white/10 text-white h-7 text-xs" />
+                <select value={row.speedLabel} onChange={e => updateRow(i, { speedLabel: e.target.value as "slow" | "medium" | "fast" | "instant" })}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
+                  <option value="slow">Slow</option>
+                  <option value="medium">Medium</option>
+                  <option value="fast">Fast</option>
+                  <option value="instant">Instant</option>
+                </select>
+                <span className={`text-xs font-mono ${row.totalPrice > 0 ? "text-violet-300" : "text-white/30"}`}>${row.totalPrice.toFixed(4)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+        <div>
+          <p className="text-sm text-white">{rows.length} order{rows.length !== 1 ? "s" : ""} · Total: <span className={canAfford ? "text-green-400" : "text-red-400"}>${totalCost.toFixed(4)}</span></p>
+          {!canAfford && <p className="text-xs text-red-400">Insufficient balance</p>}
+        </div>
+        <Button
+          onClick={() => {
+            const valid = rows.filter(r => r.serviceId > 0 && r.targetUrl && r.quantity > 0 && r.totalPrice > 0);
+            if (!valid.length) { toast.error("Add at least one valid order row"); return; }
+            if (!canAfford) { toast.error("Insufficient balance"); return; }
+            massOrderMutation.mutate({ orders: valid });
+          }}
+          disabled={massOrderMutation.isPending || !canAfford}
+          className="bg-violet-600 hover:bg-violet-500 gap-2">
+          {massOrderMutation.isPending ? <><Loader2 className="w-4 h-4 animate-spin" />Submitting...</> : <><Zap className="w-4 h-4" />Submit All Orders</>}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function GrowthServices() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("browse");
@@ -437,6 +612,9 @@ export default function GrowthServices() {
             </TabsTrigger>
             <TabsTrigger value="orders" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
               My Orders
+            </TabsTrigger>
+            <TabsTrigger value="mass" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white text-white/60">
+              Mass Order
             </TabsTrigger>
           </TabsList>
 
@@ -555,6 +733,9 @@ export default function GrowthServices() {
             ) : (
               <MyOrdersTab />
             )}
+          </TabsContent>
+          <TabsContent value="mass">
+            <MassOrderTab services={services ?? []} userBalance={userBalance} user={user} />
           </TabsContent>
         </Tabs>
       </div>

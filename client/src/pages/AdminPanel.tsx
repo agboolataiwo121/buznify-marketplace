@@ -29,6 +29,13 @@ import {
   ImageIcon,
   Star,
   Search,
+  Bell,
+  Settings,
+  Zap,
+  Brain,
+  ToggleLeft,
+  ToggleRight,
+  Send,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -36,7 +43,7 @@ import {
   ResponsiveContainer, ComposedChart,
 } from "recharts";
 
-type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts";
+type Tab = "overview" | "users" | "products" | "orders" | "coupons" | "vendors" | "announcements" | "fraud" | "refunds" | "payouts" | "notifications" | "services" | "ai_insights";
 
 export default function AdminPanel() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -93,16 +100,24 @@ export default function AdminPanel() {
     status: "active" as "active" | "inactive" | "pending" | "rejected",
   });
 
+  // ── Push notification state ──────────────────────────────────────────────
+  const [notifForm, setNotifForm] = useState({ title: "", message: "", type: "info" as "info" | "success" | "warning" });
+  // ── Service categories state ─────────────────────────────────────────────
+  const [categoryUpdating, setCategoryUpdating] = useState<string | null>(null);
+
   const utils = trpc.useUtils();
   const { data: stats } = trpc.admin.getStats.useQuery();
   const { data: revenueChart } = trpc.admin.getRevenueChart.useQuery({ days: chartDays }, { enabled: tab === "overview" });
   const { data: userGrowthChart } = trpc.admin.getUserGrowthChart.useQuery({ days: chartDays }, { enabled: tab === "overview" });
   const { data: allUsers } = trpc.admin.getUsers.useQuery(undefined, { enabled: tab === "users" });
   const { data: allProducts } = trpc.admin.getProducts.useQuery(undefined, { enabled: tab === "products" });
-  const { data: allOrders } = trpc.admin.getOrders.useQuery(undefined, { enabled: tab === "orders" });
+  // Real-time order monitoring with 30s polling
+  const { data: allOrders } = trpc.admin.getOrders.useQuery(undefined, { enabled: tab === "orders", refetchInterval: tab === "orders" ? 30000 : false });
   const { data: coupons } = trpc.coupons.list.useQuery(undefined, { enabled: tab === "coupons" });
   const { data: allRefunds } = trpc.refunds.adminList.useQuery(undefined, { enabled: tab === "refunds" });
   const { data: allPayouts } = trpc.payouts.adminList.useQuery(undefined, { enabled: tab === "payouts" });
+  const { data: serviceCategories, refetch: refetchCategories } = trpc.admin.getServiceCategories.useQuery(undefined, { enabled: tab === "services" });
+  const { data: aiInsights, isLoading: aiInsightsLoading } = trpc.admin.getAiAnalyticsSummary.useQuery(undefined, { enabled: tab === "ai_insights" });
 
   const updateRefundMutation = trpc.refunds.adminProcess.useMutation({
     onSuccess: () => { toast.success("Refund status updated"); utils.refunds.adminList.invalidate(); },
@@ -246,6 +261,29 @@ export default function AdminPanel() {
     onError: (err) => toast.error(err.message),
   });
 
+  const broadcastMutation = trpc.admin.broadcastNotification.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Notification sent to ${data.sentTo} users`);
+      setNotifForm({ title: "", message: "", type: "info" });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const updateCategoryMutation = trpc.admin.updateServiceCategory.useMutation({
+    onSuccess: () => { refetchCategories(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleCategoryToggle = async (categoryId: string, enabled: boolean) => {
+    setCategoryUpdating(categoryId);
+    try {
+      await updateCategoryMutation.mutateAsync({ categoryId, enabled });
+      toast.success(`Category ${enabled ? 'enabled' : 'disabled'}`);
+    } finally {
+      setCategoryUpdating(null);
+    }
+  };
+
 
   const createCouponMutation = trpc.coupons.create.useMutation({
     onSuccess: () => {
@@ -287,6 +325,9 @@ export default function AdminPanel() {
     { value: "fraud", label: "Fraud Detection", icon: AlertTriangle },
     { value: "refunds", label: "Refunds", icon: RotateCcw },
     { value: "payouts", label: "Payouts", icon: CreditCard },
+    { value: "notifications", label: "Push Notifications", icon: Bell },
+    { value: "services", label: "Service Controls", icon: Settings },
+    { value: "ai_insights", label: "AI Insights", icon: Brain },
   ];
 
   return (
@@ -1312,6 +1353,144 @@ export default function AdminPanel() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── Push Notifications Tab ────────────────────────────────────────── */}
+      {tab === "notifications" && (
+        <div className="space-y-6">
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Broadcast Notification</h3>
+                <p className="text-xs text-muted-foreground">Send a push notification to all registered users</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Notification Type</label>
+                <div className="flex gap-2">
+                  {(["info", "success", "warning"] as const).map(t => (
+                    <button key={t} onClick={() => setNotifForm(f => ({ ...f, type: t }))}
+                      className={`px-4 py-2 rounded-xl text-xs font-medium capitalize transition-all ${
+                        notifForm.type === t
+                          ? t === "info" ? "bg-blue-600 text-white" : t === "success" ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"
+                          : "glass text-muted-foreground hover:text-foreground"
+                      }`}>{t}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Title</label>
+                <Input value={notifForm.title} onChange={e => setNotifForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. New Feature Available" className="bg-white/5 border-white/10" maxLength={100} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Message</label>
+                <textarea value={notifForm.message} onChange={e => setNotifForm(f => ({ ...f, message: e.target.value }))}
+                  placeholder="Write your notification message here..." rows={4} maxLength={500}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+                <p className="text-xs text-muted-foreground mt-1">{notifForm.message.length}/500</p>
+              </div>
+              <Button
+                onClick={() => { if (!notifForm.title || !notifForm.message) { toast.error("Title and message required"); return; } broadcastMutation.mutate(notifForm); }}
+                disabled={broadcastMutation.isPending}
+                className="bg-violet-600 hover:bg-violet-500 gap-2">
+                <Send className="w-4 h-4" />
+                {broadcastMutation.isPending ? "Sending..." : "Send to All Users"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Service Category Controls Tab ─────────────────────────────────── */}
+      {tab === "services" && (
+        <div className="space-y-4">
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Service Category Controls</h3>
+                <p className="text-xs text-muted-foreground">Enable or disable entire service categories on the platform</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {(serviceCategories ?? []).map(cat => (
+                <div key={cat.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Zap className={`w-4 h-4 ${cat.enabled ? "text-emerald-400" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{cat.label}</p>
+                      <p className="text-xs text-muted-foreground">{cat.id}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleCategoryToggle(cat.id, !cat.enabled)}
+                    disabled={categoryUpdating === cat.id}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                  >
+                    {cat.enabled ? (
+                      <><ToggleRight className="w-5 h-5 text-emerald-400" /><span className="text-emerald-400">Enabled</span></>
+                    ) : (
+                      <><ToggleLeft className="w-5 h-5 text-muted-foreground" /><span className="text-muted-foreground">Disabled</span></>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI Insights Tab ───────────────────────────────────────────────── */}
+      {tab === "ai_insights" && (
+        <div className="space-y-4">
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">AI Analytics Summary</h3>
+                <p className="text-xs text-muted-foreground">AI-powered insights based on your platform data</p>
+              </div>
+            </div>
+            {aiInsightsLoading ? (
+              <div className="flex items-center gap-3 py-8">
+                <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-muted-foreground">Analyzing platform data...</span>
+              </div>
+            ) : aiInsights ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                  <p className="text-sm text-foreground leading-relaxed">{aiInsights.summary}</p>
+                </div>
+                {aiInsights.stats && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[
+                      { label: "Total Revenue", value: `$${aiInsights.stats.revenue}` },
+                      { label: "Total Users", value: aiInsights.stats.users },
+                      { label: "New Users (7d)", value: aiInsights.stats.newUsers7d },
+                      { label: "Total Orders", value: aiInsights.stats.orders },
+                      { label: "Orders (7d)", value: aiInsights.stats.newOrders7d },
+                    ].map(s => (
+                      <div key={s.label} className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+                        <p className="text-lg font-bold text-foreground">{s.value}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No data available.</p>
+            )}
           </div>
         </div>
       )}

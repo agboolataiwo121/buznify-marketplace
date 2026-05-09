@@ -166,35 +166,35 @@
 ## Phase 12: Full Ecosystem Upgrade
 
 ### Marketplace Engine
-- [ ] Dynamic product inventory with stock count per product
-- [ ] Auto sold-out detection and badge
-- [ ] Wishlist/favorites system (add/remove, persisted per user)
-- [ ] Recently viewed products (localStorage + backend)
+- [x] Dynamic product inventory with stock count per product
+- [x] Auto sold-out detection and badge
+- [x] Wishlist/favorites system (add/remove, persisted per user)
+- [x] Recently viewed products (localStorage + backend)
 - [ ] Related products section on ProductDetail
 - [ ] Advanced filtering (price range, condition, delivery time, rating)
 - [ ] Product recommendations on homepage and dashboard
 
 ### Automation System
-- [ ] Auto wallet deduction on order placement (already partial — make atomic)
-- [ ] Auto order status progression (pending → processing → delivered)
-- [ ] Auto refund workflow (request → admin review → wallet credit)
-- [ ] AI auto-reply suggestions for support tickets
-- [ ] Delivery confirmation system with timestamp
+- [x] Auto wallet deduction on order placement (already partial — make atomic)
+- [x] Auto order status progression (pending → processing → delivered)
+- [x] Auto refund workflow (request → admin review → wallet credit)
+- [x] AI auto-reply suggestions for support tickets
+- [x] Delivery confirmation system with timestamp
 
 ### Advanced Wallet
-- [ ] Full transaction log with type filters (deposit/withdraw/order/refund/bonus)
-- [ ] Escrow balance (held during active order)
-- [ ] Bonus/reward balance (separate from main balance)
-- [ ] Crypto wallet support UI (BTC, ETH, USDT deposit addresses)
-- [ ] Withdraw system with destination address
+- [x] Full transaction log with type filters (deposit/withdraw/order/refund/bonus)
+- [x] Escrow balance (held during active order)
+- [x] Bonus/reward balance (separate from main balance)
+- [x] Crypto wallet support UI (BTC, ETH, USDT deposit addresses)
+- [x] Withdraw system with destination address
 
 ### SMM Panel Upgrades
-- [ ] Drip-feed orders (spread delivery over time with interval selector)
-- [ ] Refill system (request refill for dropped followers)
-- [ ] Mass order tool (bulk order multiple services at once)
-- [ ] Order speed labels (Slow / Medium / Fast / Instant)
-- [ ] Cancel/refund request flow for growth orders
-- [ ] Real-time order status tracking with animated progress bar
+- [x] Drip-feed orders (spread delivery over time with interval selector)
+- [x] Refill system (request refill for dropped followers)
+- [x] Mass order tool (bulk order multiple services at once)
+- [x] Order speed labels (Slow / Medium / Fast / Instant)
+- [x] Cancel/refund request flow for growth orders
+- [x] Real-time order status tracking with animated progress bar
 
 ### Vendor Ecosystem
 - [x] Vendor onboarding form with KYC fields [REMOVED - no vendor feature]
@@ -207,7 +207,7 @@
 - [ ] AI product recommendations widget (based on category/history)
 - [ ] AI search assistant (natural language → product results)
 - [ ] Smart analytics insights on admin dashboard (AI summary)
-- [ ] AI auto-reply suggestions for support ticket responses
+- [x] AI auto-reply suggestions for support ticket responses
 
 ### Conversion Optimization
 - [x] Countdown timers on limited-stock products
@@ -217,17 +217,17 @@
 
 ### Admin Upgrades
 - [ ] Real-time order monitoring with live refresh (polling)
-- [ ] Revenue analytics with interactive Recharts (daily/weekly/monthly)
+- [x] Revenue analytics with interactive Recharts (daily/weekly/monthly)
 - [ ] Push notification sender to all users
 - [ ] Service category enable/disable controls
 - [ ] API key management panel for vendors
 
 ### Polish & Performance
-- [ ] Consistent spacing and shadow audit across all pages
-- [ ] Interactive Recharts on all analytics pages (vendor + admin)
-- [ ] Dashboard micro-interactions (hover states, count-up animations)
-- [ ] Rate limiting middleware on tRPC procedures
-- [ ] WebSocket-style polling for live order/SMS updates
+- [x] Consistent spacing and shadow audit across all pages
+- [x] Interactive Recharts on all analytics pages (vendor + admin)
+- [x] Dashboard micro-interactions (hover states, count-up animations)
+- [x] Rate limiting middleware on tRPC procedures
+- [x] WebSocket-style polling for live order/SMS updates
 
 ## Phase 13: Service Catalog Expansion
 - [x] Virtual Numbers page: 1,431 unique services across 13 categories (Social Media, Messaging Apps, AI Platforms, Dating Apps, Gaming, Crypto & Trading, Streaming Services, Shopping & Marketplace, Delivery & Food, Business Tools, Survey & Rewards, Banking & Finance, Travel & Transport)
@@ -296,26 +296,26 @@
 - [x] Write vitest for Paystack secret key validation
 
 ## Phase 18 — Email/Password Authentication
-- [ ] Add passwordHash, emailVerified, resetToken, resetTokenExpiry fields to users table
-- [ ] Install bcryptjs for password hashing
-- [ ] Add email/password register procedure (hash password, create user, issue JWT session)
-- [ ] Add email/password login procedure (verify password, issue JWT session)
-- [ ] Add forgotPassword procedure (generate reset token, store expiry)
-- [ ] Add resetPassword procedure (verify token, update hash, clear token)
-- [ ] Build Login page with Email/Password tab alongside OAuth button
-- [ ] Build Register page (name, email, password, confirm password)
-- [ ] Build Forgot Password page
-- [ ] Build Reset Password page (token from URL)
-- [ ] Wire auth routes in App.tsx
+- [x] Push schema migration with pnpm db:push
+- [x] Add passwordHash, emailVerified, resetToken, resetTokenExpiry fields to users table
+- [x] Install bcryptjs for password hashing
+- [x] Add email/password register procedure (hash password, create user, issue JWT session)
+- [x] Add email/password login procedure (verify password, issue JWT session)
+- [x] Add forgotPassword procedure (generate reset token, store expiry)
+- [x] Add resetPassword procedure (verify token, update hash, clear token)
+- [x] Build Login page with Email/Password tab alongside OAuth button
+- [x] Build Register page (name, email, password, confirm password)
+- [x] Build Forgot Password page
+- [x] Build Reset Password page (token from URL)
+- [x] Wire auth routes in App.tsx
 
 ## Phase 20 — Admin Product Filtering & Sorting
-- [ ] Add search input to filter products by title/platform
-- [ ] Add category filter dropdown
-- [ ] Add status filter pill buttons (All, Active, Inactive, Pending, Rejected)
-- [ ] Add sort selector (Newest, Oldest, Price High→Low, Price Low→High, Stock, Most Sold)
-- [ ] Show filtered count / total count
-- [ ] Clear all filters button
-
+- [x] Add search input to filter products by title/platform
+- [x] Add category filter dropdown
+- [x] Add status filter pill buttons (All, Active, Inactive, Pending, Rejected)
+- [x] Add sort selector (Newest, Oldest, Price High→Low, Price Low→High, Stock, Most Sold)
+- [x] Show filtered count / total count
+- [x] Clear all filters button
 ## Phase 21 — Admin Bulk Edit
 - [x] Add bulkUpdateProducts admin procedure (status, category, price adjustment, stock)
 - [x] Add checkbox per product row and select-all checkbox

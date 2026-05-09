@@ -74,7 +74,7 @@ import {
   getAllVendorPayouts,
   updateUserProfile,
 } from "./db";
-import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable } from "../drizzle/schema";
+import { products, users, referrals, orders as ordersTable, growthOrders as growthOrdersTable, siteSettings } from "../drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import {
   getProfile as fivesimGetProfile,
@@ -636,6 +636,9 @@ export const appRouter = router({
           targetUrl: z.string().url("Must be a valid URL"),
           quantity: z.number().min(10).max(1000000),
           totalPrice: z.number().min(0.001),
+          speedLabel: z.enum(["slow", "medium", "fast", "instant"]).optional().default("medium"),
+          dripFeed: z.boolean().optional().default(false),
+          dripInterval: z.number().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
@@ -694,6 +697,9 @@ export const appRouter = router({
             apiOrderId,
             panel: input.panel as "smmkings" | "peakerr",
             apiServiceId: input.serviceId,
+            speedLabel: input.speedLabel ?? "medium",
+            dripFeed: input.dripFeed ?? false,
+            dripInterval: input.dripInterval,
             notes: input.serviceName,
           });
         }
@@ -809,6 +815,73 @@ export const appRouter = router({
       .query(async ({ input }) => {
         await seedGrowthServices();
         return getGrowthServices(input.platform);
+      }),
+
+    massOrder: protectedProcedure
+      .input(z.object({
+        orders: z.array(z.object({
+          panel: z.enum(["smmkings", "peakerr"]),
+          serviceId: z.number(),
+          serviceName: z.string(),
+          targetUrl: z.string().url(),
+          quantity: z.number().min(10).max(1000000),
+          totalPrice: z.number().min(0.001),
+          speedLabel: z.enum(["slow", "medium", "fast", "instant"]).optional().default("medium"),
+          dripFeed: z.boolean().optional().default(false),
+          dripInterval: z.number().optional(),
+        })).min(1).max(50),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const totalCost = input.orders.reduce((s, o) => s + o.totalPrice, 0);
+        const balance = parseFloat(user.balance ?? "0");
+        if (balance < totalCost) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Insufficient balance. Need $${totalCost.toFixed(4)}, have $${balance.toFixed(2)}` });
+        }
+        const results: { serviceName: string; apiOrderId?: string; error?: string }[] = [];
+        let remainingBalance = balance;
+        const db = await getDb();
+        for (const order of input.orders) {
+          try {
+            const result = await smmPlaceOrder(order.panel as SmmPanel, order.serviceId, order.targetUrl, order.quantity);
+            const apiOrderId = String(result.order);
+            remainingBalance -= order.totalPrice;
+            await updateUserBalance(ctx.user.id, remainingBalance.toFixed(6));
+            await createWalletTransaction({
+              userId: ctx.user.id,
+              type: "purchase",
+              amount: order.totalPrice.toFixed(6),
+              balanceBefore: (remainingBalance + order.totalPrice).toFixed(2),
+              balanceAfter: remainingBalance.toFixed(6),
+              description: `Mass Order: ${order.serviceName} x${order.quantity}`,
+              referenceId: apiOrderId,
+              status: "completed",
+            });
+            if (db) {
+              await db.insert(growthOrdersTable).values({
+                userId: ctx.user.id,
+                serviceId: order.serviceId,
+                targetUrl: order.targetUrl,
+                quantity: order.quantity,
+                totalAmount: order.totalPrice.toFixed(6),
+                status: "processing",
+                deliveredCount: 0,
+                apiOrderId,
+                panel: order.panel as "smmkings" | "peakerr",
+                apiServiceId: order.serviceId,
+                speedLabel: order.speedLabel ?? "medium",
+                dripFeed: order.dripFeed ?? false,
+                dripInterval: order.dripInterval,
+                notes: order.serviceName,
+              });
+            }
+            results.push({ serviceName: order.serviceName, apiOrderId });
+          } catch (err) {
+            results.push({ serviceName: order.serviceName, error: (err as Error).message });
+          }
+        }
+        return { results, newBalance: remainingBalance };
       }),
   }),
 
@@ -1266,6 +1339,20 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    /** AI-powered reply suggestion for admins */
+    suggestReply: adminProcedure
+      .input(z.object({ ticketId: z.number() }))
+      .mutation(async ({ input }) => {
+        const ticket = await getTicketById(input.ticketId);
+        if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+        const messages = await getTicketMessages(input.ticketId);
+        const { invokeLLM } = await import("./_core/llm");
+        const convo = messages.slice(-6).map(m => `${m.isStaff ? "Support" : "User"}: ${m.message}`).join("\n");
+        const prompt = `You are a helpful support agent for Buznify, a digital marketplace. Write a concise, professional reply to this support ticket.\n\nSubject: ${ticket.subject}\nCategory: ${ticket.category}\nPriority: ${ticket.priority}\n\nConversation:\n${convo}\n\nWrite a helpful reply (2-4 sentences, no markdown headers, direct and friendly):`;
+        const response = await invokeLLM({ messages: [{ role: "user" as const, content: prompt }] });
+        const suggestion = (response as { choices: Array<{ message: { content: string } }> }).choices?.[0]?.message?.content ?? "";
+        return { suggestion };
+      }),
     // Admin
     allTickets: adminProcedure.query(async () => getAllTickets()),
     updateStatus: adminProcedure
@@ -1428,6 +1515,67 @@ export const appRouter = router({
         });
          return { success: true };
       }),
+
+    broadcastNotification: adminProcedure
+      .input(z.object({ title: z.string().min(1).max(100), message: z.string().min(1).max(500), type: z.enum(["info", "success", "warning"]).default("info") }))
+      .mutation(async ({ input }) => {
+        const users = await getAllUsers(5000);
+        const { notifyOwner } = await import("./_core/notification");
+        await notifyOwner({ title: `[Broadcast] ${input.title}`, content: `${input.message}\n\nSent to ${users.length} users.` });
+        return { success: true, sentTo: users.length };
+      }),
+
+    getServiceCategories: adminProcedure.query(async () => {
+      const categories = [
+        { id: "social_media_accounts", label: "Social Media Accounts", enabled: true },
+        { id: "streaming_accounts", label: "Streaming Accounts", enabled: true },
+        { id: "gaming_accounts", label: "Gaming Accounts", enabled: true },
+        { id: "virtual_numbers", label: "Virtual Numbers", enabled: true },
+        { id: "growth_services", label: "Growth Services", enabled: true },
+      ];
+      const db = await getDb();
+      if (!db) return categories;
+      const rows = await db.select().from(siteSettings).where(sql`${siteSettings.key} LIKE 'category_enabled_%'`);
+      return categories.map(cat => {
+        const row = rows.find((r: { key: string; value: string }) => r.key === `category_enabled_${cat.id}`);
+        return { ...cat, enabled: row ? row.value !== "false" : true };
+      });
+    }),
+
+    updateServiceCategory: adminProcedure
+      .input(z.object({ categoryId: z.string(), enabled: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const key = `category_enabled_${input.categoryId}`;
+        const existing = await db.select().from(siteSettings).where(eq(siteSettings.key, key));
+        if (existing.length > 0) {
+          await db.update(siteSettings).set({ value: input.enabled ? "true" : "false" }).where(eq(siteSettings.key, key));
+        } else {
+          await db.insert(siteSettings).values({ key, value: input.enabled ? "true" : "false" });
+        }
+        return { success: true };
+      }),
+
+    getAiAnalyticsSummary: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { summary: "No data available." };
+      const [allOrders, allUsers, allProducts] = await Promise.all([
+        getAllOrders(1000),
+        getAllUsers(1000),
+        getProducts({ limit: 1000, status: undefined }),
+      ]);
+      const revenue = allOrders.filter(o => o.status !== "cancelled").reduce((s, o) => s + parseFloat(o.totalAmount ?? "0"), 0);
+      const last7 = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const newUsers7d = allUsers.filter(u => new Date(u.createdAt).getTime() > last7).length;
+      const newOrders7d = allOrders.filter(o => new Date(o.createdAt).getTime() > last7).length;
+      const topProduct = allProducts.sort((a, b) => (b.totalSold ?? 0) - (a.totalSold ?? 0))[0];
+      const { invokeLLM } = await import("./_core/llm");
+      const prompt = `You are a business analytics assistant. Summarize this marketplace data in 3-4 concise sentences highlighting key trends, opportunities, and any concerns:\n- Total revenue: $${revenue.toFixed(2)}\n- Total users: ${allUsers.length} (${newUsers7d} new in last 7 days)\n- Total orders: ${allOrders.length} (${newOrders7d} in last 7 days)\n- Active products: ${allProducts.filter(p => p.status === "active").length}\n- Top selling product: ${topProduct?.title ?? "N/A"} (${topProduct?.totalSold ?? 0} sold)`;
+      const response = await invokeLLM({ messages: [{ role: "user" as const, content: prompt }] });
+      const summary = (response as any).choices?.[0]?.message?.content ?? "Unable to generate summary.";
+      return { summary, stats: { revenue: revenue.toFixed(2), users: allUsers.length, newUsers7d, orders: allOrders.length, newOrders7d } };
+    }),
   }),
   // ── AI Chat ──────────────────────────────────────────────────────────────
   ai: router({

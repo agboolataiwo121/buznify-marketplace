@@ -5,7 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { MessageSquare, Send, Clock, CheckCircle, Shield } from "lucide-react";
+import { MessageSquare, Send, Clock, CheckCircle, Shield, Sparkles } from "lucide-react";
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +31,14 @@ export default function TicketDetail() {
     onSuccess: () => {
       toast.success("Ticket closed");
       utils.support.getTicket.invalidate({ id: parseInt(id ?? "0") });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const suggestReplyMutation = trpc.support.suggestReply.useMutation({
+    onSuccess: (data) => {
+      if (data.suggestion) setReply(data.suggestion);
+      toast.success("AI suggestion loaded — review and edit before sending");
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -119,7 +127,7 @@ export default function TicketDetail() {
             rows={3}
             className="w-full rounded-lg bg-white/5 border border-white/10 text-sm text-foreground px-3 py-2 focus:outline-none focus:border-primary/50 resize-none mb-3"
           />
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button
               className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0"
               onClick={() => replyMutation.mutate({ ticketId: t.id, message: reply })}
@@ -128,6 +136,17 @@ export default function TicketDetail() {
               <Send className="w-4 h-4 mr-2" />
               Send Reply
             </Button>
+            {(user as { role?: string } | null)?.role === "admin" && (
+              <Button
+                variant="outline"
+                className="border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                onClick={() => suggestReplyMutation.mutate({ ticketId: t.id })}
+                disabled={suggestReplyMutation.isPending}
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {suggestReplyMutation.isPending ? "Generating..." : "AI Suggest"}
+              </Button>
+            )}
             <Button
               variant="outline"
               className="border-white/10 bg-white/5"
