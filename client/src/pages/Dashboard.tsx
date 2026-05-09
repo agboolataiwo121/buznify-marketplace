@@ -41,6 +41,12 @@ export default function Dashboard() {
   const { data: smsMessages = [] } = trpc.virtualNumbers.getSms.useQuery({ numberId: 0 });
   const { data: wishlistItems = [] } = trpc.wishlist.get.useQuery();
   const { data: recentlyViewed = [] } = trpc.recentlyViewed.get.useQuery();
+  // AI recommendations: use wishlist/recently-viewed categories as signals
+  const recentCategories = (recentlyViewed as any[]).slice(0, 5).map((i: any) => i.product?.category).filter(Boolean);
+  const { data: recommendations = [] } = trpc.products.getRecommendations.useQuery(
+    { categories: recentCategories, limit: 4 },
+    { enabled: true }
+  );
 
   const referrals = referralData?.referrals ?? [];
   const balance = parseFloat(String((walletData as any)?.balance ?? "0"));
@@ -293,6 +299,28 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+      {/* AI Recommendations */}
+      {(recommendations as any[]).length > 0 && (
+        <div className="glass-card rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-violet-500/20 flex items-center justify-center">
+              <span className="text-violet-400 text-xs">✨</span>
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Recommended For You</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(recommendations as any[]).map((p: any) => (
+              <Link key={p.id} href={`/product/${p.id}`}>
+                <div className="p-3 bg-white/5 hover:bg-white/8 rounded-xl cursor-pointer transition-colors border border-white/5 hover:border-violet-500/30">
+                  <div className="text-white text-xs font-medium line-clamp-2 mb-1">{p.title}</div>
+                  <div className="text-xs text-muted-foreground mb-1.5">{p.platform}</div>
+                  <div className="text-violet-400 text-xs font-bold">${p.price}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
       </div>
     </DashboardShell>
   );

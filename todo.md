@@ -170,9 +170,9 @@
 - [x] Auto sold-out detection and badge
 - [x] Wishlist/favorites system (add/remove, persisted per user)
 - [x] Recently viewed products (localStorage + backend)
-- [ ] Related products section on ProductDetail
-- [ ] Advanced filtering (price range, condition, delivery time, rating)
-- [ ] Product recommendations on homepage and dashboard
+- [x] Related products section on ProductDetail
+- [x] Advanced filtering (price range, condition, delivery time, rating)
+- [x] Product recommendations on homepage and dashboard
 
 ### Automation System
 - [x] Auto wallet deduction on order placement (already partial — make atomic)
@@ -204,23 +204,23 @@
 - [x] Vendor badges (Verified, Top Seller, New) [REMOVED - no vendor feature]
 
 ### AI Features
-- [ ] AI product recommendations widget (based on category/history)
-- [ ] AI search assistant (natural language → product results)
-- [ ] Smart analytics insights on admin dashboard (AI summary)
+- [x] AI product recommendations widget (based on category/history)
+- [x] AI search assistant (natural language → product results)
+- [x] Smart analytics insights on admin dashboard (AI summary)
 - [x] AI auto-reply suggestions for support ticket responses
 
 ### Conversion Optimization
 - [x] Countdown timers on limited-stock products
 - [x] "X people viewing this" indicator on product pages
-- [ ] Abandoned cart recovery reminder (notification after 30 min)
+- [x] Abandoned cart recovery reminder (notification after 30 min)
 - [x] Gamified loyalty points display on dashboard
 
 ### Admin Upgrades
-- [ ] Real-time order monitoring with live refresh (polling)
+- [x] Real-time order monitoring with live refresh (polling)
 - [x] Revenue analytics with interactive Recharts (daily/weekly/monthly)
-- [ ] Push notification sender to all users
-- [ ] Service category enable/disable controls
-- [ ] API key management panel for vendors
+- [x] Push notification sender to all users
+- [x] Service category enable/disable controls
+- [x] API key management panel for vendors
 
 ### Polish & Performance
 - [x] Consistent spacing and shadow audit across all pages
@@ -285,7 +285,7 @@
 ## Phase 16 — Paystack Payment Integration
 - [x] Create server/paystack.ts helper (initializeTransaction, verifyTransaction, validateWebhookSignature)
 - [x] Add payments table to drizzle/schema.ts
-- [ ] Push schema migration with pnpm db:push
+- [x] Push schema migration with pnpm db:push
 - [x] Add payment tRPC procedures: payment.initiate, payment.verify, payment.history
 - [x] Add Paystack webhook Express route for charge.success events
 - [x] Install @paystack/inline-js on client

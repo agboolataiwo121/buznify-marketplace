@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import {
@@ -274,6 +275,7 @@ const faqs = [
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const [_openFaq, setOpenFaq] = useState<string | undefined>(undefined);
+  const { data: featuredProducts = [] } = trpc.products.getRecommendations.useQuery({ limit: 4 });
 
   const handleCTA = () => {
     if (!isAuthenticated) {
@@ -850,6 +852,51 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+
+      {/* ── AI Featured Products ── */}
+      {(featuredProducts as any[]).length > 0 && (
+        <section className="py-20 relative">
+          <div className="container">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-violet-400 text-sm font-medium mb-4">
+                <span>✨</span>
+                <span>Recommended For You</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                Top Picks Right Now
+              </h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                Curated products based on what's trending on the platform.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+              {(featuredProducts as any[]).map((p: any) => (
+                <Link key={p.id} href={`/product/${p.id}`}>
+                  <div className="glass-card rounded-2xl p-5 hover:border-violet-500/40 transition-all cursor-pointer group">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center mb-4">
+                      <Zap className="w-5 h-5 text-violet-400" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground group-hover:text-violet-400 transition-colors line-clamp-2 mb-1">{p.title}</h3>
+                    <p className="text-xs text-muted-foreground mb-3">{p.platform}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-violet-400">${p.price}</span>
+                      <span className="text-xs text-muted-foreground">{p.totalSold ?? 0} sold</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="text-center">
+              <Link href="/marketplace">
+                <Button variant="outline" className="border-white/20 hover:border-violet-500/50 gap-2">
+                  View All Products <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       <Footer />
     </div>

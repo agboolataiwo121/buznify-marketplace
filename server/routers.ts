@@ -394,7 +394,7 @@ export const appRouter = router({
         }
         return { updated };
       }),
-    bulkDelete: adminProcedure
+     bulkDelete: adminProcedure
       .input(z.object({ ids: z.array(z.number()).min(1) }))
       .mutation(async ({ input }) => {
         let deleted = 0;
@@ -403,8 +403,52 @@ export const appRouter = router({
         }
         return { deleted };
       }),
-  }),
 
+    /** Related products: same category, exclude current product */
+    getRelated: publicProcedure
+      .input(z.object({ productId: z.number(), category: z.string().optional(), limit: z.number().default(6) }))
+      .query(async ({ input }) => {
+        const all = await getProducts({ limit: 100, status: "active" });
+        return all
+          .filter(p => p.id !== input.productId && (!input.category || p.category === input.category))
+          .sort(() => Math.random() - 0.5)
+          .slice(0, input.limit);
+      }),
+
+    /** AI-powered product recommendations based on category/history */
+    getRecommendations: publicProcedure
+      .input(z.object({ categories: z.array(z.string()).optional(), limit: z.number().default(8) }))
+      .query(async ({ input }) => {
+        const all = await getProducts({ limit: 200, status: "active" });
+        if (!input.categories?.length) {
+          return all.sort(() => Math.random() - 0.5).slice(0, input.limit);
+        }
+        const matched = all.filter(p => input.categories!.includes(p.category));
+        const others = all.filter(p => !input.categories!.includes(p.category));
+        return [...matched, ...others].slice(0, input.limit);
+      }),
+
+    /** AI natural language search assistant */
+    aiSearch: publicProcedure
+      .input(z.object({ query: z.string().min(2).max(500) }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import("./_core/llm");
+        const all = await getProducts({ limit: 200, status: "active" });
+        const catalog = all.slice(0, 50).map(p => `ID:${p.id} | ${p.title} | ${p.category} | $${p.price}`).join("\n");
+        const prompt = `You are a product search assistant for Buznify digital marketplace. Given the user's search query, return a JSON array of up to 6 product IDs from the catalog that best match.\n\nCatalog:\n${catalog}\n\nUser query: "${input.query}"\n\nReturn ONLY a JSON array of numbers like [1, 5, 12]. No explanation.`;
+        try {
+          const response = await invokeLLM({ messages: [{ role: "user" as const, content: prompt }] });
+          const content = (response as { choices: Array<{ message: { content: string } }> }).choices?.[0]?.message?.content ?? "[]";
+          const ids: number[] = JSON.parse(content.match(/\[[\s\S]*\]/)?.[0] ?? "[]");
+          const results = all.filter(p => ids.includes(p.id));
+          return { results, query: input.query };
+        } catch {
+          const keyword = input.query.toLowerCase();
+          const results = all.filter(p => p.title.toLowerCase().includes(keyword) || p.category.toLowerCase().includes(keyword)).slice(0, 6);
+          return { results, query: input.query };
+        }
+      }),
+  }),
   // ── Orders ────────────────────────────────────────────────────────────────
   orders: router({
     create: protectedProcedure

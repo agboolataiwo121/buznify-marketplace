@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { CountdownTimer, PeopleViewing, StockUrgency } from "@/components/ConversionWidgets";
+import { CountdownTimer, PeopleViewing, StockUrgency, AbandonedCartBanner } from "@/components/ConversionWidgets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -55,6 +55,29 @@ export default function ProductDetail() {
   const [ordering, setOrdering] = useState(false);
 
   const product = DEMO_PRODUCTS[productId];
+
+  // Related products
+  const { data: relatedProducts } = trpc.products.getRelated.useQuery(
+    { productId, category: product?.category, limit: 4 },
+    { enabled: !!product }
+  );
+
+  // Abandoned cart: save to localStorage when viewing, trigger reminder after 5 min
+  const [showAbandonedCart, setShowAbandonedCart] = useState(false);
+  const abandonedCartRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!product) return;
+    const key = `bz_cart_${productId}`;
+    const existing = localStorage.getItem(key);
+    if (!existing) {
+      localStorage.setItem(key, JSON.stringify({ productId, title: product.title, price: product.price, ts: Date.now() }));
+      abandonedCartRef.current = setTimeout(() => setShowAbandonedCart(true), 30 * 60 * 1000);
+    } else {
+      const saved = JSON.parse(existing);
+      if (Date.now() - saved.ts > 30 * 60 * 1000) setShowAbandonedCart(true);
+    }
+    return () => { if (abandonedCartRef.current) clearTimeout(abandonedCartRef.current); };
+  }, [productId, product]);
 
   const { data: couponData } = trpc.coupons.validate.useQuery(
     { code: couponCode, orderAmount: parseFloat(product?.price ?? "0") },
@@ -314,6 +337,36 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+      {/* Related Products */}
+      {relatedProducts && relatedProducts.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 pb-16">
+          <h2 className="text-xl font-bold text-foreground mb-6">Related Products</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {relatedProducts.map((p: any) => (
+              <Link key={p.id} href={`/product/${p.id}`}>
+                <div className="glass-card rounded-2xl p-4 hover:border-primary/40 transition-all cursor-pointer group">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                    <Package className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1">{p.title}</h3>
+                  <p className="text-xs text-muted-foreground mb-2">{p.platform}</p>
+                  <p className="text-sm font-bold text-primary">${p.price}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Abandoned Cart Banner */}
+      {showAbandonedCart && (
+        <AbandonedCartBanner
+          productName={product.title}
+          onResume={() => { setShowAbandonedCart(false); document.getElementById('buy-section')?.scrollIntoView({ behavior: 'smooth' }); }}
+          onDismiss={() => { setShowAbandonedCart(false); localStorage.removeItem(`bz_cart_${productId}`); }}
+        />
+      )}
+
       <Footer />
     </div>
   );
