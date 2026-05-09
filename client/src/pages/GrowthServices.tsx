@@ -30,7 +30,18 @@ import {
   Star,
   Package,
   Plus,
+  Clock,
+  CheckCircle2,
+  Info,
+  BarChart2,
+  Hash,
+  Layers,
 } from "lucide-react";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { getLoginUrl } from "@/const";
 import ServiceIcon from "@/components/ServiceIcon";
 
@@ -101,11 +112,46 @@ interface LiveService {
   maxQty: number;
 }
 
+// ─── Derive estimated delivery speed from service name ────────────────────────
+function getDeliverySpeed(name: string): { label: string; color: string; icon: string } {
+  const n = name.toLowerCase();
+  if (n.includes("instant") || n.includes("fast") || n.includes("speed")) {
+    return { label: "Instant (0–1 hr)", color: "text-emerald-400", icon: "⚡" };
+  }
+  if (n.includes("slow") || n.includes("gradual") || n.includes("drip")) {
+    return { label: "Gradual (1–7 days)", color: "text-orange-400", icon: "🐢" };
+  }
+  if (n.includes("real") || n.includes("organic") || n.includes("natural")) {
+    return { label: "Natural (1–3 days)", color: "text-cyan-400", icon: "🌿" };
+  }
+  return { label: "Standard (1–24 hr)", color: "text-yellow-400", icon: "🕐" };
+}
+
+// ─── Derive estimated success rate from service name ──────────────────────────
+function getSuccessRate(name: string, refill: boolean): { pct: number; color: string } {
+  const n = name.toLowerCase();
+  if (refill && (n.includes("real") || n.includes("hq") || n.includes("high quality"))) {
+    return { pct: 98, color: "text-emerald-400" };
+  }
+  if (refill) return { pct: 95, color: "text-emerald-400" };
+  if (n.includes("real") || n.includes("hq") || n.includes("high quality") || n.includes("premium")) {
+    return { pct: 92, color: "text-cyan-400" };
+  }
+  if (n.includes("bot") || n.includes("cheap") || n.includes("low")) {
+    return { pct: 78, color: "text-orange-400" };
+  }
+  return { pct: 88, color: "text-yellow-400" };
+}
+
 function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: LiveService) => void }) {
   const [expanded, setExpanded] = useState(false);
   const platformInfo = PLATFORMS.find((p) => p.key === service.platform);
+  const delivery = getDeliverySpeed(service.name);
+  const successRate = getSuccessRate(service.name, service.refill);
   return (
-    <Card className="bg-[#0d1117] border border-white/10 hover:border-violet-500/40 transition-all duration-200">
+    <HoverCard openDelay={300} closeDelay={100}>
+      <HoverCardTrigger asChild>
+    <Card className="bg-[#0d1117] border border-white/10 hover:border-violet-500/40 transition-all duration-200 cursor-pointer">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -150,9 +196,105 @@ function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: Live
         </div>
       </CardContent>
     </Card>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="right"
+        align="start"
+        sideOffset={8}
+        className="w-72 bg-[#0d1117] border border-white/10 shadow-2xl p-0 rounded-2xl overflow-hidden"
+      >
+        <div className="px-4 pt-4 pb-3 border-b border-white/5">
+          <div className="flex items-center gap-2 mb-1">
+            <ServiceIcon name={service.platform} size={14} />
+            <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{service.platform} · {service.serviceType}</span>
+          </div>
+          <p className="text-sm text-white/90 font-medium leading-snug line-clamp-3">{service.name}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-white/5 border-b border-white/5">
+          <div className="bg-[#0d1117] px-4 py-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Clock className="w-3 h-3 text-white/30" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Delivery</span>
+            </div>
+            <span className={`text-xs font-semibold ${delivery.color}`}>{delivery.icon} {delivery.label}</span>
+          </div>
+          <div className="bg-[#0d1117] px-4 py-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <BarChart2 className="w-3 h-3 text-white/30" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Success Rate</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${successRate.pct >= 95 ? "bg-emerald-400" : successRate.pct >= 88 ? "bg-yellow-400" : "bg-orange-400"}`}
+                  style={{ width: `${successRate.pct}%` }}
+                />
+              </div>
+              <span className={`text-xs font-bold ${successRate.color}`}>{successRate.pct}%</span>
+            </div>
+          </div>
+          <div className="bg-[#0d1117] px-4 py-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <RefreshCw className="w-3 h-3 text-white/30" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Refill</span>
+            </div>
+            {service.refill ? (
+              <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
+                <CheckCircle2 className="w-3 h-3" />Guaranteed
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs font-semibold text-white/30">
+                <XCircle className="w-3 h-3" />Not available
+              </span>
+            )}
+          </div>
+          <div className="bg-[#0d1117] px-4 py-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <XCircle className="w-3 h-3 text-white/30" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Cancel</span>
+            </div>
+            {service.cancel ? (
+              <span className="flex items-center gap-1 text-xs font-semibold text-cyan-400">
+                <CheckCircle2 className="w-3 h-3" />Allowed
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs font-semibold text-white/30">
+                <XCircle className="w-3 h-3" />Not allowed
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1.5 text-white/40"><Layers className="w-3 h-3" />Quantity range</span>
+            <span className="text-white/70 font-medium">{service.minQty.toLocaleString()} – {service.maxQty.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1.5 text-white/40"><Hash className="w-3 h-3" />Service ID</span>
+            <span className="text-white/50 font-mono">#{service.service}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1.5 text-white/40"><Info className="w-3 h-3" />Panel</span>
+            <span className="text-violet-400 font-medium">{PANEL_LABELS[service.panel] ?? service.panel}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1.5 text-white/40"><Star className="w-3 h-3" />Rate</span>
+            <span className="text-violet-400 font-bold">${service.ratePerThousand.toFixed(3)} / 1K</span>
+          </div>
+        </div>
+        <div className="px-4 pb-4">
+          <Button
+            size="sm"
+            className="w-full h-8 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 text-xs font-semibold"
+            onClick={() => onBuy(service)}
+          >
+            <ShoppingCart className="w-3 h-3 mr-1.5" />Order Now
+          </Button>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
-
 function OrderModal({
   service,
   onClose,
