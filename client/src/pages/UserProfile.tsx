@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useTheme } from "@/contexts/ThemeContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardShell from "@/components/DashboardShell";
@@ -28,6 +29,9 @@ import {
   EyeOff,
   Download,
   RotateCcw,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { generateReceiptPdf } from "@/lib/receiptGenerator";
 
@@ -580,6 +584,9 @@ export default function UserProfile() {
 
           {/* Push Notification Preferences */}
           <NotificationPreferencesCard />
+
+          {/* Appearance */}
+          <AppearanceCard />
       </div>
     </DashboardShell>
   );
@@ -638,6 +645,54 @@ function NotificationPreferencesCard() {
             Notifications are blocked in your browser settings. To re-enable, click the lock icon in your browser address bar.
           </p>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AppearanceCard() {
+  const { theme, toggleTheme, switchable } = useTheme();
+  if (!switchable || !toggleTheme) return null;
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Monitor className="w-4 h-4 text-primary" />
+          Appearance
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">
+          Choose how Buznify looks for you. Your preference is saved automatically.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => theme === "light" ? null : toggleTheme()}
+            className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+              theme === "light"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-border/80 hover:text-foreground"
+            }`}
+          >
+            <Sun className="w-6 h-6" />
+            <span className="text-xs font-medium">Light</span>
+          </button>
+          <button
+            onClick={() => theme === "dark" ? null : toggleTheme()}
+            className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+              theme === "dark"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-border/80 hover:text-foreground"
+            }`}
+          >
+            <Moon className="w-6 h-6" />
+            <span className="text-xs font-medium">Dark</span>
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 text-center">
+          Currently using <span className="font-medium text-foreground">{theme === "dark" ? "Dark" : "Light"} Mode</span>
+        </p>
       </CardContent>
     </Card>
   );

@@ -642,3 +642,9 @@
 - [x] Wire toggle button in desktop navbar (Sun/Moon icon) — already existed
 - [x] Wire toggle in mobile bottom nav (Sun/Moon button added)
 - [x] Persist preference in localStorage via ThemeProvider — already implemented
+
+## Dark/Light Mode Polish
+- [x] System preference detection: use prefers-color-scheme on first visit (no stored preference)
+- [x] Replace hardcoded bg-white/5, border-white/10, border-white/5 with semantic tokens in Navbar
+- [x] Replace hardcoded dark colors in DashboardShell mobile sheet
+- [x] Add theme toggle card to UserProfile settings page

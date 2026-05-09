@@ -69,7 +69,7 @@ export default function Navbar() {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
-            ? "glass border-b border-white/8 shadow-xl shadow-black/30 backdrop-blur-2xl"
+            ? "glass border-b border-border/50 shadow-xl shadow-black/20 backdrop-blur-2xl"
             : "bg-transparent"
         }`}
       >
@@ -100,7 +100,7 @@ export default function Navbar() {
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     location === href
                       ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
                   {label}
@@ -119,7 +119,7 @@ export default function Navbar() {
               {toggleTheme && (
                 <button
                   onClick={toggleTheme}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                   title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                 >
                   {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -128,7 +128,7 @@ export default function Navbar() {
               {isAuthenticated && user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 h-9 px-3 hover:bg-white/5">
+                    <Button variant="ghost" className="flex items-center gap-2 h-9 px-3 hover:bg-muted/50">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">
                         {user.name?.charAt(0).toUpperCase() ?? "U"}
                       </div>
@@ -136,12 +136,12 @@ export default function Navbar() {
                       <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 glass-card border-white/10">
+                  <DropdownMenuContent align="end" className="w-52 glass-card border-border/30">
                     <div className="px-3 py-2">
                       <p className="text-sm font-medium truncate">{user.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     </div>
-                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuSeparator className="bg-border/50" />
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
                         <LayoutDashboard className="w-4 h-4" />Dashboard
@@ -159,7 +159,7 @@ export default function Navbar() {
                     </DropdownMenuItem>
                     {user.role === "admin" && (
                       <>
-                        <DropdownMenuSeparator className="bg-white/5" />
+                        <DropdownMenuSeparator className="bg-border/50" />
                         <DropdownMenuItem asChild>
                           <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
                             <Settings className="w-4 h-4" />Admin Panel
@@ -167,7 +167,7 @@ export default function Navbar() {
                         </DropdownMenuItem>
                       </>
                     )}
-                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuSeparator className="bg-border/50" />
                     <DropdownMenuItem
                       onClick={() => logout()}
                       className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
@@ -181,7 +181,7 @@ export default function Navbar() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     onClick={handleLogin}
                   >
                     Sign In
@@ -200,13 +200,13 @@ export default function Navbar() {
             {/* Mobile: search + menu buttons */}
             <div className="md:hidden flex items-center gap-1">
               <button
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                 onClick={() => { setShowSearch(!showSearch); setIsOpen(false); }}
               >
                 {showSearch ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
               </button>
               <button
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                 onClick={() => { setIsOpen(!isOpen); setShowSearch(false); }}
               >
                 {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -232,19 +232,19 @@ export default function Navbar() {
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       location === href
                         ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
                     {label}
                   </Link>
                 ))}
-                <div className="border-t border-white/5 mt-2 pt-2 flex flex-col gap-2">
+                <div className="border-t border-border/40 mt-2 pt-2 flex flex-col gap-2">
                   {/* Theme toggle in mobile */}
                   {toggleTheme && (
                     <button
                       onClick={toggleTheme}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                     >
                       {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                       {theme === "dark" ? "Light Mode" : "Dark Mode"}
