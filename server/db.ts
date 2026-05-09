@@ -135,7 +135,7 @@ export async function updateUserRole(userId: number, role: "user" | "admin") {
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
-export async function updateUserProfile(userId: number, data: { name?: string; avatarUrl?: string }) {
+export async function updateUserProfile(userId: number, data: { name?: string; avatarUrl?: string; passwordHash?: string }) {
   const db = await getDb();
   if (!db) return;
   const updates: Record<string, unknown> = {};

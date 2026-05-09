@@ -22,6 +22,9 @@ import {
   Loader2,
   Copy,
   Star,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -41,10 +44,49 @@ export default function UserProfile() {
   const [nameValue, setNameValue] = useState("");
   const [uploading, setUploading] = useState(false);
   const [historyLimit, setHistoryLimit] = useState(10);
+  // Change password state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   const { data: profile, refetch: refetchProfile } = trpc.profile.get.useQuery(undefined, {
     enabled: !!authUser,
   });
+
+  const changePasswordMutation = trpc.profile.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password updated successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleChangePassword = () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    changePasswordMutation.mutate({ currentPassword, newPassword, confirmPassword });
+  };
+
+  const pwRules = [
+    { label: "At least 8 characters", ok: newPassword.length >= 8 },
+    { label: "One uppercase letter", ok: /[A-Z]/.test(newPassword) },
+    { label: "One number", ok: /[0-9]/.test(newPassword) },
+  ];
 
   const { data: purchaseHistory, isLoading: historyLoading } = trpc.profile.purchaseHistory.useQuery(
     { limit: historyLimit },
@@ -371,6 +413,107 @@ export default function UserProfile() {
             </Card>
           </div>
         </div>
+          {/* Change Password */}
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Change Password</CardTitle>
+                  <CardDescription className="text-xs">
+                    Update your account password. OAuth-only users can set a password here.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPw ? "text" : "password"}
+                    placeholder="Enter current password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowCurrentPw((v) => !v)}
+                  >
+                    {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowNewPw((v) => !v)}
+                  >
+                    {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {newPassword.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {pwRules.map((rule) => (
+                      <li key={rule.label} className={"flex items-center gap-2 text-xs " + (rule.ok ? "text-emerald-400" : "text-muted-foreground")}>
+                        {rule.ok
+                          ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          : <XCircle className="w-3.5 h-3.5 text-muted-foreground" />}
+                        {rule.label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPw ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={"flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pr-10" + (confirmPassword && confirmPassword !== newPassword ? " border-red-500" : "")}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowConfirmPw((v) => !v)}
+                  >
+                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {confirmPassword && confirmPassword !== newPassword && (
+                  <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+                )}
+              </div>
+              <Button
+                onClick={handleChangePassword}
+                disabled={changePasswordMutation.isPending || !newPassword || !confirmPassword}
+                className="w-full bg-orange-600 hover:bg-orange-500 text-white"
+              >
+                {changePasswordMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating…</>
+                ) : (
+                  <><Lock className="w-4 h-4 mr-2" /> Update Password</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
       </div>
     </DashboardShell>
   );

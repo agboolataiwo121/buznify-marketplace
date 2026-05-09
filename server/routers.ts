@@ -1867,6 +1867,40 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
         const userOrders = await getOrdersByUser(ctx.user.id);
         return userOrders.slice(0, input?.limit ?? 50);
       }),
+    changePassword: protectedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1, "Current password is required"),
+          newPassword: z
+            .string()
+            .min(8, "Password must be at least 8 characters")
+            .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+            .regex(/[0-9]/, "Must contain at least one number"),
+          confirmPassword: z.string().min(1, "Please confirm your new password"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        if (input.newPassword !== input.confirmPassword) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Passwords do not match" });
+        }
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        // If the user signed up via OAuth (no password), skip current password check
+        if (user.passwordHash) {
+          const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+          if (!valid) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect" });
+          }
+          // Prevent reusing the same password
+          const same = await bcrypt.compare(input.newPassword, user.passwordHash);
+          if (same) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "New password must be different from the current password" });
+          }
+        }
+        const newHash = await bcrypt.hash(input.newPassword, 12);
+        await updateUserProfile(ctx.user.id, { passwordHash: newHash });
+        return { success: true };
+      }),
   }),
   // ── Scheduled endpoint ────────────────────────────────────────────────────
   scheduled: router({
