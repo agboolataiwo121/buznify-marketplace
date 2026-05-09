@@ -606,12 +606,12 @@ export default function AdminPanel() {
   return (
     <DashboardShell title="Admin Panel" subtitle="Platform management and analytics.">
       {/* Mobile: horizontal scroll tabs */}
-      <div className="lg:hidden scroll-x-hidden flex gap-2 mb-6 pb-1">
+      <div className="lg:hidden scroll-x-hidden flex gap-2 mb-6 pb-1 -mx-4 px-4">
         {TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
               tab === value
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : "glass text-muted-foreground hover:text-foreground"

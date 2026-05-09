@@ -786,19 +786,19 @@ export default function GrowthServices() {
             </div>
 
             <div className="space-y-2">
-              <div className="scroll-x-hidden flex gap-2 pb-1">
+              <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
                 {visiblePlatforms.map((p) => (
                   <button
                     key={p.key}
                     onClick={() => setSelectedPlatform(p.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedPlatform === p.key ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30 hover:text-white/80"}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap flex-shrink-0 ${selectedPlatform === p.key ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30 hover:text-white/80"}`}
                   >
                     <ServiceIcon name={p.key === "all" ? "globe" : p.key === "website" ? "globe" : p.key} size={12} className="shrink-0" />{p.label}
                   </button>
                 ))}
                 <button
                   onClick={() => setShowAllPlatforms(!showAllPlatforms)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-dashed border-white/20 text-white/40 hover:text-white/60"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-dashed border-white/20 text-white/40 hover:text-white/60 whitespace-nowrap flex-shrink-0"
                 >
                   {showAllPlatforms ? "Less" : `+${PLATFORMS.length - 8} more`}
                 </button>

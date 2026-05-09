@@ -390,18 +390,18 @@ export default function Marketplace() {
         </div>
 
         {/* Category tabs */}
-        <div className="scroll-x-hidden flex gap-2 mb-8 pb-1">
+        <div className="flex gap-2 mb-8 pb-2 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
           {dynamicCategories.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               onClick={() => { setCategory(value); setSubcategoryId(null); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                 category === value
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                   : "glass text-muted-foreground hover:text-foreground hover:border-white/20"
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
             </button>
           ))}

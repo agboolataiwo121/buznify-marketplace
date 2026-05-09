@@ -599,3 +599,8 @@
 - [x] Low-stock warning badge on product table row (amber badge when pool <= 3 accounts)
 - [x] Auto re-activate product when saved with pool count > 0 while status is inactive
 - [x] Pool history log in product edit modal (timestamped entries for add/consume events stored in DB)
+
+## Mobile Fixes
+- [x] Marketplace category filter pills: text squished/stacked vertically on mobile — fix to horizontal single-line pills with proper whitespace-nowrap and flex-shrink-0
+- [x] Growth Services category filter pills: same squished text issue on mobile — apply same fix
+- [x] Admin Panel mobile tab bar: same flex-shrink-0 fix applied preventively
