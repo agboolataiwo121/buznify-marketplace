@@ -159,6 +159,7 @@ export async function getProducts(opts: {
   offset?: number;
   vendorId?: number;
   status?: string;
+  subcategoryId?: number;
 }) {
   const db = await getDb();
   if (!db) return [];
@@ -166,6 +167,7 @@ export async function getProducts(opts: {
   const conditions = [];
   if (opts.category) conditions.push(eq(products.category, opts.category as any));
   if (opts.vendorId) conditions.push(eq(products.vendorId, opts.vendorId));
+  if (opts.subcategoryId) conditions.push(eq(products.subcategoryId, opts.subcategoryId));
   if (opts.status) conditions.push(eq(products.status, opts.status as any));
   else conditions.push(eq(products.status, "active"));
 

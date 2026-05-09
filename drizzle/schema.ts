@@ -66,11 +66,11 @@ export const products = mysqlTable("products", {
   totalSold: int("totalSold").default(0).notNull(),
   avgRating: decimal("avgRating", { precision: 3, scale: 2 }).default("0.00"),
   reviewCount: int("reviewCount").default(0).notNull(),
+  subcategoryId: int("subcategoryId"),  // FK → product_categories.id (optional)
   featured: boolean("featured").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = typeof products.$inferInsert;
 
@@ -399,6 +399,7 @@ export const productCategories = mysqlTable("product_categories", {
   color: varchar("color", { length: 128 }).default("from-violet-500/20 to-purple-500/20").notNull(),
   borderColor: varchar("borderColor", { length: 128 }).default("border-violet-500/20 hover:border-violet-500/40").notNull(),
   iconColor: varchar("iconColor", { length: 64 }).default("text-violet-400").notNull(),
+  parentId: int("parentId"),  // null = top-level, set = subcategory
   enabled: boolean("enabled").default(true).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

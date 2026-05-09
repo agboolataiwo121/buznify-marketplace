@@ -106,9 +106,9 @@ export default function AdminPanel() {
   // ── Service categories state ─────────────────────────────────────────────
   const [categoryUpdating, setCategoryUpdating] = useState<string | null>(null);
   // ── Dynamic Product Categories ──────────────────────────────────────────
-  const [catForm, setCatForm] = useState({ slug: "", label: "", icon: "Tag", description: "", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 0 });
+  const [catForm, setCatForm] = useState({ slug: "", label: "", icon: "Tag", description: "", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 0, parentId: null as number | null });
   const [catEditId, setCatEditId] = useState<number | null>(null);
-  const [catEditForm, setCatEditForm] = useState({ label: "", icon: "", description: "", sortOrder: 0 });
+  const [catEditForm, setCatEditForm] = useState({ label: "", icon: "", description: "", sortOrder: 0, parentId: null as number | null });
   const [catDeleteId, setCatDeleteId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
@@ -271,7 +271,7 @@ export default function AdminPanel() {
   });
 
   const createCatMutation = trpc.admin.createCategory.useMutation({
-    onSuccess: () => { toast.success("Category created!"); refetchDbCategories(); setCatForm({ slug: "", label: "", icon: "Tag", description: "", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 0 }); },
+    onSuccess: () => { toast.success("Category created!"); refetchDbCategories(); setCatForm({ slug: "", label: "", icon: "Tag", description: "", color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/20 hover:border-violet-500/40", iconColor: "text-violet-400", sortOrder: 0, parentId: null }); },
     onError: (err: any) => toast.error(err.message),
   });
   const updateCatMutation = trpc.admin.updateCategory.useMutation({
@@ -1571,6 +1571,19 @@ export default function AdminPanel() {
                   className="glass border-white/10"
                 />
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Parent Category <span className="text-muted-foreground text-xs">(optional — leave empty for top-level)</span></label>
+                <select
+                  value={catForm.parentId ?? ""}
+                  onChange={e => setCatForm(f => ({ ...f, parentId: e.target.value ? parseInt(e.target.value) : null }))}
+                  className="w-full h-9 px-3 rounded-md text-sm glass border border-white/10 bg-background text-foreground"
+                >
+                  <option value="">— Top-level category —</option>
+                  {dbCategories?.filter((c: any) => !c.parentId).map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="mt-4 flex justify-end">
               <button
@@ -1597,8 +1610,9 @@ export default function AdminPanel() {
               </div>
             ) : (
               <div className="space-y-3">
-                {dbCategories.map(cat => (
-                  <div key={cat.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                {dbCategories.map((cat: any) => (
+                  <div key={cat.id} className="space-y-2">
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                     {catEditId === cat.id ? (
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
                         <Input
@@ -1653,7 +1667,7 @@ export default function AdminPanel() {
                         </>
                       ) : (
                         <button
-                          onClick={() => { setCatEditId(cat.id); setCatEditForm({ label: cat.label, icon: cat.icon, description: cat.description ?? "", sortOrder: cat.sortOrder }); }}
+                          onClick={() => { setCatEditId(cat.id); setCatEditForm({ label: cat.label, icon: cat.icon, description: cat.description ?? "", sortOrder: cat.sortOrder, parentId: (cat as any).parentId ?? null }); }}
                           className="p-1.5 rounded-lg bg-white/10 text-muted-foreground hover:text-foreground transition-all"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -1678,6 +1692,31 @@ export default function AdminPanel() {
                       </button>
                     </div>
                   </div>
+                  {/* Subcategories */}
+                  {(cat as any).children && (cat as any).children.length > 0 && (
+                    <div className="ml-8 mt-2 space-y-2">
+                      {(cat as any).children.map((sub: any) => (
+                        <div key={sub.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                          <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
+                            {(() => { const Icon = ICON_MAP[sub.icon] ?? ICON_MAP["Tag"]; return <Icon className={`w-3 h-3 ${sub.iconColor}`} />; })()}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">{sub.label}</p>
+                            <p className="text-xs text-muted-foreground">{sub.slug}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => toggleCatMutation.mutate({ id: sub.id, enabled: !sub.enabled })} className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all">
+                              {sub.enabled ? <><ToggleRight className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">On</span></> : <><ToggleLeft className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">Off</span></>}
+                            </button>
+                            <button onClick={() => setCatDeleteId(sub.id)} className="p-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 ))}
               </div>
             )}

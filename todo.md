@@ -363,3 +363,21 @@
 - [x] Wire IconPicker into category inline-edit form
 - [x] Update Marketplace.tsx to dynamically resolve Lucide icon component from icon name string
 - [x] Update AdminPanel Categories tab list to show selected icon preview next to each category
+
+## Product Subcategory Support
+- [ ] Add `parentId` (int, nullable, FK → product_categories.id) to productCategories schema
+- [ ] Push schema migration with pnpm db:push
+- [ ] Update listCategories procedure to return nested tree (parent with children array)
+- [ ] Update createCategory procedure to accept optional parentId
+- [ ] Update updateCategory procedure to accept optional parentId
+- [ ] Add getSubcategories procedure (by parentId)
+- [ ] Update products table: add subcategoryId column (nullable FK → product_categories.id)
+- [ ] Push products schema migration
+- [ ] Update products.list procedure to filter by subcategoryId
+- [ ] Update product create/update procedures to accept subcategoryId
+- [ ] Admin Categories tab: show tree view with parent → children indentation
+- [ ] Admin Categories tab: Add Subcategory button per parent row
+- [ ] Admin Categories tab: subcategory creation form with parent selector
+- [ ] Admin product create/edit form: subcategory dropdown (filtered by selected category)
+- [ ] Marketplace: show subcategory pills when a parent category is selected
+- [ ] Marketplace: filter products by subcategoryId when a subcategory pill is active

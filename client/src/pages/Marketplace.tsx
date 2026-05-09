@@ -234,15 +234,19 @@ export default function Marketplace() {
   const [condition, setCondition] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [sortBy, setSortBy] = useState("best_selling");
+  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
 
   // Load dynamic categories from DB, fall back to static CATEGORIES
   const { data: dbCats } = trpc.products.listCategories.useQuery();
   const dynamicCategories = dbCats && dbCats.length > 0
     ? [
-        { value: "", label: "All Products", icon: Package },
-        ...dbCats.map((c) => ({ value: c.slug, label: c.label, icon: ICON_MAP[c.icon] ?? Package })),
+        { value: "", label: "All Products", icon: Package, id: null as number | null, children: [] as any[] },
+        ...dbCats.map((c: any) => ({ value: c.slug, label: c.label, icon: ICON_MAP[c.icon] ?? Package, id: c.id, children: c.children ?? [] })),
       ]
-    : CATEGORIES;
+    : CATEGORIES.map((c: any) => ({ ...c, id: null, children: [] }));
+  // Active parent category object (to get its children)
+  const activeCatObj = dynamicCategories.find((c: any) => c.value === category);
+  const subcategories: any[] = (activeCatObj as any)?.children ?? [];
 
   const aiSearchMutation = trpc.products.aiSearch.useMutation({
     onSuccess: (data) => setAiResults(data.results),
@@ -253,6 +257,7 @@ export default function Marketplace() {
     category: category || undefined,
     search: search || undefined,
     limit: 20,
+    subcategoryId: subcategoryId ?? undefined,
   });
 
   // Use demo products as fallback, then apply advanced filters + sort
@@ -386,7 +391,7 @@ export default function Marketplace() {
           {dynamicCategories.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
-              onClick={() => setCategory(value)}
+              onClick={() => { setCategory(value); setSubcategoryId(null); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                 category === value
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
@@ -399,6 +404,39 @@ export default function Marketplace() {
           ))}
         </div>
 
+        {/* Subcategory pills — shown when a parent category with children is selected */}
+        {subcategories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4 pl-1">
+            <span className="text-xs text-muted-foreground self-center mr-1">Subcategory:</span>
+            <button
+              onClick={() => setSubcategoryId(null)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                subcategoryId === null
+                  ? "bg-primary/20 text-primary border border-primary/30"
+                  : "glass text-muted-foreground hover:text-foreground border border-white/10"
+              }`}
+            >
+              All
+            </button>
+            {subcategories.map((sub: any) => {
+              const SubIcon = ICON_MAP[sub.icon] ?? Package;
+              return (
+                <button
+                  key={sub.id}
+                  onClick={() => setSubcategoryId(sub.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    subcategoryId === sub.id
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : "glass text-muted-foreground hover:text-foreground border border-white/10"
+                  }`}
+                >
+                  <SubIcon className="w-3 h-3" />
+                  {sub.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {/* Results count + sort + filter toggle */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">

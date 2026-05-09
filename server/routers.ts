@@ -258,8 +258,24 @@ export const appRouter = router({
         .from(productCategories)
         .where(eq(productCategories.enabled, true))
         .orderBy(productCategories.sortOrder, productCategories.createdAt);
-      return cats;
+      // Build tree: top-level categories with children array
+      const parents = cats.filter((c: any) => c.parentId === null || c.parentId === undefined);
+      return parents.map((p: any) => ({
+        ...p,
+        children: cats.filter((c: any) => c.parentId === p.id),
+      }));
     }),
+    getSubcategories: publicProcedure
+      .input(z.object({ parentId: z.number().int() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db
+          .select()
+          .from(productCategories)
+          .where(eq(productCategories.parentId, input.parentId))
+          .orderBy(productCategories.sortOrder);
+      }),
 
     list: publicProcedure
       .input(
@@ -268,6 +284,7 @@ export const appRouter = router({
           search: z.string().optional(),
           limit: z.number().min(1).max(50).default(20),
           offset: z.number().min(0).default(0),
+          subcategoryId: z.number().int().optional(),
         })
       )
       .query(async ({ input }) => {
@@ -1647,7 +1664,12 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const cats = await db.select().from(productCategories).orderBy(productCategories.sortOrder, productCategories.createdAt);
-      return cats;
+      // Return tree: parents with children nested
+      const parents = cats.filter((c: any) => c.parentId === null || c.parentId === undefined);
+      return parents.map((p: any) => ({
+        ...p,
+        children: cats.filter((c: any) => c.parentId === p.id),
+      }));
     }),
 
     createCategory: adminProcedure
@@ -1660,6 +1682,7 @@ export const appRouter = router({
         borderColor: z.string().max(128).default("border-violet-500/20 hover:border-violet-500/40"),
         iconColor: z.string().max(64).default("text-violet-400"),
         sortOrder: z.number().int().default(0),
+        parentId: z.number().int().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -1676,6 +1699,7 @@ export const appRouter = router({
           borderColor: input.borderColor,
           iconColor: input.iconColor,
           sortOrder: input.sortOrder,
+          parentId: input.parentId ?? null,
           enabled: true,
         });
         return { success: true };
@@ -1691,6 +1715,7 @@ export const appRouter = router({
         borderColor: z.string().max(128).optional(),
         iconColor: z.string().max(64).optional(),
         sortOrder: z.number().int().optional(),
+        parentId: z.number().int().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -1704,6 +1729,7 @@ export const appRouter = router({
         if (fields.borderColor !== undefined) updates.borderColor = fields.borderColor;
         if (fields.iconColor !== undefined) updates.iconColor = fields.iconColor;
         if (fields.sortOrder !== undefined) updates.sortOrder = fields.sortOrder;
+        if (fields.parentId !== undefined) updates.parentId = fields.parentId;
         if (Object.keys(updates).length === 0) return { success: true };
         await db.update(productCategories).set(updates).where(eq(productCategories.id, id));
         return { success: true };
