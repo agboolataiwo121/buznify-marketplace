@@ -1134,23 +1134,35 @@ export default function AdminPanel() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block">Delivery Type</label>
-                      <select value={productForm.deliveryType}
-                        onChange={e => setProductForm(f => ({ ...f, deliveryType: e.target.value as "instant" | "manual" }))}
-                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
-                        <option value="instant">Instant</option>
-                        <option value="manual">Manual</option>
-                      </select>
+                      <RadixSelect
+                        value={productForm.deliveryType}
+                        onValueChange={val => setProductForm(f => ({ ...f, deliveryType: val as "instant" | "manual" }))}
+                      >
+                        <SelectTrigger className="w-full bg-white/5 border-white/10 text-sm h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          <SelectItem value="instant">Instant</SelectItem>
+                          <SelectItem value="manual">Manual</SelectItem>
+                        </SelectContent>
+                      </RadixSelect>
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
-                      <select value={productForm.status}
-                        onChange={e => setProductForm(f => ({ ...f, status: e.target.value as typeof f.status }))}
-                        className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-foreground">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="pending">Pending</option>
-                        <option value="rejected">Rejected</option>
-                      </select>
+                      <RadixSelect
+                        value={productForm.status}
+                        onValueChange={val => setProductForm(f => ({ ...f, status: val as typeof f.status }))}
+                      >
+                        <SelectTrigger className="w-full bg-white/5 border-white/10 text-sm h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </RadixSelect>
                     </div>
                   </div>
                   {/* Delivery Data — Credential Fields Builder */}
