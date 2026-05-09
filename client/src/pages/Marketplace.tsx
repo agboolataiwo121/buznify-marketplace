@@ -23,6 +23,7 @@ import {
   Coins,
   Globe,
   ShieldCheck,
+  BadgeCheck,
 } from "lucide-react";
 import { ICON_MAP } from "@/components/IconPicker";
 
@@ -148,7 +149,8 @@ function ProductCard({ product }: { product: typeof DEMO_PRODUCTS[0] }) {
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-xs text-muted-foreground">{product.platform}</span>
             {(product as any).condition && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${CONDITION_COLORS[(product as any).condition as AccountCondition] ?? 'badge-info'}`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${CONDITION_COLORS[(product as any).condition as AccountCondition] ?? 'badge-info'}`}>
+                {(product as any).condition === "Verified" && <BadgeCheck className="w-3 h-3" />}
                 {(product as any).condition}
               </span>
             )}

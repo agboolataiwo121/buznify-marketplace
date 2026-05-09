@@ -525,26 +525,26 @@
 - [x] Add Alerts tab to Admin Panel with create/dismiss/history table UI
 
 ## Public Status Page
-- [ ] Add uptime_stats table (service, date, uptime_pct, incident_count)
-- [ ] Push schema migration with pnpm db:push
-- [ ] Add tRPC procedures: status.getServiceHealth (public), status.getUptimeHistory (public)
+- [x] Add uptime_stats table (service, date, uptime_pct, incident_count)
+- [x] Push schema migration with pnpm db:push
+- [x] Add tRPC procedures: status.getServiceHealth (public), status.getUptimeHistory (public)
 - [x] Build /status page with per-service health cards, active alert list, 90-day uptime bars
-- [ ] Wire /status route in App.tsx and add link in Footer and Navbar
+- [x] Wire /status route in App.tsx and add link in Footer and Navbar
 
 ## Brand Assets
 - [x] Generate Buznify logo (wordmark + lightning bolt icon) using AI image generation
 - [x] Generate app icon (512x512) and favicon (32x32)
-- [ ] Upload assets and update VITE_APP_LOGO secret
+- [x] Upload assets and update VITE_APP_LOGO secret
 - [x] Update Navbar to use real logo image
 - [x] Add favicon to client/public/
 
 ## Trust & Social Proof
 - [x] Add trust badges section to Home page (SSL Secured, 2FA Protected, Instant Delivery, 10k+ Orders, Escrow Protected, 24/7 Support)
-- [ ] Add verified badges to product cards
-- [ ] Add testimonials section to Home page (5 customer reviews with star ratings and avatars)
+- [x] Add verified badges to product cards
+- [x] Add testimonials section to Home page (5 customer reviews with star ratings and avatars)
 - [x] Add social media links (Twitter/X, Telegram, Instagram, Discord) to Footer
 
 ## Support & Live Chat
-- [ ] Add Support page at /support with FAQ accordion and contact form
+- [x] Add Support page at /support with FAQ accordion and contact form
 - [x] Add live chat widget (Tawk.to embed) to all pages
-- [ ] Wire contact form to send email to admin via notifyOwner
+- [x] Wire contact form to send email to admin via notifyOwner
