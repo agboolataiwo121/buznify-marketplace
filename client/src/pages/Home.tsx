@@ -50,6 +50,8 @@ import {
   Bot,
   Coins,
   ShieldCheck,
+  Mail,
+  BookOpen,
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -261,12 +263,12 @@ const reviews = [
 ];
 
 const trustBadges = [
-  { icon: Shield, label: "SSL Secured" },
-  { icon: Lock, label: "Encrypted Payments" },
-  { icon: CheckCircle, label: "Verified Products" },
-  { icon: Headphones, label: "24/7 Support" },
-  { icon: Award, label: "Money-Back Guarantee" },
-  { icon: Zap, label: "Instant Delivery" },
+  { icon: Shield, label: "SSL Secured", color: "text-emerald-400", desc: "256-bit encryption" },
+  { icon: Lock, label: "Encrypted Payments", color: "text-blue-400", desc: "PCI DSS compliant" },
+  { icon: BadgeCheck, label: "Verified Products", color: "text-violet-400", desc: "Manually reviewed" },
+  { icon: Headphones, label: "24/7 Support", color: "text-cyan-400", desc: "Always available" },
+  { icon: Award, label: "Money-Back Guarantee", color: "text-amber-400", desc: "No-questions-asked" },
+  { icon: Zap, label: "Instant Delivery", color: "text-pink-400", desc: "Automated fulfillment" },
 ];
 
 const paymentMethods = [
@@ -755,11 +757,19 @@ export default function Home() {
       <section className="py-16 border-y border-white/5">
         <div className="container">
           {/* Trust badges */}
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 mb-10">
-            {trustBadges.map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-2.5 text-muted-foreground">
-                <Icon className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">{label}</span>
+          <div className="text-center mb-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-6">Trusted & Verified Platform</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-10">
+            {trustBadges.map(({ icon: Icon, label, color, desc }) => (
+              <div key={label} className="flex items-center gap-3 px-4 py-2.5 rounded-xl glass border border-white/8 hover:border-white/15 transition-all">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white/5`}>
+                  <Icon className={`w-4 h-4 ${color}`} />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-foreground">{label}</div>
+                  <div className="text-[10px] text-muted-foreground">{desc}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -941,6 +951,55 @@ export default function Home() {
         </section>
       )}
 
+      {/* ── Support CTA ── */}
+      <section className="py-16 border-t border-white/5">
+        <div className="container">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="glass-card rounded-2xl p-6 flex items-start gap-4 hover:border-violet-500/30 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center shrink-0">
+                <MessageCircle className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Live Chat Support</h3>
+                <p className="text-xs text-muted-foreground mb-3">Get instant help from our support team. Available 24/7 for all your questions.</p>
+                <Link href="/support">
+                  <Button size="sm" variant="outline" className="text-xs h-8 border-white/10 hover:border-violet-500/40">
+                    Start Chat
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="glass-card rounded-2xl p-6 flex items-start gap-4 hover:border-cyan-500/30 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Email Support</h3>
+                <p className="text-xs text-muted-foreground mb-3">Send us an email and we'll respond within 2 hours. Perfect for detailed inquiries.</p>
+                <a href="mailto:support@buznify.com">
+                  <Button size="sm" variant="outline" className="text-xs h-8 border-white/10 hover:border-cyan-500/40">
+                    Send Email
+                  </Button>
+                </a>
+              </div>
+            </div>
+            <div className="glass-card rounded-2xl p-6 flex items-start gap-4 hover:border-emerald-500/30 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                <BookOpen className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Help Center</h3>
+                <p className="text-xs text-muted-foreground mb-3">Browse our comprehensive knowledge base with guides, tutorials, and FAQs.</p>
+                <Link href="/support">
+                  <Button size="sm" variant="outline" className="text-xs h-8 border-white/10 hover:border-emerald-500/40">
+                    Browse Guides
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       <Footer />
     </div>
   );

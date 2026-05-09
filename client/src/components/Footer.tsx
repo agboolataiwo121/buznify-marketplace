@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Zap, Twitter, Github, MessageCircle, Mail } from "lucide-react";
+import { Twitter, MessageCircle, Mail, Instagram, Youtube } from "lucide-react";
 
 const footerLinks = {
   Marketplace: [
@@ -41,10 +41,11 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="relative w-8 h-8 flex items-center justify-center">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-cyan-500 rounded-lg opacity-80" />
-                <Zap className="relative w-4 h-4 text-white" strokeWidth={2.5} />
-              </div>
+              <img
+                src="/manus-storage/buznify-icon_76f9e5ad.png"
+                alt="Buznify"
+                className="w-8 h-8 rounded-lg object-contain"
+              />
               <span
                 className="text-xl font-bold tracking-tight"
                 style={{ fontFamily: "'Space Grotesk', sans-serif" }}
@@ -58,10 +59,11 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-3">
               {[
-                { icon: Twitter, href: "#", label: "Twitter" },
-                { icon: MessageCircle, href: "#", label: "Discord" },
-                { icon: Github, href: "#", label: "GitHub" },
-                { icon: Mail, href: "#", label: "Email" },
+                { icon: Twitter, href: "https://twitter.com/buznify", label: "Twitter" },
+                { icon: Instagram, href: "https://instagram.com/buznify", label: "Instagram" },
+                { icon: MessageCircle, href: "https://t.me/buznify", label: "Telegram" },
+                { icon: Youtube, href: "https://youtube.com/@buznify", label: "YouTube" },
+                { icon: Mail, href: "mailto:support@buznify.com", label: "Email" },
               ].map(({ icon: Icon, href, label }) => (
                 <a
                   key={label}
@@ -100,9 +102,15 @@ export default function Footer() {
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Buznify. All rights reserved.
           </p>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-muted-foreground">All systems operational</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <a href="/status" className="text-xs text-muted-foreground hover:text-foreground transition-colors">All systems operational</a>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Secured by</span>
+              <span className="text-xs font-semibold text-emerald-400">SSL</span>
+            </div>
           </div>
         </div>
       </div>

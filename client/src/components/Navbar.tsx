@@ -77,10 +77,11 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16 gap-3">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-              <div className="relative w-8 h-8 flex items-center justify-center">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-cyan-500 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity" />
-                <Zap className="relative w-4 h-4 text-white" strokeWidth={2.5} />
-              </div>
+              <img
+                src="/manus-storage/buznify-icon_76f9e5ad.png"
+                alt="Buznify"
+                className="w-8 h-8 rounded-lg object-contain"
+              />
               <span
                 className="text-xl font-bold tracking-tight"
                 style={{ fontFamily: "'Space Grotesk', sans-serif" }}

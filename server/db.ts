@@ -24,6 +24,7 @@ import {
   wishlists,
   payments,
   siteAlerts,
+  uptimeStats,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1095,4 +1096,35 @@ export async function updateSiteAlert(id: number, data: Partial<typeof siteAlert
   const db = await getDb();
   if (!db) return;
   await db.update(siteAlerts).set(data).where(eq(siteAlerts.id, id));
+}
+
+// ─── Uptime Stats ─────────────────────────────────────────────────────────────
+export async function getUptimeHistory(service?: string, days = 90) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(uptimeStats).orderBy(desc(uptimeStats.date)).limit(days * 5);
+  if (service) return rows.filter((r: typeof uptimeStats.$inferSelect) => r.service === service);
+  return rows;
+}
+
+export async function upsertUptimeStat(service: string, date: string, uptimePct: number, incidentCount: number, responseTimeMs: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(uptimeStats)
+    .where(and(eq(uptimeStats.service, service), eq(uptimeStats.date, date)))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(uptimeStats).set({ uptimePct: uptimePct.toFixed(2), incidentCount, responseTimeMs }).where(and(eq(uptimeStats.service, service), eq(uptimeStats.date, date)));
+  } else {
+    await db.insert(uptimeStats).values({ service, date, uptimePct: uptimePct.toFixed(2), incidentCount, responseTimeMs });
+  }
+}
+
+export async function getServiceCurrentStatus(services: string[]) {
+  const db = await getDb();
+  if (!db) return [];
+  const today = new Date().toISOString().split("T")[0];
+  const rows = await db.select().from(uptimeStats)
+    .where(and(sql`${uptimeStats.service} IN (${sql.join(services.map((s: string) => sql`${s}`), sql`, `)})`, eq(uptimeStats.date, today)));
+  return rows;
 }

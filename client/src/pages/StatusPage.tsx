@@ -45,7 +45,7 @@ function AlertSeverityBadge({ severity }: { severity: string }) {
   return <Badge className={map[severity] ?? map.low}>{severity}</Badge>;
 }
 
-export default function Status() {
+export default function StatusPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data: services, isLoading: loadingServices } = trpc.status.getServiceHealth.useQuery(undefined, {

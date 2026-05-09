@@ -446,3 +446,16 @@ export const siteAlerts = mysqlTable("site_alerts", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type SiteAlert = typeof siteAlerts.$inferSelect;
+
+// ─── Uptime Stats ─────────────────────────────────────────────────────────────
+export const uptimeStats = mysqlTable("uptime_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  service: varchar("service", { length: 64 }).notNull(), // marketplace | growth_services | virtual_numbers | payments | api
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  uptimePct: decimal("uptimePct", { precision: 5, scale: 2 }).notNull().default("100.00"),
+  incidentCount: int("incidentCount").notNull().default(0),
+  responseTimeMs: int("responseTimeMs").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UptimeStat = typeof uptimeStats.$inferSelect;

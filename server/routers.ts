@@ -149,6 +149,9 @@ import {
   createSiteAlert,
   dismissSiteAlert,
   updateSiteAlert,
+  getUptimeHistory,
+  upsertUptimeStat,
+  getServiceCurrentStatus,
 } from "./db";
 import { recordAuthError, recordAvailabilityError, recordSuccess, getErrorState } from "./alertTracker";
 
@@ -1816,6 +1819,54 @@ export const appRouter = router({
     }),
   }),
 
+  // ── Status ───────────────────────────────────────────────────────────────────
+  status: router({
+    /** Public: get current health of all services */
+    getServiceHealth: publicProcedure.query(async () => {
+      const services = ["marketplace", "growth_services", "virtual_numbers", "payments", "api"];
+      const today = new Date().toISOString().split("T")[0];
+      const rows = await getServiceCurrentStatus(services);
+      const activeAlerts = await getActiveSiteAlerts();
+      return services.map(svc => {
+        const stat = rows.find(r => r.service === svc);
+        const alerts = activeAlerts.filter((a: { affectedService: string | null; type: string; severity: string }) => a.affectedService === svc || a.affectedService === null);
+        const hasIncident = alerts.some(a => a.type === "error" || a.severity === "critical");
+        const hasDegradation = alerts.some(a => a.type === "warning");
+        const status = hasIncident ? "incident" : hasDegradation ? "degraded" : "operational";
+        return {
+          service: svc,
+          status,
+          uptimePct: stat ? Number(stat.uptimePct) : 100,
+          responseTimeMs: stat?.responseTimeMs ?? 0,
+          incidentCount: stat?.incidentCount ?? 0,
+          activeAlerts: alerts.length,
+        };
+      });
+    }),
+    /** Public: get 90-day uptime history for a service */
+    getUptimeHistory: publicProcedure
+      .input(z.object({ service: z.string().optional(), days: z.number().min(7).max(90).default(90) }))
+      .query(async ({ input }) => {
+        return getUptimeHistory(input.service, input.days);
+      }),
+    /** Public: get all active alerts */
+    getActiveAlerts: publicProcedure.query(async () => {
+      return getActiveSiteAlerts();
+    }),
+    /** Admin: seed/update uptime stat for a service */
+    upsertStat: adminProcedure
+      .input(z.object({
+        service: z.string(),
+        date: z.string(),
+        uptimePct: z.number().min(0).max(100),
+        incidentCount: z.number().min(0).default(0),
+        responseTimeMs: z.number().min(0).default(0),
+      }))
+      .mutation(async ({ input }) => {
+        await upsertUptimeStat(input.service, input.date, input.uptimePct, input.incidentCount, input.responseTimeMs);
+        return { success: true };
+      }),
+  }),
   // ── Admin ─────────────────────────────────────────────────────────────────────
   admin: router({
     getStats: adminProcedure.query(async () => {

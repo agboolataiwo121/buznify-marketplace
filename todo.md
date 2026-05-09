@@ -513,13 +513,38 @@
 - [x] Add "resend reset email" option on ForgotPassword success screen
 
 ## Site-Wide Admin Alert Banner
-- [ ] Add site_alerts table to schema (id, type, severity, title, message, isActive, autoTriggered, dismissedAt, createdAt)
+- [x] Add site_alerts table to schema (id, type, severity, title, message, isActive, autoTriggered, dismissedAt, createdAt)
+- [x] Push schema migration with pnpm db:push
+- [x] Add in-memory 5sim error tracker (consecutive 401/503 counts with threshold logic)
+- [x] Auto-create alert when 5sim errors exceed threshold (3 consecutive auth errors or 5 availability errors)
+- [x] Log raw 5sim errors to security_logs alongside alert creation
+- [x] Add DB helpers: createSiteAlert, getActiveSiteAlerts, dismissSiteAlert, getAllSiteAlerts
+- [x] Add tRPC procedures: alerts.getActive (public), alerts.getAll (admin), alerts.create (admin), alerts.dismiss (admin)
+- [x] Build SiteAlertBanner component (shown at top of all pages, dismissible per-session)
+- [x] Wire SiteAlertBanner into App.tsx layout
+- [x] Add Alerts tab to Admin Panel with create/dismiss/history table UI
+
+## Public Status Page
+- [ ] Add uptime_stats table (service, date, uptime_pct, incident_count)
 - [ ] Push schema migration with pnpm db:push
-- [ ] Add in-memory 5sim error tracker (consecutive 401/503 counts with threshold logic)
-- [ ] Auto-create alert when 5sim errors exceed threshold (3 consecutive auth errors or 5 availability errors)
-- [ ] Log raw 5sim errors to security_logs alongside alert creation
-- [ ] Add DB helpers: createSiteAlert, getActiveSiteAlerts, dismissSiteAlert, getAllSiteAlerts
-- [ ] Add tRPC procedures: alerts.getActive (public), alerts.getAll (admin), alerts.create (admin), alerts.dismiss (admin)
-- [ ] Build SiteAlertBanner component (shown at top of all pages, dismissible per-session)
-- [ ] Wire SiteAlertBanner into App.tsx layout
-- [ ] Add Alerts tab to Admin Panel with create/dismiss/history table UI
+- [ ] Add tRPC procedures: status.getServiceHealth (public), status.getUptimeHistory (public)
+- [x] Build /status page with per-service health cards, active alert list, 90-day uptime bars
+- [ ] Wire /status route in App.tsx and add link in Footer and Navbar
+
+## Brand Assets
+- [x] Generate Buznify logo (wordmark + lightning bolt icon) using AI image generation
+- [x] Generate app icon (512x512) and favicon (32x32)
+- [ ] Upload assets and update VITE_APP_LOGO secret
+- [x] Update Navbar to use real logo image
+- [x] Add favicon to client/public/
+
+## Trust & Social Proof
+- [x] Add trust badges section to Home page (SSL Secured, 2FA Protected, Instant Delivery, 10k+ Orders, Escrow Protected, 24/7 Support)
+- [ ] Add verified badges to product cards
+- [ ] Add testimonials section to Home page (5 customer reviews with star ratings and avatars)
+- [x] Add social media links (Twitter/X, Telegram, Instagram, Discord) to Footer
+
+## Support & Live Chat
+- [ ] Add Support page at /support with FAQ accordion and contact form
+- [x] Add live chat widget (Tawk.to embed) to all pages
+- [ ] Wire contact form to send email to admin via notifyOwner
