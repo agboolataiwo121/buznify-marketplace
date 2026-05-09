@@ -32,6 +32,7 @@ import {
   Plus,
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
+import ServiceIcon from "@/components/ServiceIcon";
 
 const PLATFORMS = [
   { key: "all", label: "All Platforms", emoji: "🌐" },
@@ -109,7 +110,7 @@ function ServiceCard({ service, onBuy }: { service: LiveService; onBuy: (s: Live
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-base">{platformInfo?.emoji ?? "📦"}</span>
+              <ServiceIcon name={service.platform} size={16} className="shrink-0" />
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-500/40 text-violet-300 bg-violet-500/10">
                 {PANEL_LABELS[service.panel] ?? service.panel}
               </Badge>
@@ -188,7 +189,7 @@ function OrderModal({
       <DialogContent className="bg-[#0d1117] border border-white/10 text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-violet-400" />Place Order
+            <ServiceIcon name={service.platform} size={18} />Place Order
           </DialogTitle>
           <DialogDescription className="text-white/50 text-sm leading-snug">{service.name}</DialogDescription>
         </DialogHeader>
@@ -650,7 +651,7 @@ export default function GrowthServices() {
                     onClick={() => setSelectedPlatform(p.key)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedPlatform === p.key ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30 hover:text-white/80"}`}
                   >
-                    <span>{p.emoji}</span>{p.label}
+                    <ServiceIcon name={p.key === "all" ? "globe" : p.key === "website" ? "globe" : p.key} size={12} className="shrink-0" />{p.label}
                   </button>
                 ))}
                 <button

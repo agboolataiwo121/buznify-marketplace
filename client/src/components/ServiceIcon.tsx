@@ -165,6 +165,11 @@ const KEYWORD_MAP: [string, string][] = [
   ["outlook", "outlook"],
   ["protonmail", "protonmail"],
   ["yandex", "yandex"],
+  ["twitch", "twitch"],
+  ["soundcloud", "soundcloud"],
+  ["threads", "threads"],
+  ["globe", "globe"],
+  ["website", "website"],
 ];
 
 function getCategoryColor(name: string): string {
@@ -174,6 +179,7 @@ function getCategoryColor(name: string): string {
   if (["tinder","badoo","bumble","hinge","match","okcupid","grindr","happn"].some(k => n.includes(k))) return CATEGORY_COLORS.dating;
   if (["binance","coinbase","kraken","bybit","okx","crypto","bitcoin","eth","usdt","defi"].some(k => n.includes(k))) return CATEGORY_COLORS.crypto;
   if (["steam","epic","roblox","gaming","game","xbox","playstation","twitch"].some(k => n.includes(k))) return CATEGORY_COLORS.gaming;
+  if (["soundcloud","spotify","music","audio","deezer"].some(k => n.includes(k))) return CATEGORY_COLORS.streaming;
   if (["netflix","spotify","amazon","prime","hulu","disney","hbo","apple","deezer"].some(k => n.includes(k))) return CATEGORY_COLORS.streaming;
   if (["ebay","aliexpress","shopify","etsy","shop","store","market"].some(k => n.includes(k))) return CATEGORY_COLORS.shopping;
   if (["uber","doordash","grubhub","food","delivery","lyft"].some(k => n.includes(k))) return CATEGORY_COLORS.food;
