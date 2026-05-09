@@ -680,3 +680,6 @@
 
 ## Goviraa-Style Growth Page Redesign
 - [x] Rewrite GrowthServices browse tab: platform grid (icon cards), category dropdown, service dropdown, link+qty form, price display, order button
+
+## Growth Page Dropdown Fix
+- [x] Replace native select dropdowns with custom dark-themed dropdowns (Deployment Category + Select Service stay dark when open)

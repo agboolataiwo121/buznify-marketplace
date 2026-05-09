@@ -25,6 +25,13 @@ import {
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import ServiceIcon from "@/components/ServiceIcon";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ─── Platform grid ─────────────────────────────────────────────────────────────
 const PLATFORM_GRID = [
@@ -497,45 +504,42 @@ export default function GrowthServices() {
                 {/* Category Dropdown */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-white">Deployment Category</label>
-                  <div className="relative">
-                    <select
-                      value={selectedCategory}
-                      onChange={e => setSelectedCategory(e.target.value)}
-                      className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 pr-10"
-                    >
-                      <option value="">-- Select a category --</option>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:border-violet-500 focus:ring-violet-500/20">
+                      <SelectValue placeholder="-- Select a category --" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0d1117] border-white/10 text-white max-h-72">
                       {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <SelectItem key={cat} value={cat} className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">{cat}</SelectItem>
                       ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
-                  </div>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Service Dropdown */}
                 {selectedCategory && (
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-white">Select Service</label>
-                    <div className="relative">
-                      <select
-                        value={selectedServiceId ?? ""}
-                        onChange={e => {
-                          const id = parseInt(e.target.value);
-                          setSelectedServiceId(isNaN(id) ? null : id);
-                          const svc = categoryServices.find(s => s.service === id);
-                          if (svc) setQuantity(svc.minQty);
-                        }}
-                        className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 pr-10"
-                      >
-                        <option value="">-- Select a service --</option>
+                    <Select
+                      value={selectedServiceId?.toString() ?? ""}
+                      onValueChange={val => {
+                        const id = parseInt(val);
+                        setSelectedServiceId(isNaN(id) ? null : id);
+                        const svc = categoryServices.find(s => s.service === id);
+                        if (svc) setQuantity(svc.minQty);
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:border-violet-500 focus:ring-violet-500/20">
+                        <SelectValue placeholder="-- Select a service --" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0d1117] border-white/10 text-white max-h-72">
                         {categoryServices.map(s => (
-                          <option key={`${s.panel}-${s.service}`} value={s.service}>
+                          <SelectItem key={`${s.panel}-${s.service}`} value={s.service.toString()} className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
                             {s.service} - {s.name.slice(0, 80)}
-                          </option>
+                          </SelectItem>
                         ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
-                    </div>
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
