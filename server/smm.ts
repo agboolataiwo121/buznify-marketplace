@@ -159,9 +159,15 @@ const PLATFORM_KEYWORDS: Record<string, string[]> = {
 };
 
 export function detectPlatform(name: string, category: string): string {
-  const text = (name + " " + category).toLowerCase();
+  // Try category first (more reliable — Peakerr uses "Facebook - Followers" etc.)
+  const catText = category.toLowerCase();
   for (const [platform, keywords] of Object.entries(PLATFORM_KEYWORDS)) {
-    if (keywords.some((kw) => text.includes(kw))) return platform;
+    if (keywords.some((kw) => catText.includes(kw))) return platform;
+  }
+  // Fall back to service name
+  const nameText = name.toLowerCase();
+  for (const [platform, keywords] of Object.entries(PLATFORM_KEYWORDS)) {
+    if (keywords.some((kw) => nameText.includes(kw))) return platform;
   }
   return "other";
 }
