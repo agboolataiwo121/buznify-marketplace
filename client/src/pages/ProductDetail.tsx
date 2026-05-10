@@ -93,7 +93,13 @@ export default function ProductDetail() {
   const [couponApplied, setCouponApplied] = useState<{ discount: number; message: string } | null>(null);
   const [ordering, setOrdering] = useState(false);
 
-  const product = DEMO_PRODUCTS[productId];
+  // Fetch real product from DB — refetch every 60s for live stock count
+  const { data: dbProduct, isLoading: productLoading } = trpc.products.getById.useQuery(
+    { id: productId },
+    { refetchInterval: 60_000, staleTime: 30_000 }
+  );
+  // Fall back to DEMO_PRODUCTS if DB product not found (for demo/preview purposes)
+  const product = dbProduct ?? DEMO_PRODUCTS[productId];
 
   // Related products
   const { data: relatedProducts } = trpc.products.getRelated.useQuery(
@@ -144,6 +150,17 @@ export default function ProductDetail() {
       setOrdering(false);
     },
   });
+
+  if (productLoading && !product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -231,7 +248,7 @@ export default function ProductDetail() {
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-4 h-4 ${i < Math.floor(parseFloat(product.avgRating)) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                      className={`w-4 h-4 ${i < Math.floor(parseFloat(product.avgRating ?? "0")) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
                     />
                   ))}
                   <span className="text-sm font-medium ml-1">{product.avgRating}</span>

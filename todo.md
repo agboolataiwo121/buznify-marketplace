@@ -641,11 +641,11 @@
 - [x] Add loading skeleton for services grid
 
 ## Stripe Payment Integration
-- [ ] Set up Stripe via webdev_add_feature and configure STRIPE_SECRET_KEY + VITE_STRIPE_PUBLISHABLE_KEY secrets
-- [ ] Create Stripe Checkout Session tRPC procedure (wallet deposit)
-- [ ] Create Stripe webhook handler to confirm payment and credit wallet
-- [ ] Add Stripe as payment option in Wallet deposit UI alongside Paystack
-- [ ] Show Stripe payment method badge on checkout/deposit confirmation
+- [x] Set up Stripe via webdev_add_feature and configure STRIPE_SECRET_KEY + VITE_STRIPE_PUBLISHABLE_KEY secrets
+- [x] Create Stripe Checkout Session tRPC procedure (wallet deposit)
+- [x] Create Stripe webhook handler to confirm payment and credit wallet
+- [x] Add Stripe as payment option in Wallet deposit UI alongside Paystack
+- [x] Show Stripe payment method badge on checkout/deposit confirmation
 
 ## Dark/Light Mode Toggle
 - [x] Audit current ThemeProvider and CSS variables for light mode support
@@ -777,45 +777,45 @@
 ## Full System Implementation (May 10)
 
 ### Database Integration
-- [ ] Add getNotificationsUnreadCount DB helper
-- [ ] Add atomic stock decrement using SQL-level update (prevent race conditions)
+- [x] Add getNotificationsUnreadCount DB helper
+- [x] Add atomic stock decrement using SQL-level update (prevent race conditions)
 
 ### Stripe Integration
-- [ ] Add Stripe npm package and server-side helper
-- [ ] Add payment.stripeInitiate tRPC procedure (create Checkout Session)
-- [ ] Add Stripe webhook handler (/api/stripe/webhook) with signature verification
-- [ ] Handle checkout.session.completed: verify, credit wallet, idempotency check
-- [ ] Add Stripe deposit tab in DashboardWallet UI
+- [x] Add Stripe npm package and server-side helper
+- [x] Add payment.stripeInitiate tRPC procedure (create Checkout Session)
+- [x] Add Stripe webhook handler (/api/stripe/webhook) with signature verification
+- [x] Handle checkout.session.completed: verify, credit wallet, idempotency check
+- [x] Add Stripe deposit tab in DashboardWallet UI
 
 ### Live Notifications
-- [ ] Add notifications.unreadCount tRPC procedure
-- [ ] Add live notification bell badge to Navbar with 30s polling
-- [ ] Trigger push notification on Paystack deposit success (webhook)
-- [ ] Trigger push notification on Stripe deposit success (webhook)
+- [x] Add notifications.unreadCount tRPC procedure
+- [x] Add live notification bell badge to Navbar with 30s polling
+- [x] Trigger push notification on Paystack deposit success (webhook)
+- [x] Trigger push notification on Stripe deposit success (webhook)
 
 ### Real-time Inventory
-- [ ] Add stock check before order creation (reject if stock < quantity atomically)
-- [ ] Add refetchInterval to ProductDetail page for live stock count
+- [x] Add stock check before order creation (reject if stock < quantity atomically)
+- [x] Add refetchInterval to ProductDetail page for live stock count
 
 ## Full System Implementation (May 10)
 
 ### Database Integration
-- [ ] Add getNotificationsUnreadCount DB helper
+- [x] Add getNotificationsUnreadCount DB helper
 - [ ] Add atomic stock decrement using SQL-level update to prevent race conditions
 
 ### Stripe Integration
-- [ ] Add Stripe npm package and server-side helper
-- [ ] Add payment.stripeInitiate tRPC procedure (create Checkout Session)
-- [ ] Add Stripe webhook handler (/api/stripe/webhook) with signature verification
-- [ ] Handle checkout.session.completed: verify, credit wallet, idempotency check
-- [ ] Add Stripe deposit tab in DashboardWallet UI
+- [x] Add Stripe npm package and server-side helper
+- [x] Add payment.stripeInitiate tRPC procedure (create Checkout Session)
+- [x] Add Stripe webhook handler (/api/stripe/webhook) with signature verification
+- [x] Handle checkout.session.completed: verify, credit wallet, idempotency check
+- [x] Add Stripe deposit tab in DashboardWallet UI
 
 ### Live Notifications
-- [ ] Add notifications.unreadCount tRPC procedure
-- [ ] Add live notification bell badge to Navbar with 30s polling
-- [ ] Trigger push notification on Paystack deposit success (webhook)
-- [ ] Trigger push notification on Stripe deposit success (webhook)
+- [x] Add notifications.unreadCount tRPC procedure
+- [x] Add live notification bell badge to Navbar with 30s polling
+- [x] Trigger push notification on Paystack deposit success (webhook)
+- [x] Trigger push notification on Stripe deposit success (webhook)
 
 ### Real-time Inventory
-- [ ] Add stock check before order creation (reject if stock < quantity atomically)
-- [ ] Add refetchInterval to ProductDetail page for live stock count
+- [x] Add stock check before order creation (reject if stock < quantity atomically)
+- [x] Add refetchInterval to ProductDetail page for live stock count
