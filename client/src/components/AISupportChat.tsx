@@ -98,7 +98,7 @@ export default function AISupportChat() {
       {/* Chat window */}
       {open && (
         <div
-          className={`fixed bottom-20 right-4 z-50 w-[340px] sm:w-[380px] glass-card rounded-2xl border border-white/10 shadow-2xl shadow-black/50 flex flex-col transition-all duration-300 ${
+          className={`fixed bottom-[5.5rem] md:bottom-20 right-3 sm:right-4 z-50 w-[calc(100vw-1.5rem)] sm:w-[340px] md:w-[380px] glass-card rounded-2xl border border-white/10 shadow-2xl shadow-black/50 flex flex-col transition-all duration-300 max-w-[380px] ${
             minimized ? "h-14" : "h-[480px]"
           }`}
         >
@@ -232,7 +232,7 @@ export default function AISupportChat() {
       {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}
-        className={`fixed bottom-4 right-4 z-50 w-12 h-12 rounded-2xl shadow-2xl shadow-violet-500/30 flex items-center justify-center transition-all duration-300 ${
+        className={`fixed bottom-[5.5rem] md:bottom-4 right-3 sm:right-4 z-50 w-12 h-12 rounded-2xl shadow-2xl shadow-violet-500/30 flex items-center justify-center transition-all duration-300 ${
           open
             ? "bg-white/10 border border-white/20 hover:bg-white/15"
             : "bg-gradient-to-br from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"

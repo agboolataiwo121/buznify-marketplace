@@ -717,3 +717,15 @@
 - [x] Fix Dashboard.tsx getSms query with numberId: 0 causing FORBIDDEN error — added getAllSms procedure and getAllSmsForUser db helper
 - [x] Fix AdminPanel.tsx DOM nesting error — p tag containing ServiceIcon div changed to div element
 - [x] Fix platform detection in smm.ts — detectPlatform now uses category name as primary source (Instagram categories only show for Instagram, Facebook for Facebook, etc.)
+
+## Mobile Responsiveness Audit (May 10, 2026)
+
+- [x] Hero section: reduced font size on mobile (text-3xl sm:text-6xl), reduced top padding (py-16 sm:py-24)
+- [x] Hero CTAs: stacked vertically on mobile (flex-col sm:flex-row), full-width padding on mobile
+- [x] Social proof bar: flex-wrap with smaller gap on mobile
+- [x] Stats grid: 2 columns on mobile (grid-cols-2 lg:grid-cols-4), reduced gap
+- [x] Categories grid: 2 columns on mobile with smaller padding (p-4 sm:p-6), smaller icons and text
+- [x] All section vertical padding reduced on mobile (py-14 sm:py-24)
+- [x] LiveOrderPopup: repositioned above mobile bottom nav (bottom-[5.5rem] md:bottom-6)
+- [x] AISupportChat: repositioned above mobile bottom nav, full-width on mobile (w-[calc(100vw-1.5rem)] sm:w-[340px])
+- [x] Fixed DOM syntax errors introduced during multi-edit (Zapp typo, broken comment, extra indentation)

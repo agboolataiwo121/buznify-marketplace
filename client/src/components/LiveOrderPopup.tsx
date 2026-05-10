@@ -54,8 +54,8 @@ export default function LiveOrderPopup() {
 
   return (
     <div
-      className="fixed bottom-6 left-6 z-50 animate-slide-up"
-      style={{ maxWidth: "320px" }}
+      className="fixed bottom-[5.5rem] md:bottom-6 left-3 sm:left-6 z-50 animate-slide-up"
+      style={{ maxWidth: "300px" }}
     >
       <div className="glass-card rounded-xl p-4 flex items-start gap-3 shadow-2xl shadow-black/50">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">

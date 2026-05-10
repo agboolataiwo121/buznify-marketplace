@@ -369,7 +369,7 @@ export default function Home() {
           style={{ animation: "float 5s ease-in-out infinite reverse" }}
         />
 
-        <div className="container relative z-10 text-center py-24">
+        <div className="container relative z-10 text-center py-16 sm:py-24">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-violet-500/30 text-xs sm:text-sm text-violet-300 mb-6 sm:mb-8 animate-fade-in">
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -378,7 +378,7 @@ export default function Home() {
           </div>
           {/* Headline */}
           <h1
-            className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-5 sm:mb-6 animate-slide-up"
+            className="text-3xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-5 sm:mb-6 animate-slide-up"
             style={{ animationDelay: "0.1s" }}
           >
             <span className="text-foreground">AI Tools, Subscriptions,</span>
@@ -421,7 +421,7 @@ export default function Home() {
 
           {/* CTAs */}
           <div
-            className="flex flex-col xs:flex-row items-center justify-center gap-3 sm:gap-4 animate-slide-up w-full px-2 sm:px-0"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-slide-up w-full px-4 sm:px-0"
             style={{ animationDelay: "0.3s" }}
           >
             {isAuthenticated ? (
@@ -457,7 +457,7 @@ export default function Home() {
 
           {/* Social proof */}
           <div
-            className="flex items-center justify-center gap-6 mt-12 animate-fade-in"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-10 sm:mt-12 animate-fade-in"
             style={{ animationDelay: "0.5s" }}
           >
             <div className="flex -space-x-2">
@@ -487,7 +487,7 @@ export default function Home() {
       <section className="py-16 border-y border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-cyan-500/5" />
         <div className="container relative z-10">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
             {stats.map(({ value, label }) => (
               <div key={label} className="text-center">
                 <div className="text-3xl sm:text-4xl font-bold gradient-text mb-1">{value}</div>
@@ -499,10 +499,10 @@ export default function Home() {
       </section>
 
       {/* ── Categories ── */}
-      <section className="py-24">
+      <section className="py-14 sm:py-24">
         <div className="container">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-white/10 text-xs text-muted-foreground mb-4">
+          <div className="text-center mb-10 sm:mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-violet-500/30 text-xs text-violet-300 mb-5">
               <ShoppingBag className="w-3.5 h-3.5" />
               Product Categories
             </div>
@@ -515,19 +515,19 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {categories.map(({ icon: Icon, label, desc, count, href, color, border, iconColor }) => (
               <Link key={label} href={href}>
                 <div
-                  className={`glass-card-hover rounded-2xl p-6 cursor-pointer border ${border} transition-all duration-300`}
+                  className={`glass-card-hover rounded-2xl p-4 sm:p-6 cursor-pointer border ${border} transition-all duration-300`}
                 >
                   <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4`}
+                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-3 sm:mb-4`}
                   >
-                    <Icon className={`w-6 h-6 ${iconColor}`} />
+                    <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
                   </div>
-                  <h3 className="text-base font-semibold text-foreground mb-1">{label}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{desc}</p>
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1">{label}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">{desc}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{count}</span>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -540,10 +540,10 @@ export default function Home() {
       </section>
 
       {/* ── Why Choose Buznify ── */}
-      <section className="py-24 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent">
+      <section className="py-14 sm:py-24 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent">
         <div className="container">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-white/10 text-xs text-muted-foreground mb-4">
+          <div className="text-center mb-10 sm:mb-14">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-violet-500/30 text-xs text-violet-300 mb-5">
               <Zap className="w-3.5 h-3.5" />
               Why Buznify
             </div>
@@ -555,7 +555,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {whyChoose.map(({ icon: Icon, title, desc, color, bg }) => (
               <div key={title} className="glass-card rounded-2xl p-6 group hover:border-white/10 transition-all duration-300">
                 <div
@@ -572,9 +572,9 @@ export default function Home() {
       </section>
 
       {/* ── Growth Services ── */}
-      <section className="py-24">
+      <section className="py-14 sm:py-24">
         <div className="container">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-violet-500/30 text-xs text-violet-300 mb-6">
                 <TrendingUp className="w-3.5 h-3.5" />
@@ -610,7 +610,7 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {growthPlatforms.map(({ icon: Icon, name, color }) => (
                 <Link key={name} href="/growth">
                   <div className="glass-card-hover rounded-2xl p-5 text-center cursor-pointer">
@@ -629,9 +629,9 @@ export default function Home() {
       </section>
 
       {/* ── Virtual Numbers ── */}
-      <section className="py-24 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent">
+      <section className="py-14 sm:py-24 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent">
         <div className="container">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             {/* Visual */}
             <div className="order-2 lg:order-1">
               <div className="glass-card rounded-2xl p-6 max-w-sm mx-auto">
@@ -728,7 +728,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {reviews.map(({ name, role, avatar, rating, text }) => (
               <div key={name} className="glass-card rounded-2xl p-5">
                 <div className="flex items-center gap-1 mb-3">
@@ -759,7 +759,7 @@ export default function Home() {
           <div className="text-center mb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-6">Trusted & Verified Platform</p>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-10">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-10">
             {trustBadges.map(({ icon: Icon, label, color, desc }) => (
               <div key={label} className="flex items-center gap-3 px-4 py-2.5 rounded-xl glass border border-white/8 hover:border-white/15 transition-all">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white/5`}>
@@ -856,12 +856,12 @@ export default function Home() {
               className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 blur-3xl"
               style={{ background: "oklch(0.55 0.22 290 / 0.25)" }}
             />
-            <div className="relative z-10 text-center py-20 px-6">
+              <div className="relative z-10 text-center py-12 sm:py-20 px-4 sm:px-6">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-white/10 text-xs text-muted-foreground mb-6">
                 <Layers className="w-3.5 h-3.5" />
                 Multiple Revenue Streams in One Ecosystem
               </div>
-              <h2 className="text-3xl sm:text-5xl font-bold text-foreground mb-5">
+              <h2 className="text-2xl sm:text-5xl font-bold text-foreground mb-5">
                 Ready to Get Started?
                 <br />
                 <span className="gradient-text">Join 52,000+ Buyers</span>
@@ -922,7 +922,7 @@ export default function Home() {
                 Curated products based on what's trending on the platform.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
               {(featuredProducts as any[]).map((p: any) => (
                 <Link key={p.id} href={`/product/${p.id}`}>
                   <div className="glass-card rounded-2xl p-5 hover:border-violet-500/40 transition-all cursor-pointer group">
