@@ -33,6 +33,7 @@ import {
   getReferralsByReferrer,
   getReviewsByProduct,
   getSmsMessages,
+  getAllSmsForUser,
   getTicketById,
   getTicketMessages,
   getTicketsByUser,
@@ -1772,6 +1773,10 @@ export const appRouter = router({
         if (!num) throw new TRPCError({ code: "FORBIDDEN" });
         return getSmsMessages(input.numberId);
       }),
+    /** Get all SMS messages across all numbers for the current user */
+    getAllSms: protectedProcedure.query(async ({ ctx }) => {
+      return getAllSmsForUser(ctx.user.id);
+    }),
   }),
 
   // ── Referrals ─────────────────────────────────────────────────────────────

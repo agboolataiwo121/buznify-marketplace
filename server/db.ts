@@ -1,4 +1,4 @@
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -313,6 +313,21 @@ export async function getSmsMessages(numberId: number) {
     .orderBy(desc(smsMessages.receivedAt));
 }
 
+export async function getAllSmsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const userNumbers = await db
+    .select({ id: virtualNumbers.id })
+    .from(virtualNumbers)
+    .where(eq(virtualNumbers.userId, userId));
+  if (userNumbers.length === 0) return [];
+  const numberIds = userNumbers.map((n) => n.id);
+  return db
+    .select()
+    .from(smsMessages)
+    .where(inArray(smsMessages.numberId, numberIds))
+    .orderBy(desc(smsMessages.receivedAt));
+}
 export async function addSmsMessage(data: typeof smsMessages.$inferInsert) {
   const db = await getDb();
   if (!db) return;

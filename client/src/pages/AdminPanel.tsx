@@ -1039,7 +1039,7 @@ export default function AdminPanel() {
                         <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
                         {p.featured && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 flex-shrink-0" />}
                       </div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                         ${p.price}{p.originalPrice ? <span className="line-through ml-1 opacity-50">${p.originalPrice}</span> : null}
                         {" · "}
                         {Array.isArray(p.deliveryData) ? (
@@ -1059,7 +1059,7 @@ export default function AdminPanel() {
                         )}
                         {" · "}{p.category.replace(/_/g, " ")}
                         {p.platform && <><span>·</span><ServiceIcon name={p.platform} size={12} /><span>{p.platform}</span></>}
-                      </p>
+                      </div>
                     </div>
                     {/* Status + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">

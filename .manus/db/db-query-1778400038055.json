@@ -1,0 +1,14 @@
+{
+  "query": "SELECT status, COUNT(*) as count FROM products GROUP BY status;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4Dh6h2abmKfxrcZ.root --database KuNZEvAtg7cXbzPXxxaRv3 --execute SELECT status, COUNT(*) as count FROM products GROUP BY status;",
+  "rows": [
+    {
+      "status": "active",
+      "count": "10"
+    }
+  ],
+  "messages": [],
+  "stdout": "status\tcount\nactive\t10\n",
+  "stderr": "",
+  "execution_time_ms": 301
+}

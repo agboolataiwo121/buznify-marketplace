@@ -38,7 +38,7 @@ export default function Dashboard() {
   const { data: growthOrders = [] } = trpc.growthOrders.list.useQuery();
   const { data: notifications = [] } = trpc.notifications.getAll.useQuery();
   const { data: referralData } = trpc.referrals.getMyReferrals.useQuery();
-  const { data: smsMessages = [] } = trpc.virtualNumbers.getSms.useQuery({ numberId: 0 });
+  const { data: smsMessages = [] } = trpc.virtualNumbers.getAllSms.useQuery();
   const { data: wishlistItems = [] } = trpc.wishlist.get.useQuery();
   const { data: recentlyViewed = [] } = trpc.recentlyViewed.get.useQuery();
   // AI recommendations: use wishlist/recently-viewed categories as signals

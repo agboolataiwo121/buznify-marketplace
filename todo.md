@@ -712,3 +712,8 @@
 - [x] Fix Deployment Category dropdown showing all categories instead of platform-filtered ones — replaced Radix Select with native <select> elements that properly re-render on platform change
 - [x] Fix Select Service dropdown not resetting properly when platform changes — native <select> element re-renders correctly
 - [x] Fix middle dot rendering issue in header subtitle (shows \u00b7 instead of ·) — fixed in checkpoint 417566db
+
+## Site Review Fixes (May 10, 2026)
+- [x] Fix Dashboard.tsx getSms query with numberId: 0 causing FORBIDDEN error — added getAllSms procedure and getAllSmsForUser db helper
+- [x] Fix AdminPanel.tsx DOM nesting error — p tag containing ServiceIcon div changed to div element
+- [x] Fix platform detection in smm.ts — detectPlatform now uses category name as primary source (Instagram categories only show for Instagram, Facebook for Facebook, etc.)
