@@ -175,6 +175,8 @@ import {
   getWithdrawalById,
 } from "./db";
 import { recordAuthError, recordAvailabilityError, recordSuccess, getErrorState } from "./alertTracker";
+import { createStripeCheckoutSession, getStripe } from "./stripe";
+import { getNotificationsUnreadCount, decrementProductStock } from "./db";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1995,6 +1997,11 @@ export const appRouter = router({
   // ── Notifications ─────────────────────────────────────────────────────────
   notifications: router({
     getAll: protectedProcedure.query(async ({ ctx }) => getNotifications(ctx.user.id)),
+    /** Return the count of unread notifications for the navbar badge */
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      const count = await getNotificationsUnreadCount(ctx.user.id);
+      return { count };
+    }),
     markRead: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -3025,9 +3032,108 @@ Write 2-3 sentences that are persuasive, highlight key benefits, mention instant
     adminBalance: adminProcedure.query(async () => {
       return getPaystackBalance();
     }),
-  }),
 
-  // ── API Keys (any authenticated user) ────────────────────────────────────
+    /**
+     * Create a Stripe Checkout Session for wallet top-up (international card payments).
+     * Returns the checkout URL to open in a new tab.
+     */
+    stripeInitiate: protectedProcedure
+      .input(
+        z.object({
+          amountUsd: z.number().min(1, "Minimum deposit is $1").max(10000),
+          origin: z.string().url(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "Please update your email before making a deposit" });
+        const reference = `stripe_${ctx.user.id}_${Date.now()}`;
+        // Persist pending payment record
+        await createPayment({
+          userId: ctx.user.id,
+          reference,
+          amountNaira: "0", // not applicable for Stripe USD
+          currency: "USD",
+          status: "pending",
+          metadata: JSON.stringify({ userId: ctx.user.id, amountUsd: input.amountUsd, provider: "stripe" }),
+        });
+        const { url } = await createStripeCheckoutSession({
+          amountUsd: input.amountUsd,
+          userId: ctx.user.id,
+          userEmail: user.email,
+          userName: user.name ?? undefined,
+          reference,
+          successUrl: `${input.origin}/dashboard/wallet?stripe=success&ref=${reference}`,
+          cancelUrl: `${input.origin}/dashboard/wallet?stripe=cancelled`,
+        });
+        return { url, reference };
+      }),
+
+    /**
+     * Poll Stripe payment status after redirect back from Checkout.
+     * Idempotent — safe to call multiple times.
+     */
+    stripeVerify: protectedProcedure
+      .input(z.object({ reference: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const payment = await getPaymentByReference(input.reference);
+        if (!payment) throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+        if (payment.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        if (payment.status === "success") {
+          return { success: true, alreadyCredited: true };
+        }
+        // Look up the Stripe session by metadata reference
+        const stripe = getStripe();
+        const sessions = await stripe.checkout.sessions.list({ limit: 10 });
+        const session = sessions.data.find(
+          (s) => s.metadata?.reference === input.reference
+        );
+        if (!session || session.payment_status !== "paid") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Payment not completed yet" });
+        }
+        const amountUsd = (session.amount_total ?? 0) / 100;
+        const user = await getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const balanceBefore = parseFloat(user.balance ?? "0");
+        const balanceAfter = balanceBefore + amountUsd;
+        await updateUserBalance(ctx.user.id, balanceAfter.toFixed(6));
+        await createWalletTransaction({
+          userId: ctx.user.id,
+          type: "deposit",
+          amount: amountUsd.toFixed(6),
+          balanceBefore: balanceBefore.toFixed(6),
+          balanceAfter: balanceAfter.toFixed(6),
+          description: `Stripe deposit $${amountUsd.toFixed(2)} via card`,
+          referenceId: input.reference,
+          status: "completed",
+        });
+        await updatePayment(input.reference, {
+          status: "success",
+          amountUsd: amountUsd.toFixed(6),
+          channel: "card",
+          paystackId: session.id,
+          gatewayResponse: "paid",
+          paidAt: new Date(),
+        });
+        // Create in-app notification
+        await createNotification({
+          userId: ctx.user.id,
+          type: "wallet_credit",
+          title: "Wallet Funded",
+          message: `$${amountUsd.toFixed(2)} has been added to your wallet via Stripe.`,
+          referenceId: input.reference,
+        });
+        // Push notification
+        sendPushToUser(ctx.user.id, {
+          title: "Wallet Funded! 💰",
+          body: `$${amountUsd.toFixed(2)} has been added to your wallet.`,
+          url: "/dashboard/wallet",
+        }).catch(() => {});
+        return { success: true, alreadyCredited: false, amountUsd };
+      }),
+  }),
+  // ── API Keys (any authenticated user) ─────────────────────────────────────
   apiKeys: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return getVendorApiKeys(ctx.user.id);

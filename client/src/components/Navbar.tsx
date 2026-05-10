@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import {
   Menu,
   X,
   Zap,
+  Bell,
   ShoppingBag,
   TrendingUp,
   Phone,
@@ -47,6 +49,13 @@ export default function Navbar() {
   const [showSearch, setShowSearch] = useState(false);
   const [location] = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  // Live unread notification count — polls every 30s when authenticated
+  const { data: notifData } = trpc.notifications.unreadCount.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+  });
+  const unreadCount = notifData?.count ?? 0;
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
@@ -124,6 +133,20 @@ export default function Navbar() {
                 >
                   {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
+              )}
+              {isAuthenticated && user && (
+                <Link
+                  href="/dashboard/notifications"
+                  className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                  title="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </Link>
               )}
               {isAuthenticated && user ? (
                 <DropdownMenu>

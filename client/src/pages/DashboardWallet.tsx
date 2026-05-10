@@ -46,11 +46,123 @@ const CRYPTO_OPTIONS = [
   { symbol: "SOL", name: "Solana", icon: "◎", color: "text-purple-400", min: "$10" },
 ];
 
+// ── Stripe Deposit Tab ──────────────────────────────────────────────────────
+const QUICK_AMOUNTS_USD = [5, 10, 20, 50, 100, 200];
+
+function StripeDepositTab({
+  stripeAmount,
+  setStripeAmount,
+  stripeDepositing,
+  setStripeDepositing,
+  onSuccess,
+}: {
+  stripeAmount: string;
+  setStripeAmount: (v: string) => void;
+  stripeDepositing: boolean;
+  setStripeDepositing: (v: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const stripeInitiate = trpc.payment.stripeInitiate.useMutation({
+    onError: (err) => {
+      toast.error(err.message);
+      setStripeDepositing(false);
+    },
+  });
+
+  const handleStripeDeposit = async () => {
+    const usd = parseFloat(stripeAmount);
+    if (!usd || usd < 1) { toast.error("Minimum deposit is $1"); return; }
+    setStripeDepositing(true);
+    try {
+      const { url } = await stripeInitiate.mutateAsync({ amountUsd: usd, origin: window.location.origin });
+      toast.info("Redirecting to Stripe Checkout...");
+      window.open(url, "_blank");
+    } catch {
+      // handled by onError
+    } finally {
+      setStripeDepositing(false);
+    }
+  };
+
+  const usdPreview = parseFloat(stripeAmount);
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Deposit via international card — powered by Stripe. Funds are credited automatically after payment.
+      </p>
+      {/* Quick USD amounts */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {QUICK_AMOUNTS_USD.map((a) => (
+          <button
+            key={a}
+            onClick={() => setStripeAmount(String(a))}
+            className={`py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border touch-target ${
+              stripeAmount === String(a)
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "glass border-white/10 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            ${a}
+          </button>
+        ))}
+      </div>
+      {/* Custom amount */}
+      <div className="relative mb-4">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-bold">$</span>
+        <Input
+          type="number"
+          placeholder="Custom amount (min $1)"
+          value={stripeAmount}
+          onChange={(e) => setStripeAmount(e.target.value)}
+          className="pl-8 bg-white/5 border-white/10 focus:border-primary/50"
+          min="1"
+          max="10000"
+        />
+      </div>
+      {usdPreview >= 1 && (
+        <div className="glass rounded-xl p-3 mb-4 flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            <span className="text-foreground font-semibold">${usdPreview.toFixed(2)} USD</span> will be added to your wallet after payment
+          </p>
+        </div>
+      )}
+      <Button
+        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border-0"
+        onClick={handleStripeDeposit}
+        disabled={stripeDepositing || !stripeAmount || usdPreview < 1}
+      >
+        {stripeDepositing ? (
+          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <CreditCard className="w-4 h-4 mr-2" />
+        )}
+        {stripeDepositing ? "Opening Stripe..." : `Pay $${usdPreview >= 1 ? usdPreview.toFixed(2) : ""} via Stripe`}
+      </Button>
+      <div className="flex items-center justify-center gap-2 mt-3">
+        <Shield className="w-3 h-3 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
+          Secured by Stripe · Visa, Mastercard, Amex, Apple Pay
+        </p>
+      </div>
+      <div className="mt-4 glass rounded-xl p-3">
+        <p className="text-xs text-muted-foreground">
+          <span className="text-foreground font-medium">Testing?</span> Use card{" "}
+          <code className="font-mono text-primary">4242 4242 4242 4242</code>, any future expiry, and any CVC.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardWallet() {
   const [amount, setAmount] = useState("");
+  const [stripeAmount, setStripeAmount] = useState("");
+  const [stripeDepositing, setStripeDepositing] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [depositing, setDepositing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "crypto" | "payments">("deposit");
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "card" | "payments">("deposit");
   // Bank account state
   const [showAddBank, setShowAddBank] = useState(false);
   const [bankAccountNumber, setBankAccountNumber] = useState("");
@@ -299,7 +411,7 @@ export default function DashboardWallet() {
         {/* Deposit / Withdraw / Crypto tabs */}
         <div className="glass-card rounded-2xl p-6">
           <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-5 overflow-x-auto scrollbar-none">
-            {(["deposit", "withdraw", "crypto", "payments"] as const).map((tab) => (
+            {(["deposit", "withdraw", "card", "payments"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -309,7 +421,7 @@ export default function DashboardWallet() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === "card" ? "Card (Stripe)" : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
@@ -535,30 +647,14 @@ export default function DashboardWallet() {
               )}
             </div>
           )}
-          {activeTab === "crypto" && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-4">Deposit using cryptocurrency — instant confirmation</p>
-              <div className="grid grid-cols-2 gap-3">
-                {CRYPTO_OPTIONS.map(({ symbol, name, icon, color, min }) => (
-                  <button
-                    key={symbol}
-                    onClick={() => toast.info(`${name} deposit`, { description: `Minimum: ${min}. Crypto gateway coming soon.` })}
-                    className="glass rounded-xl p-4 text-left hover:border-white/20 border border-white/5 transition-all"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xl font-bold ${color}`}>{icon}</span>
-                      <span className="text-sm font-semibold text-foreground">{symbol}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Min: {min}</p>
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4 glass rounded-xl p-3 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">All crypto transactions are secured and confirmed on-chain before crediting your wallet.</p>
-              </div>
-            </div>
+          {activeTab === "card" && (
+            <StripeDepositTab
+              stripeAmount={stripeAmount}
+              setStripeAmount={setStripeAmount}
+              stripeDepositing={stripeDepositing}
+              setStripeDepositing={setStripeDepositing}
+              onSuccess={() => { refetchBalance(); refetchTx(); utils.payment.history.invalidate(); }}
+            />
           )}
         </div>
 
@@ -582,7 +678,7 @@ export default function DashboardWallet() {
                   sub: "BTC, ETH, USDT, LTC, BNB, SOL",
                   badge: "Soon",
                   badgeColor: "bg-amber-500/20 text-amber-400",
-                  onClick: () => setActiveTab("crypto"),
+                  onClick: () => toast.info("Crypto gateway coming soon"),
                 },
                 {
                   icon: ExternalLink,

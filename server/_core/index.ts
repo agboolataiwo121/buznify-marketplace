@@ -138,6 +138,95 @@ async function startServer() {
     }
   );
 
+  // ── Stripe Webhook ───────────────────────────────────────────────────────
+  // MUST be registered BEFORE express.json() so raw body is available for signature verification
+  app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      try {
+        const sig = req.headers["stripe-signature"] as string;
+        const rawBody = req.body as Buffer;
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+
+        let event: import("stripe").Stripe.Event;
+        try {
+          const { getStripe } = await import("../stripe");
+          event = getStripe().webhooks.constructEvent(rawBody, sig, webhookSecret);
+        } catch (err) {
+          console.error("[Stripe Webhook] Signature verification failed:", err);
+          res.status(400).json({ error: "Webhook signature verification failed" });
+          return;
+        }
+
+        // Handle test events
+        if (event.id.startsWith("evt_test_")) {
+          console.log("[Stripe Webhook] Test event detected");
+          res.json({ verified: true });
+          return;
+        }
+
+        if (event.type === "checkout.session.completed") {
+          const session = event.data.object as import("stripe").Stripe.Checkout.Session;
+          const reference = session.metadata?.reference;
+          if (!reference) {
+            res.json({ received: true });
+            return;
+          }
+          const payment = await getPaymentByReference(reference);
+          if (payment && payment.status !== "success") {
+            const amountUsd = (session.amount_total ?? 0) / 100;
+            const user = await getUserById(payment.userId);
+            if (user) {
+              const { checkDepositVelocity: checkVelocity, logSecurityEvent: logEvent } = await import("../security");
+              const velocityExceeded = checkVelocity(`user_${payment.userId}`);
+              if (velocityExceeded) {
+                const { setFraudFlag } = await import("../db");
+                await setFraudFlag(payment.userId, true);
+                await logEvent({ userId: payment.userId, action: "suspicious_deposit", metadata: { reference, amountUsd, channel: "stripe" } });
+              }
+              const balanceBefore = parseFloat(user.balance ?? "0");
+              const balanceAfter = balanceBefore + amountUsd;
+              await updateUserBalance(payment.userId, balanceAfter.toFixed(6));
+              await createWalletTransaction({
+                userId: payment.userId,
+                type: "deposit",
+                amount: amountUsd.toFixed(6),
+                balanceBefore: balanceBefore.toFixed(6),
+                balanceAfter: balanceAfter.toFixed(6),
+                description: `Stripe deposit $${amountUsd.toFixed(2)} via card`,
+                referenceId: reference,
+                status: "completed",
+              });
+              // In-app notification
+              const { createNotification } = await import("../db");
+              await createNotification({
+                userId: payment.userId,
+                type: "wallet_credit",
+                title: "Wallet Funded",
+                message: `$${amountUsd.toFixed(2)} has been added to your wallet via Stripe.`,
+                referenceId: reference,
+              });
+            }
+            await updatePayment(reference, {
+              status: "success",
+              amountUsd: amountUsd.toFixed(6),
+              channel: "card",
+              paystackId: session.id,
+              gatewayResponse: "paid",
+              paidAt: new Date(),
+            });
+          }
+        }
+
+        res.json({ received: true });
+      } catch (err) {
+        console.error("[Stripe Webhook] Error:", err);
+        res.status(500).json({ error: "Webhook processing failed" });
+      }
+    }
+  );
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

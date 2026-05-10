@@ -773,3 +773,49 @@
 - [x] Account Help page (/account-help)
 - [x] Register all four routes in App.tsx
 - [x] Link all four pages from Footer
+
+## Full System Implementation (May 10)
+
+### Database Integration
+- [ ] Add getNotificationsUnreadCount DB helper
+- [ ] Add atomic stock decrement using SQL-level update (prevent race conditions)
+
+### Stripe Integration
+- [ ] Add Stripe npm package and server-side helper
+- [ ] Add payment.stripeInitiate tRPC procedure (create Checkout Session)
+- [ ] Add Stripe webhook handler (/api/stripe/webhook) with signature verification
+- [ ] Handle checkout.session.completed: verify, credit wallet, idempotency check
+- [ ] Add Stripe deposit tab in DashboardWallet UI
+
+### Live Notifications
+- [ ] Add notifications.unreadCount tRPC procedure
+- [ ] Add live notification bell badge to Navbar with 30s polling
+- [ ] Trigger push notification on Paystack deposit success (webhook)
+- [ ] Trigger push notification on Stripe deposit success (webhook)
+
+### Real-time Inventory
+- [ ] Add stock check before order creation (reject if stock < quantity atomically)
+- [ ] Add refetchInterval to ProductDetail page for live stock count
+
+## Full System Implementation (May 10)
+
+### Database Integration
+- [ ] Add getNotificationsUnreadCount DB helper
+- [ ] Add atomic stock decrement using SQL-level update to prevent race conditions
+
+### Stripe Integration
+- [ ] Add Stripe npm package and server-side helper
+- [ ] Add payment.stripeInitiate tRPC procedure (create Checkout Session)
+- [ ] Add Stripe webhook handler (/api/stripe/webhook) with signature verification
+- [ ] Handle checkout.session.completed: verify, credit wallet, idempotency check
+- [ ] Add Stripe deposit tab in DashboardWallet UI
+
+### Live Notifications
+- [ ] Add notifications.unreadCount tRPC procedure
+- [ ] Add live notification bell badge to Navbar with 30s polling
+- [ ] Trigger push notification on Paystack deposit success (webhook)
+- [ ] Trigger push notification on Stripe deposit success (webhook)
+
+### Real-time Inventory
+- [ ] Add stock check before order creation (reject if stock < quantity atomically)
+- [ ] Add refetchInterval to ProductDetail page for live stock count

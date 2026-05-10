@@ -1334,3 +1334,38 @@ export async function getAllWithdrawalsWithUsers(limit = 100, offset = 0) {
     .offset(offset);
   return rows;
 }
+
+// ─── Notifications (extended) ─────────────────────────────────────────────────
+export async function getNotificationsUnreadCount(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  return Number(result[0]?.count ?? 0);
+}
+
+// ─── Inventory (atomic) ───────────────────────────────────────────────────────
+/**
+ * Atomically decrement product stock and increment totalSold.
+ * Returns false if stock is insufficient (prevents overselling).
+ */
+export async function decrementProductStock(
+  productId: number,
+  quantity: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  // Atomic update: only succeeds if stock >= quantity
+  const result = await db
+    .update(products)
+    .set({
+      stock: sql`GREATEST(0, ${products.stock} - ${quantity})`,
+      totalSold: sql`COALESCE(${products.totalSold}, 0) + ${quantity}`,
+    })
+    .where(and(eq(products.id, productId), gte(products.stock, quantity)));
+  // affectedRows > 0 means the update succeeded (stock was sufficient)
+  const affected = (result as unknown as { affectedRows?: number }[])[0]?.affectedRows ?? 0;
+  return affected > 0;
+}
