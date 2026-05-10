@@ -42,7 +42,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import AISupportChat from "./components/AISupportChat";
-import { ExitIntentOffer } from "./components/ConversionWidgets";
 import LiveChatWidget from "./components/LiveChatWidget";
 import MobileBottomNav from "./components/MobileBottomNav";
 
@@ -101,7 +100,6 @@ function App() {
           <Toaster richColors position="top-right" />
           <Router />
           <AISupportChat />
-          <ExitIntentOffer couponCode="STAY10" discount="10%" />
           <LiveChatWidget />
           <MobileBottomNav />
         </TooltipProvider>
