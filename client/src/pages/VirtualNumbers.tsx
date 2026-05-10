@@ -348,7 +348,7 @@ export default function VirtualNumbers() {
     if (!selectedCountry) { toast.error("Please select a country first."); return; }
     setPurchasing(product.name);
     purchaseMutation.mutate({
-      country: selectedCountry.iso,        // country name key used by 5sim API (e.g. 'nigeria')
+      country: selectedCountry.iso,        // country name key used by the API (e.g. 'nigeria')
       countryCode: selectedCountry.isoCode.toUpperCase().slice(0, 2), // 2-letter ISO code (e.g. 'NG')
       countryName: selectedCountry.name,
       product: product.name,
@@ -363,14 +363,14 @@ export default function VirtualNumbers() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium mb-4">
             <Phone className="w-3 h-3" />
-            Virtual Number Marketplace &mdash; Powered by 5sim
+            Virtual Number Marketplace &mdash; Powered by Buznify
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-3">
             Get a Virtual Number for{" "}
             <span className="gradient-text">Any Service</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Real phone numbers from 5sim. Instant activation. Live SMS delivery. No personal info required.
+            Real phone numbers. Instant activation. Live SMS delivery. No personal info required.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> 1,400+ Services</span>
@@ -469,7 +469,7 @@ export default function VirtualNumbers() {
             ) : loadingProducts ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-                <span className="ml-3 text-muted-foreground">Loading live services from 5sim...</span>
+                <span className="ml-3 text-muted-foreground">Loading live services from Buznify...</span>
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
