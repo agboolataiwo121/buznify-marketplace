@@ -1235,7 +1235,7 @@ export default function AdminPanel() {
                     );
                   })()}
                   {/* Price + Original Price + Stock */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block">Price (USD) *</label>
                       <Input type="number" step="0.01" min="0" value={productForm.price}

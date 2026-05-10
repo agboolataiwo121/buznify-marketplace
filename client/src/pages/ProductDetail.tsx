@@ -243,15 +243,15 @@ export default function ProductDetail() {
 
               <p className="text-muted-foreground leading-relaxed">{product.description}</p>
 
-              <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/5">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-6 pt-6 border-t border-white/5">
                 {[
                   { icon: Zap, label: "Instant Delivery", color: "text-yellow-400" },
                   { icon: Shield, label: "Verified Product", color: "text-emerald-400" },
                   { icon: Clock, label: "24/7 Support", color: "text-blue-400" },
                 ].map(({ icon: Icon, label, color }) => (
-                  <div key={label} className="flex flex-col items-center gap-2 text-center">
-                    <Icon className={`w-5 h-5 ${color}`} />
-                    <span className="text-xs text-muted-foreground">{label}</span>
+                  <div key={label} className="flex flex-col items-center gap-1.5 sm:gap-2 text-center">
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
+                    <span className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{label}</span>
                   </div>
                 ))}
               </div>

@@ -30,16 +30,16 @@ export default function DashboardReferrals() {
   return (
     <DashboardShell title="Referrals" subtitle="Earn commissions by referring new users.">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
         {[
           { icon: Users, label: "Total Referrals", value: referralData?.referrals?.length ?? 0, color: "text-violet-400", bg: "from-violet-500/10 to-purple-500/10" },
           { icon: CheckCircle, label: "Completed", value: referralData?.referrals?.filter((r) => r.status === "credited").length ?? 0, color: "text-emerald-400", bg: "from-emerald-500/10 to-teal-500/10" },
           { icon: DollarSign, label: "Total Earned", value: `$${totalEarnings.toFixed(2)}`, color: "text-yellow-400", bg: "from-yellow-500/10 to-orange-500/10" },
         ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} className={`glass-card rounded-2xl p-4 bg-gradient-to-br ${bg}`}>
-            <Icon className={`w-5 h-5 ${color} mb-2`} />
-            <p className="text-xl font-bold text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
+          <div key={label} className={`glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gradient-to-br ${bg}`}>
+            <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color} mb-1.5 sm:mb-2`} />
+            <p className="text-lg sm:text-xl font-bold text-foreground truncate">{value}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{label}</p>
           </div>
         ))}
       </div>
@@ -68,17 +68,17 @@ export default function DashboardReferrals() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/5">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-6 pt-6 border-t border-white/5">
           {[
             { step: "1", text: "Share your unique link" },
             { step: "2", text: "Friend signs up & buys" },
             { step: "3", text: "You earn 10% commission" },
           ].map(({ step, text }) => (
             <div key={step} className="text-center">
-              <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary mx-auto mb-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-xs sm:text-sm font-bold text-primary mx-auto mb-1.5 sm:mb-2">
                 {step}
               </div>
-              <p className="text-xs text-muted-foreground">{text}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{text}</p>
             </div>
           ))}
         </div>

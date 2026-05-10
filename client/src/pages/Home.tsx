@@ -610,16 +610,16 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {growthPlatforms.map(({ icon: Icon, name, color }) => (
                 <Link key={name} href="/growth">
-                  <div className="glass-card-hover rounded-2xl p-5 text-center cursor-pointer">
+                  <div className="glass-card-hover rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center cursor-pointer">
                     <div
-                      className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mx-auto mb-3 opacity-90`}
+                      className={`w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mx-auto mb-2 sm:mb-3 opacity-90`}
                     >
-                      <Icon className="w-6 h-6 text-white" />
+                      <Icon className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <p className="text-sm font-medium text-foreground">{name}</p>
+                    <p className="text-xs sm:text-sm font-medium text-foreground truncate">{name}</p>
                   </div>
                 </Link>
               ))}

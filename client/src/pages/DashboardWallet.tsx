@@ -325,7 +325,7 @@ export default function DashboardWallet() {
                   <button
                     key={a}
                     onClick={() => setAmount(String(a))}
-                    className={`py-3 rounded-xl text-sm font-semibold transition-all border touch-target ${
+                    className={`py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all border touch-target ${
                       amount === String(a)
                         ? "bg-primary/10 border-primary/30 text-primary"
                         : "glass border-white/10 text-muted-foreground hover:text-foreground"
