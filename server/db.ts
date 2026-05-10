@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, like, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -166,6 +166,15 @@ export async function getProducts(opts: {
   vendorId?: number;
   status?: string;
   subcategoryId?: number;
+  // Advanced filters
+  priceMin?: number;
+  priceMax?: number;
+  minRating?: number;
+  inStockOnly?: boolean;
+  onSaleOnly?: boolean;
+  deliveryType?: string;
+  featured?: boolean;
+  sortBy?: string;
 }) {
   const db = await getDb();
   if (!db) return [];
@@ -186,13 +195,33 @@ export async function getProducts(opts: {
     );
   }
 
+  // Advanced filters
+  if (opts.priceMin !== undefined) conditions.push(gte(products.price, opts.priceMin.toFixed(2)));
+  if (opts.priceMax !== undefined) conditions.push(lte(products.price, opts.priceMax.toFixed(2)));
+  if (opts.minRating !== undefined && opts.minRating > 0) conditions.push(gte(products.avgRating, opts.minRating.toFixed(2)));
+  if (opts.inStockOnly) conditions.push(gte(products.stock, 1));
+  if (opts.onSaleOnly) conditions.push(sql`${products.originalPrice} IS NOT NULL AND CAST(${products.originalPrice} AS DECIMAL(10,2)) > CAST(${products.price} AS DECIMAL(10,2))`);
+  if (opts.deliveryType) conditions.push(eq(products.deliveryType, opts.deliveryType as any));
+  if (opts.featured !== undefined) conditions.push(eq(products.featured, opts.featured));
+
+  // Build order clause
+  let orderClause;
+  switch (opts.sortBy) {
+    case "price_asc":  orderClause = asc(products.price); break;
+    case "price_desc": orderClause = desc(products.price); break;
+    case "rating":     orderClause = desc(products.avgRating); break;
+    case "newest":     orderClause = desc(products.createdAt); break;
+    case "featured":   orderClause = desc(products.featured); break;
+    default:           orderClause = desc(products.totalSold); // best_selling
+  }
+
   return db
     .select()
     .from(products)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .limit(opts.limit ?? 20)
     .offset(opts.offset ?? 0)
-    .orderBy(desc(products.totalSold));
+    .orderBy(orderClause);
 }
 
 export async function getProductById(id: number) {

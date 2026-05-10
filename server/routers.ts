@@ -515,9 +515,18 @@ export const appRouter = router({
         z.object({
           category: z.string().optional(),
           search: z.string().optional(),
-          limit: z.number().min(1).max(50).default(20),
+          limit: z.number().min(1).max(100).default(40),
           offset: z.number().min(0).default(0),
           subcategoryId: z.number().int().optional(),
+          // Advanced filters
+          priceMin: z.number().min(0).optional(),
+          priceMax: z.number().min(0).optional(),
+          minRating: z.number().min(0).max(5).optional(),
+          inStockOnly: z.boolean().optional(),
+          onSaleOnly: z.boolean().optional(),
+          deliveryType: z.enum(["instant", "manual"]).optional(),
+          featured: z.boolean().optional(),
+          sortBy: z.enum(["best_selling", "price_asc", "price_desc", "rating", "newest", "featured"]).optional(),
         })
       )
       .query(async ({ input }) => {

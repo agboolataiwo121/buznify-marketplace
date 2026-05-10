@@ -753,3 +753,15 @@
 - [x] All tRPC procedure calls verified against server routers (admin, wallet, auth, notifications, referrals, wishlist, growthOrders, coupons, products, apiKeys, payouts, refunds, virtualNumbers, profile)
 - [x] Removed unused imports in DashboardLoyalty.tsx (trpc, ChevronRight, useAuth)
 - [x] 5sim API 502 errors properly handled with try/catch returning empty object (expected behavior)
+
+## Marketplace Filtering & Sorting (May 10)
+- [x] Comprehensive filter panel with price range, min rating, delivery type, in-stock, on-sale
+- [x] Quick price preset buttons (Under $5, $5-$20, $20-$50, $50+)
+- [x] Active filter chips showing applied filters with individual remove buttons
+- [x] Design-system Select dropdown for sort (replaces native select element)
+- [x] Sort options: Best Selling, Price Low/High, Highest Rated, Newest, Featured First
+- [x] URL persistence for all filter/sort state (survives page refresh)
+- [x] Filter count badge on the Filters button
+- [x] Clear all filters button + contextual empty state with clear button
+- [x] Server-side filtering via getProducts (priceMin/Max, minRating, deliveryType, inStockOnly, onSaleOnly, sortBy)
+- [x] Client-side fallback filtering for demo products
