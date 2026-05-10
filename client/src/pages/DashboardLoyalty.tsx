@@ -1,8 +1,6 @@
 import DashboardShell from "@/components/DashboardShell";
-import { Gift, Star, Zap, Award, TrendingUp, ChevronRight, CheckCircle, Lock } from "lucide-react";
+import { Gift, Star, Zap, Award, TrendingUp, CheckCircle, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { trpc } from "@/lib/trpc";
 
 const TIERS = [
   { name: "Bronze", min: 0, max: 999, color: "text-orange-400", bg: "from-orange-500/10 to-amber-500/10", border: "border-orange-500/20", perks: ["1x points multiplier", "Access to basic deals"] },
@@ -29,7 +27,6 @@ const HISTORY = [
 ];
 
 export default function DashboardLoyalty() {
-  const { user } = useAuth();
   const currentPoints = 1840;
   const currentTier = TIERS.find(t => currentPoints >= t.min && currentPoints <= t.max) ?? TIERS[0];
   const nextTier = TIERS[TIERS.indexOf(currentTier) + 1];
