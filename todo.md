@@ -707,3 +707,8 @@
 
 ## Markup Reset Button
 - [x] Add "Reset to Default (30%)" button next to both markup inputs in Admin Panel Service Controls tab
+
+## Growth Page Button Fixes
+- [ ] Fix Deployment Category dropdown showing all categories instead of platform-filtered ones (add key={selectedPlatform} to Select to force remount on platform change)
+- [ ] Fix Select Service dropdown not resetting properly when platform changes
+- [ ] Fix middle dot rendering issue in header subtitle (shows \u00b7 instead of ·)
