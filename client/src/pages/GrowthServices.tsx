@@ -456,21 +456,21 @@ export default function GrowthServices() {
 
             {/* Platform Grid */}
             {!search && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
                 {PLATFORM_GRID.map((p) => {
                   const isActive = selectedPlatform === p.key;
                   return (
                     <button
                       key={p.key}
                       onClick={() => setSelectedPlatform(p.key)}
-                      className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border text-sm font-medium transition-all ${
+                      className={`flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-medium transition-all min-w-0 ${
                         isActive
                           ? "bg-violet-600/20 border-violet-500 text-white"
                           : "bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:text-white hover:bg-white/8"
                       }`}
                     >
-                      <ServiceIcon name={p.key === "all" ? "globe" : p.key === "website" ? "globe" : p.key} size={20} className="shrink-0" />
-                      <span>{p.label}</span>
+                      <ServiceIcon name={p.key === "all" ? "globe" : p.key === "website" ? "globe" : p.key} size={16} className="shrink-0" />
+                      <span className="truncate leading-tight">{p.label}</span>
                     </button>
                   );
                 })}
