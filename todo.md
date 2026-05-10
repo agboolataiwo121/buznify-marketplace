@@ -765,3 +765,11 @@
 - [x] Clear all filters button + contextual empty state with clear button
 - [x] Server-side filtering via getProducts (priceMin/Max, minRating, deliveryType, inStockOnly, onSaleOnly, sortBy)
 - [x] Client-side fallback filtering for demo products
+
+## Missing Legal & Help Pages (May 10)
+- [x] Terms of Service page (/terms)
+- [x] Privacy Policy page (/privacy)
+- [x] Refund Policy page (/refund-policy)
+- [x] Account Help page (/account-help)
+- [x] Register all four routes in App.tsx
+- [x] Link all four pages from Footer

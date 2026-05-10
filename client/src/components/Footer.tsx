@@ -15,13 +15,14 @@ const footerLinks = {
     { label: "Orders", href: "/dashboard/orders" },
     { label: "Referrals", href: "/dashboard/referrals" },
     { label: "Support", href: "/support" },
+    { label: "Account Help", href: "/account-help" },
   ],
   Legal: [
     { label: "Terms of Service", href: "/terms" },
     { label: "Privacy Policy", href: "/privacy" },
-    { label: "Refund Policy", href: "/refund" },
+    { label: "Refund Policy", href: "/refund-policy" },
     { label: "Security", href: "/security" },
-    { label: "Support Center", href: "/support" },
+    { label: "Account Help", href: "/account-help" },
   ],
   Company: [
     { label: "About Us", href: "/about" },

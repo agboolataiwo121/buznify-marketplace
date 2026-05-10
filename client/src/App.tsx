@@ -41,6 +41,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
+import AccountHelp from "./pages/AccountHelp";
 import AISupportChat from "./components/AISupportChat";
 import LiveChatWidget from "./components/LiveChatWidget";
 import MobileBottomNav from "./components/MobileBottomNav";
@@ -85,6 +86,8 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/account-help" component={AccountHelp} />
+      <Route path="/refund-policy" component={RefundPolicy} />
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
