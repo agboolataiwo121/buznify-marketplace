@@ -474,7 +474,7 @@ export default function Marketplace() {
 
         {/* Advanced Filters Panel */}
         {showFilters && (
-          <div className="glass-card rounded-2xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="glass-card rounded-2xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Price Range ($)</label>
               <div className="flex items-center gap-2">
@@ -552,7 +552,7 @@ export default function Marketplace() {
               <h2 className="text-base font-semibold text-foreground">Trending Right Now</h2>
               <span className="text-xs badge-purple px-2 py-0.5 rounded-full">Hot</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 2xl:grid-cols-5 gap-4">
               {DEMO_PRODUCTS.filter((p) => TRENDING_IDS.includes(p.id)).map((product) => (
                 <ProductCard key={product.id} product={product as any} />
               ))}
@@ -567,7 +567,7 @@ export default function Marketplace() {
 
         {/* Product Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
             {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : displayProducts.length === 0 ? (
@@ -577,7 +577,7 @@ export default function Marketplace() {
             <p className="text-muted-foreground">Try adjusting your search or filters</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
             {displayProducts.map((product) => (
               <ProductCard key={product.id} product={product as any} />
             ))}

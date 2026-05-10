@@ -295,7 +295,7 @@ export default function DashboardWallet() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Deposit / Withdraw / Crypto tabs */}
         <div className="glass-card rounded-2xl p-6">
           <div className="flex gap-1 p-1 rounded-xl bg-white/5 mb-5 overflow-x-auto scrollbar-none">

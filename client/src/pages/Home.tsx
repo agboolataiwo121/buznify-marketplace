@@ -487,7 +487,7 @@ export default function Home() {
       <section className="py-16 border-y border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-cyan-500/5" />
         <div className="container relative z-10">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8">
             {stats.map(({ value, label }) => (
               <div key={label} className="text-center">
                 <div className="text-3xl sm:text-4xl font-bold gradient-text mb-1">{value}</div>
@@ -515,7 +515,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {categories.map(({ icon: Icon, label, desc, count, href, color, border, iconColor }) => (
               <Link key={label} href={href}>
                 <div
@@ -555,7 +555,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
             {whyChoose.map(({ icon: Icon, title, desc, color, bg }) => (
               <div key={title} className="glass-card rounded-2xl p-6 group hover:border-white/10 transition-all duration-300">
                 <div
@@ -574,7 +574,7 @@ export default function Home() {
       {/* ── Growth Services ── */}
       <section className="py-14 sm:py-24">
         <div className="container">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-violet-500/30 text-xs text-violet-300 mb-6">
                 <TrendingUp className="w-3.5 h-3.5" />
@@ -631,9 +631,9 @@ export default function Home() {
       {/* ── Virtual Numbers ── */}
       <section className="py-14 sm:py-24 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent">
         <div className="container">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
             {/* Visual */}
-            <div className="order-2 lg:order-1">
+            <div className="order-2 md:order-1">
               <div className="glass-card rounded-2xl p-6 max-w-sm mx-auto">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -728,7 +728,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {reviews.map(({ name, role, avatar, rating, text }) => (
               <div key={name} className="glass-card rounded-2xl p-5">
                 <div className="flex items-center gap-1 mb-3">
@@ -922,7 +922,7 @@ export default function Home() {
                 Curated products based on what's trending on the platform.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
               {(featuredProducts as any[]).map((p: any) => (
                 <Link key={p.id} href={`/product/${p.id}`}>
                   <div className="glass-card rounded-2xl p-5 hover:border-violet-500/40 transition-all cursor-pointer group">

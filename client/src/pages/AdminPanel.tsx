@@ -714,12 +714,12 @@ export default function AdminPanel() {
         </aside>
       </div>
       {/* Tab content — shared mobile + desktop, offset on desktop */}
-      <div className="lg:pl-[236px] xl:pl-[256px] -mt-0">
+      <div className="lg:pl-[236px] xl:pl-[256px]">
 
       {/* Overview */}
       {tab === "overview" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { icon: Users, label: "Total Users", value: stats?.users ?? 0, color: "text-violet-400", iconBg: "bg-violet-500/15", border: "border-violet-500/20", sub: "Registered accounts" },
               { icon: ShoppingCart, label: "Total Orders", value: stats?.orders ?? 0, color: "text-cyan-400", iconBg: "bg-cyan-500/15", border: "border-cyan-500/20", sub: "All time" },

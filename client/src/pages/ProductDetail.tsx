@@ -202,9 +202,9 @@ export default function ProductDetail() {
           <span className="text-foreground truncate max-w-48">{product.title}</span>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8">
           {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="md:col-span-2 space-y-6">
             {/* Product header */}
             <div className="glass-card rounded-2xl p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
@@ -390,7 +390,7 @@ export default function ProductDetail() {
       {relatedProducts && relatedProducts.length > 0 && (
         <div className="max-w-6xl mx-auto px-4 pb-16">
           <h2 className="text-xl font-bold text-foreground mb-6">Related Products</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {relatedProducts.map((p: any) => (
               <Link key={p.id} href={`/product/${p.id}`}>
                 <div className="glass-card rounded-2xl p-4 hover:border-primary/40 transition-all cursor-pointer group">

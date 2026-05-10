@@ -65,7 +65,7 @@ export default function DashboardLoyalty() {
         </div>
 
         {/* Tier overview */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {TIERS.map((tier) => {
             const isActive = tier.name === currentTier.name;
             return (
@@ -94,7 +94,7 @@ export default function DashboardLoyalty() {
             <Gift className="w-4 h-4 text-violet-400" />
             Redeem Rewards
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {REWARDS.map(({ title, points, icon, available }) => {
               const canAfford = currentPoints >= points;
               return (

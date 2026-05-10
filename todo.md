@@ -729,3 +729,18 @@
 - [x] LiveOrderPopup: repositioned above mobile bottom nav (bottom-[5.5rem] md:bottom-6)
 - [x] AISupportChat: repositioned above mobile bottom nav, full-width on mobile (w-[calc(100vw-1.5rem)] sm:w-[340px])
 - [x] Fixed DOM syntax errors introduced during multi-edit (Zapp typo, broken comment, extra indentation)
+
+## Tablet Responsiveness Audit (May 10, 2026)
+- [x] ProductDetail.tsx main grid: changed lg:grid-cols-3 to md:grid-cols-3, lg:col-span-2 to md:col-span-2
+- [x] DashboardWallet.tsx deposit/withdraw grid: changed lg:grid-cols-2 to md:grid-cols-2
+- [x] AdminPanel.tsx content area: removed -mt-0 from content div
+- [x] AdminPanel.tsx stats grid: changed lg:grid-cols-4 to md:grid-cols-4
+- [x] Dashboard.tsx content grid: changed lg:grid-cols-3 to md:grid-cols-3, lg:col-span-2 to md:col-span-2
+- [x] DashboardLoyalty.tsx tier cards: changed lg:grid-cols-4 to md:grid-cols-4
+- [x] DashboardLoyalty.tsx rewards grid: changed lg:grid-cols-3 to md:grid-cols-3
+- [x] UserProfile.tsx main grid: changed lg:grid-cols-3 to md:grid-cols-3, lg:col-span-1/2 to md:col-span-1/2
+- [x] Marketplace.tsx filter panel: changed lg:grid-cols-5 to md:grid-cols-5
+- [x] Marketplace.tsx trending grid: changed lg:grid-cols-4 to md:grid-cols-4
+- [x] Marketplace.tsx product grids: changed lg:grid-cols-3 to md:grid-cols-3
+- [x] VirtualNumbers.tsx product grid: changed lg:grid-cols-3 to md:grid-cols-3
+- [x] ProductDetail.tsx related products grid: changed lg:grid-cols-4 to md:grid-cols-4

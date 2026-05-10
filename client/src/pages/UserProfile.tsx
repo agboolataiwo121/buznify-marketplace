@@ -221,9 +221,9 @@ export default function UserProfile() {
           <p className="text-sm text-muted-foreground mt-1">Manage your account details and view your purchase history.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* ── Left: Avatar + Basic Info ── */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="md:col-span-1 space-y-4">
             <Card className="bg-white/5 border-white/10">
               <CardContent className="pt-6 flex flex-col items-center text-center gap-4">
                 {/* Avatar */}
@@ -352,7 +352,7 @@ export default function UserProfile() {
           </div>
 
           {/* ── Right: Purchase History ── */}
-          <div className="lg:col-span-2">
+          <div className="md:col-span-2">
             <Card className="bg-white/5 border-white/10">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
